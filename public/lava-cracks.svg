@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 160" width="1200" height="160" fill="none">
+  <g stroke="white" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M20 112 C92 54 168 146 252 92 C330 42 398 124 476 76 C552 30 616 118 692 68 C768 18 834 108 916 60 C992 14 1068 94 1180 38" stroke-width="3.2" opacity="0.9"/>
+    <path d="M52 138 C118 116 168 148 230 128 C292 108 340 138 408 116 C476 94 516 126 580 104 C644 82 700 118 770 92 C840 66 908 104 980 78 C1052 52 1110 86 1168 64" stroke-width="2.2" opacity="0.55"/>
+
+    <path d="M176 108 C162 120 154 132 146 146" stroke-width="2" opacity="0.45"/>
+    <path d="M248 92 C236 110 222 122 206 136" stroke-width="2" opacity="0.5"/>
+    <path d="M356 76 C346 94 330 110 312 122" stroke-width="2" opacity="0.5"/>
+    <path d="M468 74 C456 92 442 106 424 120" stroke-width="2" opacity="0.5"/>
+    <path d="M594 92 C584 108 570 120 552 132" stroke-width="2" opacity="0.45"/>
+    <path d="M690 68 C678 86 662 104 642 120" stroke-width="2" opacity="0.45"/>
+    <path d="M820 86 C808 100 792 112 776 122" stroke-width="2" opacity="0.42"/>
+    <path d="M914 60 C902 78 888 92 870 106" stroke-width="2" opacity="0.45"/>
+    <path d="M1030 72 C1018 90 1002 104 982 118" stroke-width="2" opacity="0.42"/>
+
+    <path d="M310 118 C330 104 348 94 370 86" stroke-width="1.6" opacity="0.28"/>
+    <path d="M520 108 C540 96 560 88 582 80" stroke-width="1.6" opacity="0.28"/>
+    <path d="M756 104 C774 92 792 84 812 78" stroke-width="1.6" opacity="0.24"/>
+    <path d="M980 88 C1000 76 1020 68 1042 60" stroke-width="1.6" opacity="0.24"/>
+  </g>
+</svg>
