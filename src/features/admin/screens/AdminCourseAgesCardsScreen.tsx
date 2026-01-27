@@ -774,10 +774,10 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
   return (
     <div className="space-y-6" dir="rtl">
       <AdminCard glow={themeGlow(course?.theme ?? null)}>
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div className="min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
+          <div className="min-w-0 flex-1">
             <div className="text-xs font-medium text-slate-600">الكورس</div>
-            <div className="mt-2 text-2xl font-semibold text-slate-900">
+            <div className="mt-2 text-xl sm:text-2xl font-semibold text-slate-900 break-words">
               {course?.title_ar ?? course?.title_en ?? course?.slug ?? normalizedSlug}
             </div>
             {course?.title_en ? (
@@ -785,11 +785,11 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                 {course.title_en}
               </div>
             ) : null}
-            <div className="mt-2 max-w-2xl text-sm text-slate-600">{course?.description ?? ""}</div>
+            <div className="mt-2 text-sm text-slate-600 break-words">{course?.description ?? ""}</div>
           </div>
 
-          <div className="flex flex-col items-end gap-3">
-            <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-col items-end sm:items-end gap-3 shrink-0">
+            <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
               {pkg ? (
                 <Link
                   href={`/admin/packages/${encodeURIComponent(pkg.slug)}`}
@@ -842,8 +842,8 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
         </div>
       </AdminCard>
 
-      <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
-        <div className="space-y-6">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-[340px_1fr]">
+        <div className="space-y-6 min-w-0">
           <AdminCard>
             <div className="text-xs font-semibold text-slate-700">مجموعات الأعمار</div>
             <div className="mt-4 space-y-2">
@@ -901,38 +901,38 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
           ) : null}
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-6 min-w-0 overflow-x-hidden">
           {tab === "ages" ? (
           <AdminCard>
-            <div className="text-lg font-semibold text-slate-900">1) مجموعات الأعمار</div>
-            <div className="mt-2 text-sm text-slate-600">أضف مجموعة عمر للكورس ثم عدّل/احذف المجموعة المحددة.</div>
+            <div className="text-base sm:text-lg font-semibold text-slate-900">1) مجموعات الأعمار</div>
+            <div className="mt-2 text-sm text-slate-600 break-words">أضف مجموعة عمر للكورس ثم عدّل/احذف المجموعة المحددة.</div>
 
-            <div className="mt-6 grid gap-3 md:grid-cols-[1fr_110px_110px_120px]">
+            <div className="mt-6 grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_110px_110px_120px]">
               <input
                 value={newAgeTitle}
                 onChange={(e) => setNewAgeTitle(e.target.value)}
                 placeholder="اسم المجموعة"
-                className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
+                className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
               />
               <input
                 value={newAgeMin}
                 onChange={(e) => setNewAgeMin(e.target.value)}
                 placeholder="من"
                 inputMode="numeric"
-                className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
+                className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
               />
               <input
                 value={newAgeMax}
                 onChange={(e) => setNewAgeMax(e.target.value)}
                 placeholder="إلى"
                 inputMode="numeric"
-                className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
+                className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
               />
               <button
                 type="button"
                 onClick={addAgeGroup}
                 disabled={saving || loading || !course}
-                className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 w-full sm:w-auto items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 إضافة
               </button>
@@ -942,13 +942,13 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
               <div className="text-xs font-semibold text-slate-700">تعديل المجموعة المحددة</div>
               <div className="mt-1 text-xs text-slate-600">اختر مجموعة من القائمة على اليمين ثم عدّل بياناتها.</div>
 
-              <div className="mt-4 grid gap-3 md:grid-cols-[1fr_120px_120px]">
+              <div className="mt-4 grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_120px_120px]">
                 <input
                   value={editAgeTitle}
                   onChange={(e) => setEditAgeTitle(e.target.value)}
                   placeholder="اسم المجموعة"
                   disabled={!selectedAgeGroupId}
-                  className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
                 />
                 <input
                   value={editAgeMin}
@@ -956,7 +956,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                   placeholder="من"
                   inputMode="numeric"
                   disabled={!selectedAgeGroupId}
-                  className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
                 />
                 <input
                   value={editAgeMax}
@@ -964,7 +964,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                   placeholder="إلى"
                   inputMode="numeric"
                   disabled={!selectedAgeGroupId}
-                  className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
                 />
               </div>
 
@@ -1019,10 +1019,10 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
           {tab === "cards" ? (
           <AdminCard>
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <div className="text-lg font-semibold text-slate-900">2) الكروت</div>
-                <div className="mt-2 text-sm text-slate-600">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-base sm:text-lg font-semibold text-slate-900">2) الكروت</div>
+                <div className="mt-2 text-sm text-slate-600 break-words">
                   {selectedAgeGroup ? (
                     <>
                       المجموعة: <span className="font-semibold text-slate-900">{selectedAgeGroup.title ?? "مجموعة عمر"}</span>
@@ -1032,7 +1032,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                   )}
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => {
@@ -1051,12 +1051,12 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
             </div>
 
             <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-              <div className="flex flex-wrap items-end justify-between gap-4">
-                <div>
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold text-slate-900">أكواد اشتراك للكروت</div>
-                  <div className="mt-1 text-xs text-slate-600">هيتم توليد كود تفعيل لكل كارت (كود كارت) علشان يفتح نفس الكارت للمستخدم.</div>
+                  <div className="mt-1 text-xs text-slate-600 break-words">هيتم توليد كود تفعيل لكل كارت (كود كارت) علشان يفتح نفس الكارت للمستخدم.</div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={copyAllGeneratedCardCodes}

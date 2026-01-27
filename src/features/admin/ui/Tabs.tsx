@@ -21,11 +21,11 @@ export function Tabs<T extends string>({
   return (
     <div
       className={cn(
-        "max-w-full overflow-x-auto whitespace-nowrap rounded-2xl bg-slate-100/80 p-1 border border-slate-200",
+        "w-full max-w-full overflow-x-auto rounded-2xl bg-slate-100/80 p-1 border border-slate-200",
         className,
       )}
     >
-      <div className="inline-flex items-center gap-1">
+      <div className="inline-flex items-center gap-1 min-w-max">
       {items.map((it) => {
         const active = it.key === value;
         return (
