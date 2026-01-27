@@ -15,6 +15,27 @@ export default function BlockedPage() {
     const run = async () => {
       try {
         const supabase = createSupabaseBrowserClient();
+        
+        // Check if user is admin - admins should not see this page
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        
+        if (user?.id) {
+          const adminRes = await supabase
+            .from("admin_users")
+            .select("user_id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          const isAdmin = Boolean(!adminRes.error && adminRes.data);
+          
+          // If admin, redirect to admin page
+          if (isAdmin) {
+            router.replace("/admin");
+            return;
+          }
+        }
+        
         await supabase.auth.signOut();
       } catch {
         // ignore
@@ -27,7 +48,7 @@ export default function BlockedPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-[#050506] text-white" dir="rtl">
