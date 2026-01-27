@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { unstable_noStore as noStore } from "next/cache";
 
 import { Navbar } from "@/components/sections/Navbar";
 import { FooterClean } from "@/components/sections/FooterClean";
@@ -28,6 +29,7 @@ export default async function ProgramPage({
   params: { slug: string } | Promise<{ slug: string }>;
   searchParams?: { pkg?: string } | Promise<{ pkg?: string }>;
 }) {
+  noStore();
   const p = await Promise.resolve(params as any);
   const rawSlug = typeof p.slug === "string" ? decodeURIComponent(p.slug) : "";
   const normalizedSlug = rawSlug
@@ -58,9 +60,41 @@ export default async function ProgramPage({
   // NOTE: This page is server-rendered; load course + cards from DB.
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
 
-  return (
-    <ProgramPageInner rawSlug={rawSlug} courseSlug={courseSlug} pkgSlug={pkgSlug} imageFallback={imageFallback} />
-  );
+  try {
+    return await ProgramPageInner({ rawSlug, courseSlug, pkgSlug, imageFallback });
+  } catch (e) {
+    console.error("ProgramPage error", { rawSlug, courseSlug, pkgSlug, error: e });
+    return (
+      <div className="min-h-screen bg-[#0B0B0B]">
+        <Navbar />
+        <main className="pt-44 sm:pt-48 md:pt-56">
+          <section className="relative overflow-hidden bg-[#050506] py-20 sm:py-28">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1100px_620px_at_20%_0%,rgba(255,255,255,0.10),transparent_62%),radial-gradient(1000px_620px_at_85%_10%,rgba(255,255,255,0.06),transparent_60%),radial-gradient(900px_520px_at_50%_65%,rgba(255,255,255,0.06),transparent_68%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70" />
+            <Container>
+              <div className="mx-auto max-w-2xl" dir="rtl">
+                <h1 className="text-right font-heading text-3xl tracking-[0.10em] text-white sm:text-5xl">
+                  حصل خطأ مؤقت
+                </h1>
+                <p className="mt-4 text-right text-sm text-white/70">
+                  جرّب تفتح الصفحة تاني بعد شوية.
+                </p>
+                <div className="mt-6 flex flex-wrap justify-end gap-3">
+                  <Link
+                    href={pkgSlug ? `/packages/${encodeURIComponent(pkgSlug)}` : "/packages"}
+                    className="inline-flex h-11 items-center justify-center rounded-full bg-white/5 px-5 text-xs font-semibold tracking-[0.18em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10 hover:text-white"
+                  >
+                    الباقات
+                  </Link>
+                </div>
+              </div>
+            </Container>
+          </section>
+        </main>
+        <FooterClean />
+      </div>
+    );
+  }
 }
 
 async function ProgramPageInner({
