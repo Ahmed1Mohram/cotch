@@ -72,13 +72,31 @@ export function Navbar() {
       setIsAuthed(true);
 
       try {
-        const adminRes = await supabase
-          .from("admin_users")
-          .select("user_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
+        // Use RPC function first (uses security definer, bypasses RLS)
+        let isAdminValue = false;
+        let rpcRes = await supabase.rpc("is_admin", { uid: user.id });
+        if (rpcRes.error) {
+          // If that fails, try without parameter (uses auth.uid() internally)
+          rpcRes = await supabase.rpc("is_admin");
+        }
+        isAdminValue = Boolean(!rpcRes.error && rpcRes.data);
+        
+        // Fallback: Try direct table query if RPC fails (may fail due to RLS)
+        if (!isAdminValue) {
+          try {
+            const adminRes = await supabase
+              .from("admin_users")
+              .select("user_id")
+              .eq("user_id", user.id)
+              .maybeSingle();
+            isAdminValue = Boolean(!adminRes.error && adminRes.data);
+          } catch {
+            // Table query failed
+          }
+        }
+        
         if (!mounted) return;
-        setIsAdmin(!adminRes.error && Boolean(adminRes.data));
+        setIsAdmin(isAdminValue);
       } catch {
         if (!mounted) return;
         setIsAdmin(false);
