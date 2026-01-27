@@ -35,7 +35,7 @@ export default async function ProgramPage({
   params: { slug: string } | Promise<{ slug: string }>;
   searchParams?: { pkg?: string } | Promise<{ pkg?: string }>;
 }) {
-  noStore();
+  // Parse params first, before any other operations
   const p = await Promise.resolve(params as any);
   const rawSlug = typeof p.slug === "string" ? decodeURIComponent(p.slug) : "";
   const normalizedSlug = rawSlug
@@ -43,17 +43,11 @@ export default async function ProgramPage({
     .toLowerCase()
     .replace(/\/+$/, "")
     .replace(/\.html$/, "");
-  const imageFallback: Record<string, string> = {
-    football: "object-[78%_58%]",
-    volleyball: "object-[70%_52%]",
-    basketball: "object-[82%_52%]",
-    handball: "object-[72%_52%]",
-    injuries: "object-[78%_60%]",
-  };
 
   const courseSlug = normalizedSlug;
 
   // Early validation: reject invalid slugs like "-1" before any processing
+  // This must happen BEFORE noStore() and any component imports
   if (!courseSlug || courseSlug === "-1" || courseSlug.trim() === "" || courseSlug.length === 0) {
     return (
       <div className="min-h-screen bg-[#0B0B0B]">
@@ -89,6 +83,17 @@ export default async function ProgramPage({
       </div>
     );
   }
+
+  // Now safe to call noStore() after validation
+  noStore();
+
+  const imageFallback: Record<string, string> = {
+    football: "object-[78%_58%]",
+    volleyball: "object-[70%_52%]",
+    basketball: "object-[82%_52%]",
+    handball: "object-[72%_52%]",
+    injuries: "object-[78%_60%]",
+  };
 
   const sp = await Promise.resolve((searchParams ?? {}) as any);
   const pkgSlug =
