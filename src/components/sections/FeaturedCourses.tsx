@@ -106,7 +106,7 @@ export async function FeaturedCourses() {
         </Reveal>
 
         <CoursesMarquee
-          className="relative mt-14 overflow-hidden"
+          className="relative mt-14"
           style={{
             ["--courses-marquee-duration" as any]: `${marqueeDurationSec}s`,
             ["--courses-marquee-gap" as any]: "28px",

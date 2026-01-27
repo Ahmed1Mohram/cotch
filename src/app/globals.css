@@ -166,6 +166,33 @@ section[id] {
     animation-play-state: paused;
 }
 
+/* Mobile: Disable animation, use native scrolling */
+.courses-marquee[data-mobile="true"] .courses-marquee-track {
+    animation: none !important;
+    transform: none !important;
+}
+
+.courses-marquee[data-mobile="true"] {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    scroll-snap-type: x proximity;
+}
+
+.courses-marquee[data-mobile="true"] .courses-marquee-track > * {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
 .teaser-neon-text {
     background-image: linear-gradient( 180deg, #ffd36d 0%, #ffb35a 14%, #ff6a00 32%, #ff2424 50%, #7c3aed 68%, #22d3ee 84%, #ffd36d 100%);
     background-size: 100% 320%;
