@@ -170,17 +170,29 @@ section[id] {
 .courses-marquee[data-mobile="true"] .courses-marquee-track {
     animation: none !important;
     transform: none !important;
+    will-change: auto !important;
 }
 
 .courses-marquee[data-mobile="true"] {
-    -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
-    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch !important;
+    scroll-behavior: smooth !important;
+    scroll-snap-type: x mandatory !important;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
 }
 
 .courses-marquee[data-mobile="true"] .courses-marquee-track > * {
     scroll-snap-align: start;
     flex-shrink: 0;
+}
+
+/* Desktop: Ensure animation works */
+.courses-marquee:not([data-mobile="true"]) {
+    overflow: hidden !important;
+}
+
+.courses-marquee:not([data-mobile="true"]) .courses-marquee-track {
+    animation: coursesMarquee var(--courses-marquee-duration, 58s) linear infinite !important;
 }
 
 /* Hide scrollbar but keep functionality */
@@ -198,9 +210,16 @@ section[id] {
 /* Smooth horizontal scrolling on mobile */
 @media (max-width: 767px) {
     .overflow-x-auto {
-        -webkit-overflow-scrolling: touch;
-        scroll-behavior: smooth;
-        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch !important;
+        scroll-behavior: smooth !important;
+        scroll-snap-type: x mandatory !important;
+        overscroll-behavior-x: contain;
+        touch-action: pan-x;
+    }
+    
+    .overflow-x-auto > * {
+        scroll-snap-align: start;
+        flex-shrink: 0;
     }
 }
 

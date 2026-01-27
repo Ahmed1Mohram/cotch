@@ -34,23 +34,36 @@ export function CoursesMarquee({
 
   // Enable momentum scrolling on mobile
   useEffect(() => {
-    if (!isMobile || !containerRef.current) return;
+    if (!containerRef.current) return;
     const container = containerRef.current;
     
-    // Add smooth scrolling and momentum
-    container.style.overflowX = "auto";
-    container.style.scrollBehavior = "smooth";
-    container.style.setProperty("-webkit-overflow-scrolling", "touch");
-    container.style.scrollSnapType = "x proximity";
-    
-    // Prevent default scroll chaining
-    container.addEventListener("touchstart", (e) => {
-      if (container.scrollLeft === 0) {
-        container.scrollLeft = 1;
-      } else if (container.scrollLeft >= container.scrollWidth - container.clientWidth - 1) {
-        container.scrollLeft = container.scrollWidth - container.clientWidth - 1;
-      }
-    }, { passive: true });
+    if (isMobile) {
+      // Mobile: Enable native scrolling
+      container.style.overflowX = "auto";
+      container.style.scrollBehavior = "smooth";
+      container.style.setProperty("-webkit-overflow-scrolling", "touch");
+      container.style.scrollSnapType = "x mandatory";
+      container.style.overscrollBehaviorX = "contain";
+      container.style.touchAction = "pan-x";
+      
+      // Prevent default scroll chaining
+      const handleTouchStart = (e: TouchEvent) => {
+        if (container.scrollLeft === 0) {
+          container.scrollLeft = 1;
+        } else if (container.scrollLeft >= container.scrollWidth - container.clientWidth - 1) {
+          container.scrollLeft = container.scrollWidth - container.clientWidth - 1;
+        }
+      };
+      
+      container.addEventListener("touchstart", handleTouchStart, { passive: true });
+      
+      return () => {
+        container.removeEventListener("touchstart", handleTouchStart);
+      };
+    } else {
+      // Desktop: Ensure animation works
+      container.style.overflowX = "hidden";
+    }
   }, [isMobile]);
 
   return (
@@ -58,14 +71,16 @@ export function CoursesMarquee({
       ref={containerRef}
       className={cn(
         "courses-marquee",
-        isMobile && "overflow-x-auto overscroll-x-contain scrollbar-hide",
+        isMobile ? "overflow-x-auto overscroll-x-contain scrollbar-hide" : "overflow-hidden",
         className
       )}
       style={{
         ...style,
         ...(isMobile && {
           WebkitOverflowScrolling: "touch",
-          scrollSnapType: "x proximity",
+          scrollSnapType: "x mandatory",
+          overscrollBehaviorX: "contain",
+          touchAction: "pan-x",
         }),
       }}
       data-paused={paused ? "true" : "false"}
