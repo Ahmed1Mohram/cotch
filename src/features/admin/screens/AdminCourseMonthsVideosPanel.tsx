@@ -690,43 +690,26 @@ export function AdminCourseMonthsVideosPanel({
                         <div className="rounded-2xl bg-slate-50 px-3 py-3 sm:px-4 sm:py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">مفيش أيام لسه.</div>
                       ) : (
                         <>
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
-                              <div className="text-sm font-medium text-slate-700 shrink-0">اختيار اليوم</div>
-                              <select
-                                value={selectedDayId ?? ""}
-                                onChange={(e) => setSelectedDayId(e.target.value || null)}
-                                disabled={saving || days.length === 0}
-                                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 text-right sm:h-10 sm:w-auto sm:min-w-[220px] sm:text-sm"
-                              >
-                                <option value="">اختر يوم…</option>
-                                {days.map((d, idx) => (
-                                  <option key={d.id} value={d.id}>
-                                    {`#${d.day_number ?? idx + 1} — ${d.title ?? "يوم"}`}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="text-sm text-slate-500 shrink-0">{days.length} يوم</div>
+                          <div className="mb-3 flex items-center justify-between">
+                            <div className="text-sm font-medium text-slate-700">قائمة الأيام ({days.length})</div>
                           </div>
-
-                          {selectedDay ? (
-                            <div className="mt-2 sm:mt-3">
-                              <DayRowItem
-                                key={selectedDay.id}
-                                day={selectedDay}
-                                active={true}
-                                onSelect={() => setSelectedDayId(selectedDay.id)}
-                                onUpdate={(title, num) => updateDay(selectedDay.id, title, num)}
-                                onDelete={() => deleteDay(selectedDay.id)}
-                                disabled={saving}
-                              />
-                            </div>
-                          ) : (
-                            <div className="mt-2 sm:mt-3 rounded-2xl bg-slate-50 px-3 py-3 sm:px-4 sm:py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">
-                              اختر يوم علشان تعدّل بياناته.
-                            </div>
-                          )}
+                          
+                          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                            {days.map((d, idx) => {
+                              const isSelected = d.id === selectedDayId;
+                              return (
+                                <DayRowItem
+                                  key={d.id}
+                                  day={d}
+                                  active={isSelected}
+                                  onSelect={() => setSelectedDayId(d.id)}
+                                  onUpdate={(title, num) => updateDay(d.id, title, num)}
+                                  onDelete={() => deleteDay(d.id)}
+                                  disabled={saving}
+                                />
+                              );
+                            })}
+                          </div>
                         </>
                       )}
                     </div>
@@ -881,22 +864,28 @@ export function AdminCourseMonthsVideosPanel({
                           )}
                         </div>
 
-                        <div className="mt-2 sm:mt-4 grid gap-2 sm:gap-3">
-                          {videos.map((v) => (
-                            <VideoRowItem
-                              key={v.id}
-                              video={v}
-                              onUpdate={(title, url, isFree, details, thumbnailUrl) =>
-                                updateVideo(v.id, title, url, isFree, details, thumbnailUrl)
-                              }
-                              onDelete={() => deleteVideo(v.id)}
-                              disabled={saving}
-                            />
-                          ))}
-                          {selectedDayId && videos.length === 0 ? (
-                            <div className="rounded-2xl bg-slate-50 px-3 py-3 sm:px-4 sm:py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">مفيش فيديوهات لسه.</div>
-                          ) : null}
-                        </div>
+                        {selectedDayId && videos.length === 0 ? (
+                          <div className="mt-2 sm:mt-4 rounded-2xl bg-slate-50 px-3 py-3 sm:px-4 sm:py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">مفيش فيديوهات لسه.</div>
+                        ) : videos.length > 0 ? (
+                          <>
+                            <div className="mt-3 mb-2 flex items-center justify-between">
+                              <div className="text-sm font-medium text-slate-700">قائمة الفيديوهات ({videos.length})</div>
+                            </div>
+                            <div className="mt-2 sm:mt-4 space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                              {videos.map((v) => (
+                                <VideoRowItem
+                                  key={v.id}
+                                  video={v}
+                                  onUpdate={(title, url, isFree, details, thumbnailUrl) =>
+                                    updateVideo(v.id, title, url, isFree, details, thumbnailUrl)
+                                  }
+                                  onDelete={() => deleteVideo(v.id)}
+                                  disabled={saving}
+                                />
+                              ))}
+                            </div>
+                          </>
+                        ) : null}
                       </>
                     )}
                   </div>
@@ -1079,17 +1068,29 @@ function DayRowItem({
   return (
     <div
       className={
-        "rounded-2xl border p-3 sm:p-4 " +
-        (active ? "bg-slate-50 border-slate-300" : "bg-white border-slate-200")
+        "rounded-2xl border p-2.5 sm:p-3 md:p-4 transition-colors " +
+        (active ? "bg-slate-50 border-slate-300 shadow-sm" : "bg-white border-slate-200 hover:bg-slate-50/50")
       }
     >
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <button type="button" onClick={onSelect} disabled={disabled} className="min-w-0 text-right flex-1">
-          <div className="truncate text-base font-semibold text-slate-900">{day.title ?? "يوم"}</div>
-          <div className="mt-1 text-sm text-slate-500">اليوم #{day.day_number ?? "—"}</div>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+        <button 
+          type="button" 
+          onClick={onSelect} 
+          disabled={disabled} 
+          className="min-w-0 text-right flex-1 text-left sm:text-right"
+        >
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex-shrink-0 h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-xs sm:text-sm font-bold text-slate-700">
+              {day.day_number ?? "—"}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm sm:text-base font-semibold text-slate-900">{day.title ?? "يوم"}</div>
+              <div className="mt-0.5 text-xs sm:text-sm text-slate-500">اليوم #{day.day_number ?? "—"}</div>
+            </div>
+          </div>
         </button>
 
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0 justify-end">
           {confirmDelete ? (
             <>
               <button
@@ -1224,30 +1225,38 @@ function VideoRowItem({
   const canOpen = Boolean(videoUrl);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-2 sm:p-3 md:p-4">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+    <div className="rounded-2xl border border-slate-200 bg-white p-2.5 sm:p-3 md:p-4 hover:bg-slate-50/50 transition-colors">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2.5 sm:gap-3">
         <div className="min-w-0 text-right flex-1">
-          <div className="truncate text-base font-semibold text-slate-900">{video.title ?? "فيديو"}</div>
-          <div className="mt-1 truncate text-sm text-slate-500 sm:text-xs break-all" dir="ltr">
-            {video.video_url ?? ""}
-          </div>
-          {video.thumbnail_url ? (
-            <div className="mt-3">
-              <img
-                src={video.thumbnail_url}
-                alt="thumbnail"
-                className="h-20 w-36 rounded-2xl border border-slate-200 object-cover max-w-full"
-              />
+          <div className="flex items-start gap-2 sm:gap-3">
+            {video.thumbnail_url ? (
+              <div className="flex-shrink-0">
+                <img
+                  src={video.thumbnail_url}
+                  alt="thumbnail"
+                  className="h-16 w-24 sm:h-20 sm:w-36 rounded-xl border border-slate-200 object-cover"
+                />
+              </div>
+            ) : (
+              <div className="flex-shrink-0 h-16 w-24 sm:h-20 sm:w-36 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center">
+                <span className="text-xs text-slate-400">لا يوجد</span>
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm sm:text-base font-semibold text-slate-900">{video.title ?? "فيديو"}</div>
+              <div className="mt-1 truncate text-xs sm:text-sm text-slate-500 break-all" dir="ltr">
+                {video.video_url ?? ""}
+              </div>
+              {video.is_free_preview ? (
+                <div className="mt-1.5 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] sm:text-xs font-medium text-emerald-700">
+                  معاينة مجانية
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0">
-          {video.is_free_preview ? (
-            <div className="inline-flex h-8 items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 text-sm font-medium text-emerald-700 sm:text-xs">
-              معاينة مجانية
-            </div>
-          ) : null}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0 justify-end">
 
           {confirmDelete ? (
             <>
