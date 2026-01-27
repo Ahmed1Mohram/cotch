@@ -2700,6 +2700,35 @@ create index if not exists idx_age_groups_course_id on public.age_groups(course_
  create index if not exists idx_months_package_id on public.months(package_id);
  create index if not exists idx_months_age_group_package_id on public.months(age_group_id, package_id);
 
+ do $$
+ declare
+   r record;
+   v_keep uuid;
+   v_dup uuid;
+ begin
+   for r in
+     select
+       m.age_group_id,
+       m.package_id,
+       m.month_number,
+       array_agg(m.id order by m.created_at, m.id) as ids
+     from public.months m
+     where m.month_number is not null
+     group by m.age_group_id, m.package_id, m.month_number
+     having count(*) > 1
+   loop
+     v_keep := r.ids[1];
+     foreach v_dup in array r.ids[2:array_length(r.ids, 1)] loop
+       update public.days
+       set month_id = v_keep
+       where month_id = v_dup;
+
+       delete from public.months
+       where id = v_dup;
+     end loop;
+   end loop;
+ end $$;
+
  create unique index if not exists ux_months_default_age_group_month_number
  on public.months(age_group_id, month_number)
  where package_id is null;
