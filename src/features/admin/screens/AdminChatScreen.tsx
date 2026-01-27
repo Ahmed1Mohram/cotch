@@ -16,11 +16,18 @@ type ThreadRow = {
   last_message_text: string | null;
   created_at: string;
   updated_at: string;
-  courses?: {
-    slug: string;
-    title_ar: string | null;
-    title_en: string | null;
-  } | null;
+  courses?:
+    | {
+        slug: string;
+        title_ar: string | null;
+        title_en: string | null;
+      }
+    | {
+        slug: string;
+        title_ar: string | null;
+        title_en: string | null;
+      }[]
+    | null;
 };
 
 type ThreadView = {
@@ -56,7 +63,8 @@ function fmtTime(v: string | null | undefined) {
 }
 
 function normalizeThread(row: ThreadRow): ThreadView {
-  const courseTitle = String(row.courses?.title_ar ?? row.courses?.title_en ?? row.courses?.slug ?? row.course_id);
+  const course = Array.isArray(row.courses) ? row.courses[0] ?? null : row.courses ?? null;
+  const courseTitle = String(course?.title_ar ?? course?.title_en ?? course?.slug ?? row.course_id);
   return {
     id: String(row.id),
     courseId: String(row.course_id),
