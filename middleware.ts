@@ -99,30 +99,29 @@ export async function middleware(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     // Check if user is admin first - admins should bypass ban checks
+    // Use RPC function directly as it uses security definer and bypasses RLS
     let isAdmin = false;
     if (user?.id) {
       try {
-        const adminRes = await supabase
-          .from("admin_users")
-          .select("user_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
+        // Try RPC function first (uses security definer, bypasses RLS)
+        let rpcRes = await supabase.rpc("is_admin", { uid: user.id });
+        if (rpcRes.error) {
+          // If that fails, try without parameter (uses auth.uid() internally)
+          rpcRes = await supabase.rpc("is_admin");
+        }
+        isAdmin = Boolean(!rpcRes.error && rpcRes.data);
         
-        // Check both admin_users table and also try RPC function as fallback
-        isAdmin = Boolean(!adminRes.error && adminRes.data);
-        
-        // If not found in admin_users, try RPC function as fallback
+        // Fallback: Try direct table query if RPC fails (may fail due to RLS)
         if (!isAdmin) {
           try {
-            // Try with parameter first
-            let rpcRes = await supabase.rpc("is_admin", { uid: user.id });
-            if (rpcRes.error) {
-              // If that fails, try without parameter (uses auth.uid() internally)
-              rpcRes = await supabase.rpc("is_admin");
-            }
-            isAdmin = Boolean(!rpcRes.error && rpcRes.data);
+            const adminRes = await supabase
+              .from("admin_users")
+              .select("user_id")
+              .eq("user_id", user.id)
+              .maybeSingle();
+            isAdmin = Boolean(!adminRes.error && adminRes.data);
           } catch {
-            // RPC failed, keep isAdmin as false
+            // Table query failed, keep isAdmin as false
           }
         }
       } catch (err) {

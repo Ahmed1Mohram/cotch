@@ -22,12 +22,31 @@ export default function BlockedPage() {
         } = await supabase.auth.getUser();
         
         if (user?.id) {
-          const adminRes = await supabase
-            .from("admin_users")
-            .select("user_id")
-            .eq("user_id", user.id)
-            .maybeSingle();
-          const isAdmin = Boolean(!adminRes.error && adminRes.data);
+          // Use RPC function first (uses security definer, bypasses RLS)
+          let isAdmin = false;
+          try {
+            let rpcRes = await supabase.rpc("is_admin", { uid: user.id });
+            if (rpcRes.error) {
+              rpcRes = await supabase.rpc("is_admin");
+            }
+            isAdmin = Boolean(!rpcRes.error && rpcRes.data);
+            
+            // Fallback: Try direct table query if RPC fails
+            if (!isAdmin) {
+              try {
+                const adminRes = await supabase
+                  .from("admin_users")
+                  .select("user_id")
+                  .eq("user_id", user.id)
+                  .maybeSingle();
+                isAdmin = Boolean(!adminRes.error && adminRes.data);
+              } catch {
+                // Table query failed
+              }
+            }
+          } catch {
+            // Admin check failed
+          }
           
           // If admin, redirect to admin page
           if (isAdmin) {
