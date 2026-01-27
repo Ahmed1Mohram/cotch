@@ -187,10 +187,21 @@ section[id] {
 .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
 }
 
 .scrollbar-hide::-webkit-scrollbar {
     display: none;
+}
+
+/* Smooth horizontal scrolling on mobile */
+@media (max-width: 767px) {
+    .overflow-x-auto {
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+        scroll-snap-type: x mandatory;
+    }
 }
 
 .teaser-neon-text {

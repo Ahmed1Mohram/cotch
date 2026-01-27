@@ -364,8 +364,8 @@ export function Navbar() {
             <div className="pointer-events-none absolute inset-0 z-10 opacity-10 mix-blend-soft-light blur-md [mask-image:url('/lava-cracks.svg')] [-webkit-mask-image:url('/lava-cracks.svg')] [mask-repeat:repeat-x] [-webkit-mask-repeat:repeat-x] [mask-size:1700px_240px] [-webkit-mask-size:1700px_240px] [mask-position:center_top] [-webkit-mask-position:center_top] bg-gradient-to-r from-[#FF6A00] via-[#FF8A00] to-[#FFB35A]" />
             <div className="pointer-events-none absolute inset-0 z-10 opacity-[0.06] mix-blend-soft-light [mask-image:url('/lava-cracks.svg')] [-webkit-mask-image:url('/lava-cracks.svg')] [mask-repeat:repeat-x] [-webkit-mask-repeat:repeat-x] [mask-size:1700px_240px] [-webkit-mask-size:1700px_240px] [mask-position:center_top] [-webkit-mask-position:center_top] bg-gradient-to-r from-[#FFB35A] via-[#FF8A00] to-[#FF6A00]" />
 
-            <div className="relative z-40 flex h-14 items-center justify-between px-4 md:grid md:h-16 md:grid-cols-[auto_420px_1fr] lg:grid-cols-[auto_480px_1fr] md:items-center md:px-7">
-              <nav className="md:hidden flex flex-1 min-w-0 items-center gap-3 pr-1 overflow-hidden" aria-label="Primary" dir="rtl">
+            <div className="relative z-40 flex h-14 items-center justify-between px-3 sm:px-4 md:grid md:h-16 md:grid-cols-[auto_420px_1fr] lg:grid-cols-[auto_480px_1fr] md:items-center md:px-6 lg:px-7">
+              <nav className="md:hidden flex flex-1 min-w-0 items-center gap-2.5 pr-1 overflow-hidden" aria-label="Primary" dir="rtl">
                 {links.map((l) => {
                   const isHomePage = pathname === "/";
                   const href = isHomePage ? l.hash : l.href + l.hash;
@@ -374,21 +374,21 @@ export function Navbar() {
                       key={l.href}
                       href={href}
                       onClick={(e) => handleLinkClick(e, l)}
-                      className="min-w-0 truncate font-heading text-[12px] font-extrabold tracking-[0.06em] text-white/90 transition hover:text-white [text-shadow:0_2px_0_rgba(0,0,0,0.85)]"
+                      className="min-w-0 truncate font-heading text-[11px] sm:text-[12px] font-extrabold tracking-[0.06em] text-white/90 transition hover:text-white [text-shadow:0_2px_0_rgba(0,0,0,0.85)]"
                     >
                       {l.label}
                     </a>
                   );
                 })}
               </nav>
-              <nav className="hidden md:flex items-center justify-start gap-6 pr-8 lg:gap-7 lg:pr-10" aria-label="Primary">
+              <nav className="hidden md:flex items-center justify-start gap-5 pr-6 lg:gap-6 lg:pr-8" aria-label="Primary">
                 {desktopLinkItems}
               </nav>
               <div className="hidden md:block" />
-              <div className="flex items-center justify-end gap-3">
+              <div className="flex items-center justify-end gap-2 sm:gap-2.5">
                 <div className="relative z-30 flex md:hidden items-center" dir="rtl">
-                  <div className="rounded-full p-[2px] bg-gradient-to-r from-[#FF6A00]/70 via-white/10 to-[#FFB35A]/70 shadow-[0_0_0_1px_rgba(255,106,0,0.18),0_22px_70px_-52px_rgba(0,0,0,0.95)]">
-                    <div className="flex items-center gap-1 rounded-full bg-black/60 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
+                  <div className="rounded-full p-[1.5px] bg-gradient-to-r from-[#FF6A00]/70 via-white/10 to-[#FFB35A]/70 shadow-[0_0_0_1px_rgba(255,106,0,0.18),0_22px_70px_-52px_rgba(0,0,0,0.95)]">
+                    <div className="flex items-center gap-1 rounded-full bg-black/60 p-0.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
                       {authReady && isAuthed ? (
                         <>
                           {isAdmin ? (
@@ -401,7 +401,7 @@ export function Navbar() {
                                   router.push("/admin");
                                 }
                               }}
-                              className="h-11 rounded-full px-4 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white/90 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white"
+                              className="h-9 rounded-full px-3 text-[10px] font-extrabold normal-case tracking-[0.10em] text-white/90 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white"
                               title="الإدارة"
                             >
                               الإدارة
@@ -413,7 +413,7 @@ export function Navbar() {
                               void logout();
                             }}
                             disabled={signingOut}
-                            className="h-11 max-w-[140px] rounded-full px-5 text-[12px] font-extrabold normal-case tracking-[0.10em] text-white/85 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white disabled:opacity-60"
+                            className="h-9 max-w-[120px] rounded-full px-3.5 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white/85 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white disabled:opacity-60"
                             title="تسجيل خروج"
                           >
                             <span className="block min-w-0 truncate">{userLabel}</span>
@@ -425,7 +425,7 @@ export function Navbar() {
                             href="/login"
                             size="sm"
                             variant="ghost"
-                            className="h-11 rounded-full px-5 text-[12px] font-extrabold normal-case tracking-[0.10em] text-white/85 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white"
+                            className="h-9 rounded-full px-3.5 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white/85 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white"
                           >
                             دخول
                           </Button>
@@ -433,7 +433,7 @@ export function Navbar() {
                             href="/register"
                             size="sm"
                             variant="primary"
-                            className="h-11 rounded-full px-6 text-[12px] font-extrabold normal-case tracking-[0.10em] text-white bg-gradient-to-r from-[#FF2424] via-[#FF6A00] to-[#FFB35A] shadow-[0_0_0_1px_rgba(255,179,90,0.36),0_26px_100px_-54px_rgba(255,36,36,0.98)]"
+                            className="h-9 rounded-full px-4 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white bg-gradient-to-r from-[#FF2424] via-[#FF6A00] to-[#FFB35A] shadow-[0_0_0_1px_rgba(255,179,90,0.36),0_26px_100px_-54px_rgba(255,36,36,0.98)]"
                           >
                             تسجيل
                           </Button>
@@ -442,7 +442,7 @@ export function Navbar() {
                     </div>
                   </div>
                 </div>
-                <div className="hidden md:flex items-center gap-2">
+                <div className="hidden md:flex items-center gap-2.5">
                   {authReady && isAuthed ? (
                     <>
                       {isAdmin ? (
@@ -450,7 +450,7 @@ export function Navbar() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-10 rounded-full px-5 text-[12px] font-extrabold normal-case tracking-[0.10em] text-white bg-black/28 shadow-none hover:bg-black/40 hover:shadow-[inset_0_0_0_1px_rgba(255,106,0,0.22)]"
+                            className="h-9 rounded-full px-4 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white bg-black/28 shadow-none hover:bg-black/40 hover:shadow-[inset_0_0_0_1px_rgba(255,106,0,0.22)]"
                             onClick={() => {
                               try {
                                 window.location.assign("/admin");
@@ -470,7 +470,7 @@ export function Navbar() {
                             void logout();
                           }}
                           disabled={signingOut}
-                          className="h-10 max-w-[220px] rounded-full px-5 text-[12px] font-extrabold normal-case tracking-[0.10em] text-white bg-black/28 shadow-none hover:bg-black/40 hover:shadow-[inset_0_0_0_1px_rgba(255,106,0,0.22)] disabled:opacity-60"
+                          className="h-9 max-w-[200px] rounded-full px-4 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white bg-black/28 shadow-none hover:bg-black/40 hover:shadow-[inset_0_0_0_1px_rgba(255,106,0,0.22)] disabled:opacity-60"
                           title="تسجيل خروج"
                         >
                           <span className="block min-w-0 truncate">{userLabel}</span>
@@ -484,7 +484,7 @@ export function Navbar() {
                           href="/login"
                           size="sm"
                           variant="ghost"
-                          className="h-10 rounded-full px-5 text-[12px] font-extrabold normal-case tracking-[0.10em] text-white bg-black/28 shadow-none hover:bg-black/40 hover:shadow-[inset_0_0_0_1px_rgba(255,106,0,0.22)]"
+                          className="h-9 rounded-full px-4 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white bg-black/28 shadow-none hover:bg-black/40 hover:shadow-[inset_0_0_0_1px_rgba(255,106,0,0.22)]"
                         >
                           دخول
                         </Button>
@@ -494,7 +494,7 @@ export function Navbar() {
                           href="/register"
                           size="sm"
                           variant="primary"
-                          className="relative z-10 h-10 overflow-hidden rounded-full px-6 text-[12px] font-extrabold normal-case tracking-[0.10em]"
+                          className="relative z-10 h-9 overflow-hidden rounded-full px-5 text-[11px] font-extrabold normal-case tracking-[0.10em]"
                         >
                           تسجيل
                         </Button>

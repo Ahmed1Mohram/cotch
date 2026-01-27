@@ -124,7 +124,7 @@ export async function Packages() {
               ) : null}
             </div>
           ) : (
-            <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:overflow-visible sm:px-0">
+            <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:overflow-visible sm:px-0 scrollbar-hide">
               <div className="flex gap-7 snap-x snap-mandatory scroll-px-5 sm:grid sm:gap-7 sm:grid-cols-2 lg:grid-cols-3">
               {items.map((p, idx) => {
                 const st = themeStyles(p.theme);

@@ -86,6 +86,17 @@ export function Preloader({ className }: PreloaderProps) {
 
         if (!user?.id) return;
 
+        // Check if user is admin first - admins should bypass ban checks
+        const adminRes = await supabase
+          .from("admin_users")
+          .select("user_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        const isAdmin = Boolean(!adminRes.error && adminRes.data);
+
+        // Skip ban checks for admins
+        if (isAdmin) return;
+
         const [deviceBanRes, userBanRes] = await Promise.all([
           supabase.rpc("is_device_banned"),
           supabase.rpc("is_user_banned", { uid: user.id }),

@@ -511,24 +511,13 @@ export function FinalCTA() {
 
                                   <label className="flex flex-col gap-2">
                                     <span className="font-heading text-xs tracking-[0.22em] text-white/70">الطول (سم)</span>
-                                    <select
+                                    <input
                                       value={heightCm}
                                       onChange={(e) => setHeightCm(e.target.value)}
-                                      className="w-full rounded-2xl bg-black/35 px-4 py-3 text-sm text-white/90 shadow-[0_0_0_1px_rgba(255,255,255,0.12)] outline-none focus:shadow-[0_0_0_1px_rgba(37,211,102,0.25),0_28px_90px_-70px_rgba(37,211,102,0.35)] disabled:opacity-50"
-                                    >
-                                      <option value="">اختياري</option>
-                                      <option value="150">150</option>
-                                      <option value="155">155</option>
-                                      <option value="160">160</option>
-                                      <option value="165">165</option>
-                                      <option value="170">170</option>
-                                      <option value="175">175</option>
-                                      <option value="180">180</option>
-                                      <option value="185">185</option>
-                                      <option value="190">190</option>
-                                      <option value="195">195</option>
-                                      <option value="200">200</option>
-                                    </select>
+                                      placeholder="اكتب طولك…"
+                                      inputMode="numeric"
+                                      className="w-full rounded-2xl bg-black/35 px-4 py-3 text-base text-white/90 shadow-[0_0_0_1px_rgba(255,255,255,0.12)] outline-none placeholder:text-white/40 focus:shadow-[0_0_0_1px_rgba(37,211,102,0.25),0_28px_90px_-70px_rgba(37,211,102,0.35)] sm:h-10 sm:text-sm"
+                                    />
                                   </label>
                                 </div>
 

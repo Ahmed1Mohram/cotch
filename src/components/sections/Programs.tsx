@@ -85,13 +85,14 @@ export async function Programs() {
               ) : null}
             </div>
           ) : (
-            <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
-              {courses.map((c, idx) => (
+            <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:overflow-visible sm:px-0 scrollbar-hide">
+              <div className="flex gap-7 snap-x snap-mandatory scroll-px-5 sm:grid sm:gap-7 sm:grid-cols-2 lg:grid-cols-3">
+                {courses.map((c, idx) => (
             <Reveal key={c.slug} delay={0.06 * idx}>
               <Link
                 href={`/programs/${c.slug}`}
                 aria-label={c.titleEn}
-                className="group relative isolate block aspect-[3/4] overflow-hidden rounded-3xl bg-gradient-to-r from-[#2b0000] via-[#120000] to-[#2b0000] p-[3px] shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_80px_240px_-170px_rgba(0,0,0,0.96)] transition-transform duration-300 hover:-translate-y-1"
+                className="group relative isolate block w-[86vw] max-w-[360px] flex-none snap-start aspect-[3/4] overflow-hidden rounded-3xl bg-gradient-to-r from-[#2b0000] via-[#120000] to-[#2b0000] p-[3px] shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_80px_240px_-170px_rgba(0,0,0,0.96)] transition-transform duration-300 hover:-translate-y-1 sm:w-auto sm:max-w-none"
               >
                 <div className="pointer-events-none absolute inset-0 rounded-3xl">
                   <div className="absolute -inset-7 hidden rounded-[34px] opacity-90 blur-xl bg-[radial-gradient(420px_180px_at_10%_18%,rgba(255,36,36,0.70),transparent_70%),radial-gradient(420px_180px_at_90%_18%,rgba(185,0,0,0.62),transparent_70%),radial-gradient(520px_240px_at_50%_92%,rgba(110,0,0,0.55),transparent_72%)] sm:block" />
@@ -180,7 +181,8 @@ export async function Programs() {
                 </div>
               </Link>
             </Reveal>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </div>
