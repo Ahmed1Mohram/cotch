@@ -94,27 +94,41 @@ export async function middleware(request: NextRequest) {
   });
 
   try {
-    const deviceBanRes = await supabase.rpc("is_device_banned");
-    if (!deviceBanRes.error && Boolean(deviceBanRes.data)) {
-      const redirect = NextResponse.redirect(new URL("/blocked", request.url), 307);
-      if (!existingDeviceCookie && deviceId) {
-        redirect.cookies.set(cookieName, deviceId, deviceCookieOptions);
-      }
-      return redirect;
-    }
-
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
+    // Check if user is admin first - admins should bypass ban checks
+    let isAdmin = false;
     if (user?.id) {
-      const userBanRes = await supabase.rpc("is_user_banned", { uid: user.id });
-      if (!userBanRes.error && Boolean(userBanRes.data)) {
+      const adminRes = await supabase
+        .from("admin_users")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      isAdmin = Boolean(!adminRes.error && adminRes.data);
+    }
+
+    // Skip ban checks for admins
+    if (!isAdmin) {
+      const deviceBanRes = await supabase.rpc("is_device_banned");
+      if (!deviceBanRes.error && Boolean(deviceBanRes.data)) {
         const redirect = NextResponse.redirect(new URL("/blocked", request.url), 307);
         if (!existingDeviceCookie && deviceId) {
           redirect.cookies.set(cookieName, deviceId, deviceCookieOptions);
         }
         return redirect;
+      }
+
+      if (user?.id) {
+        const userBanRes = await supabase.rpc("is_user_banned", { uid: user.id });
+        if (!userBanRes.error && Boolean(userBanRes.data)) {
+          const redirect = NextResponse.redirect(new URL("/blocked", request.url), 307);
+          if (!existingDeviceCookie && deviceId) {
+            redirect.cookies.set(cookieName, deviceId, deviceCookieOptions);
+          }
+          return redirect;
+        }
       }
     }
   } catch {
