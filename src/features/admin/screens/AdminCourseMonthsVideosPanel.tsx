@@ -520,17 +520,17 @@ export function AdminCourseMonthsVideosPanel({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 sm:space-y-4">
       <AdminCard>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="text-xl font-semibold text-slate-900">الشهور</div>
-            <div className="mt-2 text-sm leading-relaxed text-slate-700">أضف شهر للمجموعة المختارة ثم أضف أيام وفيديوهات.</div>
+        <div className="flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="text-lg sm:text-xl font-semibold text-slate-900">الشهور</div>
+            <div className="mt-2 text-sm leading-relaxed text-slate-700 break-words">أضف شهر للمجموعة المختارة ثم أضف أيام وفيديوهات.</div>
           </div>
-          {error ? <div className="text-sm text-rose-700">{error}</div> : null}
+          {error ? <div className="text-sm text-rose-700 break-words">{error}</div> : null}
         </div>
 
-        <div className="mt-5">
+        <div className="mt-3 sm:mt-5">
           {!showAddMonth ? (
             <button
               type="button"
@@ -541,21 +541,21 @@ export function AdminCourseMonthsVideosPanel({
               إضافة شهر
             </button>
           ) : (
-            <div className="grid gap-3 md:grid-cols-[1fr_140px_220px]">
+            <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_140px_220px]">
               <input
                 value={newMonthTitle}
                 onChange={(e) => setNewMonthTitle(e.target.value)}
                 placeholder="عنوان الشهر"
-                className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
               />
               <input
                 value={newMonthNumber}
                 onChange={(e) => setNewMonthNumber(e.target.value)}
                 placeholder="رقم الشهر"
                 inputMode="numeric"
-                className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
               />
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-1.5 sm:gap-2 sm:flex-row sm:items-center col-span-1 sm:col-span-2 md:col-span-1">
                 <button
                   type="button"
                   onClick={addMonth}
@@ -581,12 +581,12 @@ export function AdminCourseMonthsVideosPanel({
           )}
         </div>
 
-        <div className="mt-5">
+        <div className="mt-3 sm:mt-5">
           {months.length === 0 ? (
-            <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">مفيش شهور لسه.</div>
+            <div className="rounded-2xl bg-slate-50 px-3 py-3 sm:px-4 sm:py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">مفيش شهور لسه.</div>
           ) : (
             <>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              <div className="flex flex-col gap-1.5 sm:gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <div className="text-sm font-medium text-slate-700">اختيار الشهر</div>
                 <select
                   value={selectedMonthId ?? ""}
@@ -606,7 +606,7 @@ export function AdminCourseMonthsVideosPanel({
               </div>
 
               {selectedMonth ? (
-                <div className="mt-4">
+                <div className="mt-2 sm:mt-4">
                   <MonthRowItem
                     month={selectedMonth}
                     active={true}
@@ -619,17 +619,17 @@ export function AdminCourseMonthsVideosPanel({
               ) : null}
 
               {selectedMonth ? (
-                <div className="mt-6 grid gap-6 lg:grid-cols-2">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="flex flex-wrap items-end justify-between gap-4">
-                      <div>
+                <div className="mt-3 sm:mt-6 grid gap-3 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-2 sm:p-3 md:p-4 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-3 md:gap-4">
+                      <div className="min-w-0 flex-1">
                         <div className="text-base font-semibold text-slate-900">الأيام</div>
-                        <div className="mt-1 text-sm leading-relaxed text-slate-700">{`داخل: ${selectedMonth.title ?? "—"}`}</div>
+                        <div className="mt-1 text-sm leading-relaxed text-slate-700 break-words">{`داخل: ${selectedMonth.title ?? "—"}`}</div>
                       </div>
-                      <div className="text-sm text-slate-500 sm:text-xs">{selectedMonth.month_number ? `#${selectedMonth.month_number}` : ""}</div>
+                      <div className="text-sm text-slate-500 sm:text-xs shrink-0">{selectedMonth.month_number ? `#${selectedMonth.month_number}` : ""}</div>
                     </div>
 
-                    <div className="mt-4">
+                    <div className="mt-2 sm:mt-4">
                       {!showAddDay ? (
                         <button
                           type="button"
@@ -640,14 +640,14 @@ export function AdminCourseMonthsVideosPanel({
                           إضافة يوم
                         </button>
                       ) : (
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                          <div className="grid gap-3 md:grid-cols-[1fr_140px]">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2 sm:p-3 md:p-4">
+                          <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_140px]">
                             <input
                               value={newDayTitle}
                               onChange={(e) => setNewDayTitle(e.target.value)}
                               placeholder="عنوان اليوم"
                               disabled={!selectedMonthId}
-                              className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 sm:h-10 sm:text-sm"
+                              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 sm:h-10 sm:text-sm"
                             />
                             <input
                               value={newDayNumber}
@@ -655,11 +655,11 @@ export function AdminCourseMonthsVideosPanel({
                               placeholder="رقم اليوم"
                               inputMode="numeric"
                               disabled={!selectedMonthId}
-                              className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 sm:h-10 sm:text-sm"
+                              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 sm:h-10 sm:text-sm"
                             />
                           </div>
 
-                          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <div className="mt-2 sm:mt-3 flex flex-col gap-1.5 sm:gap-2 sm:flex-row sm:items-center">
                             <button
                               type="button"
                               onClick={addDay}
@@ -685,14 +685,14 @@ export function AdminCourseMonthsVideosPanel({
                       )}
                     </div>
 
-                    <div className="mt-4">
+                    <div className="mt-2 sm:mt-4">
                       {days.length === 0 ? (
-                        <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">مفيش أيام لسه.</div>
+                        <div className="rounded-2xl bg-slate-50 px-3 py-3 sm:px-4 sm:py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">مفيش أيام لسه.</div>
                       ) : (
                         <>
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <div className="text-sm font-medium text-slate-700">اختيار اليوم</div>
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+                              <div className="text-sm font-medium text-slate-700 shrink-0">اختيار اليوم</div>
                               <select
                                 value={selectedDayId ?? ""}
                                 onChange={(e) => setSelectedDayId(e.target.value || null)}
@@ -707,11 +707,11 @@ export function AdminCourseMonthsVideosPanel({
                                 ))}
                               </select>
                             </div>
-                            <div className="text-sm text-slate-500">{days.length} يوم</div>
+                            <div className="text-sm text-slate-500 shrink-0">{days.length} يوم</div>
                           </div>
 
                           {selectedDay ? (
-                            <div className="mt-3">
+                            <div className="mt-2 sm:mt-3">
                               <DayRowItem
                                 key={selectedDay.id}
                                 day={selectedDay}
@@ -723,7 +723,7 @@ export function AdminCourseMonthsVideosPanel({
                               />
                             </div>
                           ) : (
-                            <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">
+                            <div className="mt-2 sm:mt-3 rounded-2xl bg-slate-50 px-3 py-3 sm:px-4 sm:py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">
                               اختر يوم علشان تعدّل بياناته.
                             </div>
                           )}
@@ -732,24 +732,24 @@ export function AdminCourseMonthsVideosPanel({
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="flex flex-wrap items-end justify-between gap-4">
-                      <div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-2 sm:p-3 md:p-4 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-3 md:gap-4">
+                      <div className="min-w-0 flex-1">
                         <div className="text-base font-semibold text-slate-900">الفيديوهات</div>
-                        <div className="mt-1 text-sm leading-relaxed text-slate-700">
+                        <div className="mt-1 text-sm leading-relaxed text-slate-700 break-words">
                           {selectedDay ? `اليوم الحالي: ${selectedDay.title ?? "—"}` : "اختر يوم أولاً"}
                         </div>
                       </div>
-                      <div className="text-sm text-slate-500 sm:text-xs">{selectedDay?.day_number ? `#${selectedDay.day_number}` : ""}</div>
+                      <div className="text-sm text-slate-500 sm:text-xs shrink-0">{selectedDay?.day_number ? `#${selectedDay.day_number}` : ""}</div>
                     </div>
 
                     {!selectedDayId ? (
-                      <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">
+                      <div className="mt-2 sm:mt-4 rounded-2xl bg-slate-50 px-3 py-3 sm:px-4 sm:py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">
                         اختر يوم علشان تضيف/تعدّل فيديوهات.
                       </div>
                     ) : (
                       <>
-                        <div className="mt-4">
+                        <div className="mt-2 sm:mt-4">
                           {!showAddVideo ? (
                             <button
                               type="button"
@@ -760,24 +760,24 @@ export function AdminCourseMonthsVideosPanel({
                               إضافة فيديو
                             </button>
                           ) : (
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                              <div className="grid gap-3">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2 sm:p-3 md:p-4">
+                              <div className="grid gap-2 sm:gap-3">
                                 <input
                                   value={newVideoTitle}
                                   onChange={(e) => setNewVideoTitle(e.target.value)}
                                   placeholder="عنوان الفيديو"
                                   disabled={!selectedDayId}
-                                  className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 sm:h-10 sm:text-sm"
+                                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 sm:h-10 sm:text-sm"
                                 />
                                 <input
                                   value={newVideoUrl}
                                   onChange={(e) => setNewVideoUrl(e.target.value)}
                                   placeholder="رابط الفيديو"
                                   disabled={!selectedDayId}
-                                  className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 sm:h-10 sm:text-sm"
+                                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 sm:h-10 sm:text-sm"
                                 />
 
-                                <div className="grid gap-3 md:grid-cols-2">
+                                <div className="grid gap-2 sm:gap-3 grid-cols-1 md:grid-cols-2">
                                   <div>
                                     <div className="text-sm font-medium text-slate-700">صورة الفيديو (Thumbnail)</div>
                                     <input
@@ -794,7 +794,7 @@ export function AdminCourseMonthsVideosPanel({
                                       className="hidden"
                                     />
 
-                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    <div className="mt-1.5 sm:mt-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
                                       <button
                                         type="button"
                                         onClick={() => newVideoThumbInputRef.current?.click()}
@@ -851,7 +851,7 @@ export function AdminCourseMonthsVideosPanel({
                                   معاينة مجانية
                                 </label>
 
-                                <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center">
+                                <div className="mt-1 flex flex-col gap-1.5 sm:gap-2 sm:flex-row sm:items-center">
                                   <button
                                     type="button"
                                     onClick={addVideo}
@@ -881,7 +881,7 @@ export function AdminCourseMonthsVideosPanel({
                           )}
                         </div>
 
-                        <div className="mt-4 grid gap-3">
+                        <div className="mt-2 sm:mt-4 grid gap-2 sm:gap-3">
                           {videos.map((v) => (
                             <VideoRowItem
                               key={v.id}
@@ -894,7 +894,7 @@ export function AdminCourseMonthsVideosPanel({
                             />
                           ))}
                           {selectedDayId && videos.length === 0 ? (
-                            <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">مفيش فيديوهات لسه.</div>
+                            <div className="rounded-2xl bg-slate-50 px-3 py-3 sm:px-4 sm:py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">مفيش فيديوهات لسه.</div>
                           ) : null}
                         </div>
                       </>
@@ -940,17 +940,17 @@ function MonthRowItem({
   return (
     <div
       className={
-        "rounded-2xl border p-4 " +
+        "rounded-2xl border p-3 sm:p-4 " +
         (active ? "bg-slate-50 border-slate-300" : "bg-white border-slate-200")
       }
     >
-      <div className="flex items-start justify-between gap-3">
-        <button type="button" onClick={onSelect} disabled={disabled} className="min-w-0 text-right">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <button type="button" onClick={onSelect} disabled={disabled} className="min-w-0 text-right flex-1">
           <div className="truncate text-base font-semibold text-slate-900">{month.title ?? "شهر"}</div>
           <div className="mt-1 text-sm text-slate-500">الشهر #{month.month_number ?? "—"}</div>
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0">
           {confirmDelete ? (
             <>
               <button
@@ -1029,19 +1029,19 @@ function MonthRowItem({
       </div>
 
       {editing ? (
-        <div className="mt-3 grid gap-3 md:grid-cols-[1fr_140px]">
+        <div className="mt-2 sm:mt-3 grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_140px]">
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="عنوان الشهر"
-            className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
+            className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
           />
           <input
             value={num}
             onChange={(e) => setNum(e.target.value)}
             placeholder="رقم الشهر"
             inputMode="numeric"
-            className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
+            className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
           />
         </div>
       ) : null}
@@ -1079,17 +1079,17 @@ function DayRowItem({
   return (
     <div
       className={
-        "rounded-2xl border p-4 " +
+        "rounded-2xl border p-3 sm:p-4 " +
         (active ? "bg-slate-50 border-slate-300" : "bg-white border-slate-200")
       }
     >
-      <div className="flex items-start justify-between gap-3">
-        <button type="button" onClick={onSelect} disabled={disabled} className="min-w-0 text-right">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <button type="button" onClick={onSelect} disabled={disabled} className="min-w-0 text-right flex-1">
           <div className="truncate text-base font-semibold text-slate-900">{day.title ?? "يوم"}</div>
           <div className="mt-1 text-sm text-slate-500">اليوم #{day.day_number ?? "—"}</div>
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0">
           {confirmDelete ? (
             <>
               <button
@@ -1166,19 +1166,19 @@ function DayRowItem({
       </div>
 
       {editing ? (
-        <div className="mt-3 grid gap-3 md:grid-cols-[1fr_140px]">
+        <div className="mt-2 sm:mt-3 grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_140px]">
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="عنوان اليوم"
-            className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
+            className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
           />
           <input
             value={num}
             onChange={(e) => setNum(e.target.value)}
             placeholder="رقم اليوم"
             inputMode="numeric"
-            className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
+            className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
           />
         </div>
       ) : null}
@@ -1224,11 +1224,11 @@ function VideoRowItem({
   const canOpen = Boolean(videoUrl);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 text-right">
+    <div className="rounded-2xl border border-slate-200 bg-white p-2 sm:p-3 md:p-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+        <div className="min-w-0 text-right flex-1">
           <div className="truncate text-base font-semibold text-slate-900">{video.title ?? "فيديو"}</div>
-          <div className="mt-1 truncate text-sm text-slate-500 sm:text-xs" dir="ltr">
+          <div className="mt-1 truncate text-sm text-slate-500 sm:text-xs break-all" dir="ltr">
             {video.video_url ?? ""}
           </div>
           {video.thumbnail_url ? (
@@ -1236,13 +1236,13 @@ function VideoRowItem({
               <img
                 src={video.thumbnail_url}
                 alt="thumbnail"
-                className="h-20 w-36 rounded-2xl border border-slate-200 object-cover"
+                className="h-20 w-36 rounded-2xl border border-slate-200 object-cover max-w-full"
               />
             </div>
           ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0">
           {video.is_free_preview ? (
             <div className="inline-flex h-8 items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 text-sm font-medium text-emerald-700 sm:text-xs">
               معاينة مجانية
@@ -1340,23 +1340,23 @@ function VideoRowItem({
       </div>
 
       {editing ? (
-        <div className="mt-4">
-          <div className="grid gap-3 md:grid-cols-2">
+        <div className="mt-2 sm:mt-4">
+          <div className="grid gap-2 sm:gap-3 grid-cols-1 md:grid-cols-2">
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="عنوان الفيديو"
-              className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
             />
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="رابط الفيديو"
-              className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
             />
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="mt-2 sm:mt-4 grid gap-2 sm:gap-3 grid-cols-1 md:grid-cols-2">
             <div>
               <div className="text-sm font-medium text-slate-700">صورة الفيديو (Thumbnail)</div>
               <input
