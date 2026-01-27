@@ -18,11 +18,11 @@ type Profile = {
   weightKg: number | null;
 };
 
- function isImgTagSrc(src: string) {
-   const s = String(src ?? "").trim();
-   if (!s) return false;
-   return /^(https?:)?\/\//i.test(s) || /^data:/i.test(s) || /^blob:/i.test(s);
- }
+function isImgTagSrc(src: string) {
+  const s = String(src ?? "").trim();
+  if (!s) return false;
+  return /^(https?:)?\/\//i.test(s) || /^data:/i.test(s) || /^blob:/i.test(s);
+}
 
 export function generateStaticParams() {
   return [];
