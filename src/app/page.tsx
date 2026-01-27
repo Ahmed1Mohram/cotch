@@ -1,5 +1,6 @@
 import { FinalCTA } from "@/components/sections/FinalCTA";
 import { FooterClean } from "@/components/sections/FooterClean";
+import { FeaturedCourses } from "@/components/sections/FeaturedCourses";
 import { Hero } from "@/components/sections/Hero";
 import { Packages } from "@/components/sections/Packages";
 import { Navbar } from "@/components/sections/Navbar";
@@ -10,6 +11,7 @@ export default function Home() {
       <Navbar />
       <main>
         <Hero />
+        <FeaturedCourses />
         <Packages />
         <FinalCTA />
       </main>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
@@ -9,6 +9,7 @@ import { AdminCard } from "@/features/admin/ui/AdminCard";
 type MonthRow = {
   id: string;
   age_group_id: string;
+  package_id?: string | null;
   title: string | null;
   month_number: number | null;
   sort_order: number;
@@ -42,16 +43,32 @@ function toNumOrNull(v: string) {
   return n;
 }
 
+function safeFileName(name: string) {
+  const base = name.trim().toLowerCase();
+  return base.replace(/\s+/g, "-").replace(/[^a-z0-9._-]/g, "").slice(0, 80) || "file";
+}
+
+function randomId() {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+}
+
 export function AdminCourseMonthsVideosPanel({
   ageGroupId,
+  packageId,
   onMonthNumberChange,
 }: {
   ageGroupId: string | null;
+  packageId?: string | null;
   onMonthNumberChange?: (monthNumber: string) => void;
 }) {
   const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [thumbUploading, setThumbUploading] = useState(false);
 
   const getSupabase = () => {
     try {
@@ -85,6 +102,9 @@ export function AdminCourseMonthsVideosPanel({
   const [newVideoUrl, setNewVideoUrl] = useState("");
   const [newVideoDetails, setNewVideoDetails] = useState("");
   const [newVideoIsFree, setNewVideoIsFree] = useState(false);
+  const [newVideoThumbnailUrl, setNewVideoThumbnailUrl] = useState<string>("");
+
+  const newVideoThumbInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setMonths([]);
@@ -95,22 +115,33 @@ export function AdminCourseMonthsVideosPanel({
     setShowAddMonth(false);
     setShowAddDay(false);
     setShowAddVideo(false);
-  }, [ageGroupId]);
+  }, [ageGroupId, packageId]);
 
   useEffect(() => {
     if (!ageGroupId) return;
+
+    const effectivePackageId = packageId?.trim() ? packageId.trim() : null;
 
     const supabase = getSupabase();
     if (!supabase) return;
     const run = async () => {
       setError(null);
 
-      const res = await supabase
-        .from("months")
-        .select("id,age_group_id,title,month_number,sort_order,created_at")
-        .eq("age_group_id", ageGroupId)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true });
+      const res = effectivePackageId
+        ? await supabase
+            .from("months")
+            .select("id,age_group_id,package_id,title,month_number,sort_order,created_at")
+            .eq("age_group_id", ageGroupId)
+            .eq("package_id", effectivePackageId)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true })
+        : await supabase
+            .from("months")
+            .select("id,age_group_id,package_id,title,month_number,sort_order,created_at")
+            .eq("age_group_id", ageGroupId)
+            .is("package_id", null)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true });
 
       if (res.error) {
         setError(res.error.message);
@@ -129,7 +160,7 @@ export function AdminCourseMonthsVideosPanel({
     void run().catch((err) => {
       setError(err instanceof Error ? err.message : "حدث خطأ غير متوقع");
     });
-  }, [ageGroupId, reloadKey]);
+  }, [ageGroupId, packageId, reloadKey]);
 
   useEffect(() => {
     if (!selectedMonthId) {
@@ -192,7 +223,37 @@ export function AdminCourseMonthsVideosPanel({
     setNewVideoUrl("");
     setNewVideoDetails("");
     setNewVideoIsFree(false);
+    setNewVideoThumbnailUrl("");
   }, [selectedDayId]);
+
+  const uploadVideoThumbnail = async (file: File, prefix: string) => {
+    const supabase = getSupabase();
+    if (!supabase) return null;
+
+    const ext = safeFileName(file.name).split(".").pop() || "png";
+    const path = `${prefix}/${randomId()}.${ext}`;
+
+    setThumbUploading(true);
+    setError(null);
+
+    const up = await supabase.storage.from("video-thumbnails").upload(path, file, {
+      upsert: true,
+      contentType: file.type || undefined,
+    });
+
+    if (up.error) {
+      setThumbUploading(false);
+      setError(
+        `رفع صورة الفيديو فشل: ${up.error.message} — أنشئ Bucket باسم video-thumbnails (Public) أو فعّل صلاحيات الرفع.`,
+      );
+      return null;
+    }
+
+    const pub = supabase.storage.from("video-thumbnails").getPublicUrl(path);
+    const url = pub.data.publicUrl || "";
+    setThumbUploading(false);
+    return url || null;
+  };
 
   useEffect(() => {
     if (!selectedDayId) {
@@ -245,6 +306,7 @@ export function AdminCourseMonthsVideosPanel({
 
   const addMonth = async () => {
     if (!ageGroupId) return;
+    const effectivePackageId = packageId?.trim() ? packageId.trim() : null;
     const title = newMonthTitle.trim() || null;
     const monthNumber = toNumOrNull(newMonthNumber);
 
@@ -257,6 +319,7 @@ export function AdminCourseMonthsVideosPanel({
 
     const res = await supabase.from("months").insert({
       age_group_id: ageGroupId,
+      package_id: effectivePackageId,
       title,
       month_number: monthNumber,
       sort_order: nextSort,
@@ -371,6 +434,7 @@ export function AdminCourseMonthsVideosPanel({
     const title = newVideoTitle.trim() || null;
     const videoUrl = newVideoUrl.trim() || null;
     const details = newVideoDetails.trim() || null;
+    const thumbnailUrl = newVideoThumbnailUrl.trim() || null;
     const nextSort = Math.max(-1, ...videos.map((v) => v.sort_order ?? 0)) + 1;
 
     const supabase = getSupabase();
@@ -382,6 +446,7 @@ export function AdminCourseMonthsVideosPanel({
       day_id: selectedDayId,
       title,
       video_url: videoUrl,
+      thumbnail_url: thumbnailUrl,
       details,
       is_free_preview: newVideoIsFree,
       sort_order: nextSort,
@@ -393,6 +458,7 @@ export function AdminCourseMonthsVideosPanel({
       setNewVideoUrl("");
       setNewVideoDetails("");
       setNewVideoIsFree(false);
+      setNewVideoThumbnailUrl("");
       setShowAddVideo(false);
       setReloadKey((k) => k + 1);
     }
@@ -400,7 +466,14 @@ export function AdminCourseMonthsVideosPanel({
     setSaving(false);
   };
 
-  const updateVideo = async (videoId: string, title: string, url: string, isFree: boolean, details: string) => {
+  const updateVideo = async (
+    videoId: string,
+    title: string,
+    url: string,
+    isFree: boolean,
+    details: string,
+    thumbnailUrl: string | null,
+  ) => {
     const supabase = getSupabase();
     if (!supabase) return;
     setSaving(true);
@@ -411,6 +484,7 @@ export function AdminCourseMonthsVideosPanel({
       .update({
         title: title.trim() || null,
         video_url: url.trim() || null,
+        thumbnail_url: thumbnailUrl && thumbnailUrl.trim() ? thumbnailUrl.trim() : null,
         details: details.trim() || null,
         is_free_preview: isFree,
       })
@@ -439,8 +513,8 @@ export function AdminCourseMonthsVideosPanel({
   if (!ageGroupId) {
     return (
       <AdminCard>
-        <div className="text-lg font-semibold text-slate-900">الشهور والأيام والفيديوهات</div>
-        <div className="mt-2 text-sm text-slate-600">اختر مجموعة عمر أولاً.</div>
+        <div className="text-xl font-semibold text-slate-900">الشهور والأيام والفيديوهات</div>
+        <div className="mt-2 text-sm leading-relaxed text-slate-700">اختر مجموعة عمر أولاً.</div>
       </AdminCard>
     );
   }
@@ -448,12 +522,12 @@ export function AdminCourseMonthsVideosPanel({
   return (
     <div className="space-y-4">
       <AdminCard>
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="text-lg font-semibold text-slate-900">الشهور</div>
-            <div className="mt-2 text-sm text-slate-600">أضف شهر للمجموعة المختارة ثم أضف أيام وفيديوهات.</div>
+            <div className="text-xl font-semibold text-slate-900">الشهور</div>
+            <div className="mt-2 text-sm leading-relaxed text-slate-700">أضف شهر للمجموعة المختارة ثم أضف أيام وفيديوهات.</div>
           </div>
-          {error ? <div className="text-xs text-rose-700">{error}</div> : null}
+          {error ? <div className="text-sm text-rose-700">{error}</div> : null}
         </div>
 
         <div className="mt-5">
@@ -462,7 +536,7 @@ export function AdminCourseMonthsVideosPanel({
               type="button"
               onClick={() => setShowAddMonth(true)}
               disabled={saving}
-              className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+              className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-slate-900 px-5 text-base font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 sm:h-10 sm:w-auto sm:text-sm"
             >
               إضافة شهر
             </button>
@@ -472,21 +546,21 @@ export function AdminCourseMonthsVideosPanel({
                 value={newMonthTitle}
                 onChange={(e) => setNewMonthTitle(e.target.value)}
                 placeholder="عنوان الشهر"
-                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
               />
               <input
                 value={newMonthNumber}
                 onChange={(e) => setNewMonthNumber(e.target.value)}
                 placeholder="رقم الشهر"
                 inputMode="numeric"
-                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
               />
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <button
                   type="button"
                   onClick={addMonth}
                   disabled={saving}
-                  className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                  className="inline-flex h-11 w-full flex-1 items-center justify-center rounded-2xl bg-slate-900 px-5 text-base font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 sm:h-10 sm:w-auto sm:text-sm"
                 >
                   حفظ
                 </button>
@@ -498,7 +572,7 @@ export function AdminCourseMonthsVideosPanel({
                     setShowAddMonth(false);
                   }}
                   disabled={saving}
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-4 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                  className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-white px-4 text-base font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 sm:h-10 sm:w-auto sm:text-sm"
                 >
                   إلغاء
                 </button>
@@ -509,16 +583,16 @@ export function AdminCourseMonthsVideosPanel({
 
         <div className="mt-5">
           {months.length === 0 ? (
-            <div className="rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">مفيش شهور لسه.</div>
+            <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">مفيش شهور لسه.</div>
           ) : (
             <>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <div className="text-sm font-medium text-slate-700">اختيار الشهر</div>
                 <select
                   value={selectedMonthId ?? ""}
                   onChange={(e) => setSelectedMonthId(e.target.value || null)}
                   disabled={saving}
-                  className="h-10 min-w-[220px] rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100"
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 text-right sm:h-10 sm:w-auto sm:min-w-[220px] sm:text-sm"
                 >
                   {months.map((m) => {
                     const label = m.title ? m.title : m.month_number ? `شهر ${m.month_number}` : "شهر";
@@ -546,13 +620,13 @@ export function AdminCourseMonthsVideosPanel({
 
               {selectedMonth ? (
                 <div className="mt-6 grid gap-6 lg:grid-cols-2">
-                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
                     <div className="flex flex-wrap items-end justify-between gap-4">
                       <div>
                         <div className="text-base font-semibold text-slate-900">الأيام</div>
-                        <div className="mt-1 text-sm text-slate-600">{`داخل: ${selectedMonth.title ?? "—"}`}</div>
+                        <div className="mt-1 text-sm leading-relaxed text-slate-700">{`داخل: ${selectedMonth.title ?? "—"}`}</div>
                       </div>
-                      <div className="text-xs text-slate-500">{selectedMonth.month_number ? `#${selectedMonth.month_number}` : ""}</div>
+                      <div className="text-sm text-slate-500 sm:text-xs">{selectedMonth.month_number ? `#${selectedMonth.month_number}` : ""}</div>
                     </div>
 
                     <div className="mt-4">
@@ -561,19 +635,19 @@ export function AdminCourseMonthsVideosPanel({
                           type="button"
                           onClick={() => setShowAddDay(true)}
                           disabled={saving || !selectedMonthId}
-                          className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                          className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-slate-900 px-5 text-base font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 sm:h-10 sm:w-auto sm:text-sm"
                         >
                           إضافة يوم
                         </button>
                       ) : (
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                           <div className="grid gap-3 md:grid-cols-[1fr_140px]">
                             <input
                               value={newDayTitle}
                               onChange={(e) => setNewDayTitle(e.target.value)}
                               placeholder="عنوان اليوم"
                               disabled={!selectedMonthId}
-                              className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100"
+                              className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 sm:h-10 sm:text-sm"
                             />
                             <input
                               value={newDayNumber}
@@ -581,16 +655,16 @@ export function AdminCourseMonthsVideosPanel({
                               placeholder="رقم اليوم"
                               inputMode="numeric"
                               disabled={!selectedMonthId}
-                              className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100"
+                              className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 sm:h-10 sm:text-sm"
                             />
                           </div>
 
-                          <div className="mt-3 flex items-center gap-2">
+                          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
                             <button
                               type="button"
                               onClick={addDay}
                               disabled={saving || !selectedMonthId}
-                              className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                              className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-slate-900 px-5 text-base font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 sm:h-10 sm:w-auto sm:text-sm"
                             >
                               حفظ
                             </button>
@@ -602,7 +676,7 @@ export function AdminCourseMonthsVideosPanel({
                                 setShowAddDay(false);
                               }}
                               disabled={saving}
-                              className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-4 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                              className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-white px-4 text-base font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 sm:h-10 sm:w-auto sm:text-sm"
                             >
                               إلغاء
                             </button>
@@ -613,17 +687,17 @@ export function AdminCourseMonthsVideosPanel({
 
                     <div className="mt-4">
                       {days.length === 0 ? (
-                        <div className="rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">مفيش أيام لسه.</div>
+                        <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">مفيش أيام لسه.</div>
                       ) : (
                         <>
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div className="flex flex-wrap items-center gap-2">
-                              <div className="text-xs font-medium text-slate-700">اختيار اليوم</div>
+                              <div className="text-sm font-medium text-slate-700">اختيار اليوم</div>
                               <select
                                 value={selectedDayId ?? ""}
                                 onChange={(e) => setSelectedDayId(e.target.value || null)}
                                 disabled={saving || days.length === 0}
-                                className="h-10 min-w-[220px] rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100"
+                                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 text-right sm:h-10 sm:w-auto sm:min-w-[220px] sm:text-sm"
                               >
                                 <option value="">اختر يوم…</option>
                                 {days.map((d, idx) => (
@@ -633,7 +707,7 @@ export function AdminCourseMonthsVideosPanel({
                                 ))}
                               </select>
                             </div>
-                            <div className="text-xs text-slate-500">{days.length} يوم</div>
+                            <div className="text-sm text-slate-500">{days.length} يوم</div>
                           </div>
 
                           {selectedDay ? (
@@ -649,7 +723,7 @@ export function AdminCourseMonthsVideosPanel({
                               />
                             </div>
                           ) : (
-                            <div className="mt-3 rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
+                            <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">
                               اختر يوم علشان تعدّل بياناته.
                             </div>
                           )}
@@ -658,19 +732,19 @@ export function AdminCourseMonthsVideosPanel({
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
                     <div className="flex flex-wrap items-end justify-between gap-4">
                       <div>
                         <div className="text-base font-semibold text-slate-900">الفيديوهات</div>
-                        <div className="mt-1 text-sm text-slate-600">
+                        <div className="mt-1 text-sm leading-relaxed text-slate-700">
                           {selectedDay ? `اليوم الحالي: ${selectedDay.title ?? "—"}` : "اختر يوم أولاً"}
                         </div>
                       </div>
-                      <div className="text-xs text-slate-500">{selectedDay?.day_number ? `#${selectedDay.day_number}` : ""}</div>
+                      <div className="text-sm text-slate-500 sm:text-xs">{selectedDay?.day_number ? `#${selectedDay.day_number}` : ""}</div>
                     </div>
 
                     {!selectedDayId ? (
-                      <div className="mt-4 rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
+                      <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">
                         اختر يوم علشان تضيف/تعدّل فيديوهات.
                       </div>
                     ) : (
@@ -680,35 +754,90 @@ export function AdminCourseMonthsVideosPanel({
                             <button
                               type="button"
                               onClick={() => setShowAddVideo(true)}
-                              disabled={saving || !selectedDayId}
-                              className="inline-flex h-10 items-center justify-center rounded-xl bg-violet-600 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                              disabled={saving || thumbUploading || !selectedDayId}
+                              className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-slate-900 px-5 text-base font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 sm:h-10 sm:w-auto sm:text-sm"
                             >
                               إضافة فيديو
                             </button>
                           ) : (
-                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                               <div className="grid gap-3">
                                 <input
                                   value={newVideoTitle}
                                   onChange={(e) => setNewVideoTitle(e.target.value)}
                                   placeholder="عنوان الفيديو"
                                   disabled={!selectedDayId}
-                                  className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100"
+                                  className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 sm:h-10 sm:text-sm"
                                 />
                                 <input
                                   value={newVideoUrl}
                                   onChange={(e) => setNewVideoUrl(e.target.value)}
                                   placeholder="رابط الفيديو"
                                   disabled={!selectedDayId}
-                                  className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100"
+                                  className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 sm:h-10 sm:text-sm"
                                 />
+
+                                <div className="grid gap-3 md:grid-cols-2">
+                                  <div>
+                                    <div className="text-sm font-medium text-slate-700">صورة الفيديو (Thumbnail)</div>
+                                    <input
+                                      ref={newVideoThumbInputRef}
+                                      type="file"
+                                      accept="image/*"
+                                      disabled={!selectedDayId || saving || thumbUploading}
+                                      onChange={async (e) => {
+                                        const file = e.target.files?.[0] ?? null;
+                                        if (!file) return;
+                                        const url = await uploadVideoThumbnail(file, `draft/${selectedDayId}`);
+                                        if (url) setNewVideoThumbnailUrl(url);
+                                      }}
+                                      className="hidden"
+                                    />
+
+                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => newVideoThumbInputRef.current?.click()}
+                                        disabled={!selectedDayId || saving || thumbUploading}
+                                        className="inline-flex h-9 items-center justify-center rounded-2xl bg-white px-4 text-xs font-semibold text-slate-700 border border-slate-200 transition hover:bg-slate-50 disabled:opacity-60"
+                                      >
+                                        اختيار صورة من المعرض
+                                      </button>
+                                      {newVideoThumbnailUrl ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => setNewVideoThumbnailUrl("")}
+                                          disabled={saving || thumbUploading}
+                                          className="inline-flex h-9 items-center justify-center rounded-2xl bg-white px-4 text-xs font-semibold text-slate-700 border border-slate-200 transition hover:bg-slate-50 disabled:opacity-60"
+                                        >
+                                          مسح الصورة
+                                        </button>
+                                      ) : null}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-start justify-end">
+                                    {newVideoThumbnailUrl ? (
+                                      <img
+                                        src={newVideoThumbnailUrl}
+                                        alt="thumbnail"
+                                        className="h-24 w-40 rounded-2xl border border-slate-200 object-cover"
+                                      />
+                                    ) : (
+                                      <div className="grid h-24 w-40 place-items-center rounded-2xl border border-dashed border-slate-300 bg-white text-xs text-slate-500">
+                                        لا يوجد
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
                                 <textarea
                                   value={newVideoDetails}
                                   onChange={(e) => setNewVideoDetails(e.target.value)}
                                   placeholder="تفاصيل الفيديو (اختياري)"
                                   rows={3}
                                   disabled={!selectedDayId}
-                                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100"
+                                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100 sm:text-sm"
                                 />
 
                                 <label className="inline-flex items-center gap-3 text-sm text-slate-700">
@@ -717,17 +846,17 @@ export function AdminCourseMonthsVideosPanel({
                                     checked={newVideoIsFree}
                                     onChange={(e) => setNewVideoIsFree(e.target.checked)}
                                     disabled={!selectedDayId}
-                                    className="h-4 w-4 accent-violet-500"
+                                    className="h-4 w-4 accent-slate-700"
                                   />
                                   معاينة مجانية
                                 </label>
 
-                                <div className="mt-1 flex items-center gap-2">
+                                <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center">
                                   <button
                                     type="button"
                                     onClick={addVideo}
-                                    disabled={saving || !selectedDayId}
-                                    className="inline-flex h-10 items-center justify-center rounded-xl bg-violet-600 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                    disabled={saving || thumbUploading || !selectedDayId}
+                                    className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-slate-900 px-5 text-base font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 sm:h-10 sm:w-auto sm:text-sm"
                                   >
                                     حفظ
                                   </button>
@@ -736,12 +865,13 @@ export function AdminCourseMonthsVideosPanel({
                                     onClick={() => {
                                       setNewVideoTitle("");
                                       setNewVideoUrl("");
+                                      setNewVideoThumbnailUrl("");
                                       setNewVideoDetails("");
                                       setNewVideoIsFree(false);
                                       setShowAddVideo(false);
                                     }}
-                                    disabled={saving}
-                                    className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-4 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                    disabled={saving || thumbUploading}
+                                    className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-white px-4 text-base font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 sm:h-10 sm:w-auto sm:text-sm"
                                   >
                                     إلغاء
                                   </button>
@@ -756,13 +886,15 @@ export function AdminCourseMonthsVideosPanel({
                             <VideoRowItem
                               key={v.id}
                               video={v}
-                              onUpdate={(title, url, isFree, details) => updateVideo(v.id, title, url, isFree, details)}
+                              onUpdate={(title, url, isFree, details, thumbnailUrl) =>
+                                updateVideo(v.id, title, url, isFree, details, thumbnailUrl)
+                              }
                               onDelete={() => deleteVideo(v.id)}
                               disabled={saving}
                             />
                           ))}
                           {selectedDayId && videos.length === 0 ? (
-                            <div className="rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">مفيش فيديوهات لسه.</div>
+                            <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm leading-relaxed text-slate-700 border border-slate-200">مفيش فيديوهات لسه.</div>
                           ) : null}
                         </div>
                       </>
@@ -808,14 +940,14 @@ function MonthRowItem({
   return (
     <div
       className={
-        "rounded-xl border p-4 " +
-        (active ? "bg-violet-50 border-violet-200" : "bg-white border-slate-200")
+        "rounded-2xl border p-4 " +
+        (active ? "bg-slate-50 border-slate-300" : "bg-white border-slate-200")
       }
     >
       <div className="flex items-start justify-between gap-3">
         <button type="button" onClick={onSelect} disabled={disabled} className="min-w-0 text-right">
-          <div className="truncate text-sm font-semibold text-slate-900">{month.title ?? "شهر"}</div>
-          <div className="mt-1 text-xs text-slate-500">الشهر #{month.month_number ?? "—"}</div>
+          <div className="truncate text-base font-semibold text-slate-900">{month.title ?? "شهر"}</div>
+          <div className="mt-1 text-sm text-slate-500">الشهر #{month.month_number ?? "—"}</div>
         </button>
 
         <div className="flex items-center gap-2">
@@ -828,7 +960,7 @@ function MonthRowItem({
                   setConfirmDelete(false);
                 }}
                 disabled={disabled}
-                className="inline-flex h-9 items-center justify-center rounded-xl bg-rose-600 px-3 text-xs font-medium text-white shadow-sm transition hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-600 px-3 text-sm font-medium text-white shadow-sm transition hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 تأكيد
               </button>
@@ -836,7 +968,7 @@ function MonthRowItem({
                 type="button"
                 onClick={() => setConfirmDelete(false)}
                 disabled={disabled}
-                className="inline-flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-medium text-slate-700 border border-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-3 text-sm font-medium text-slate-700 border border-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 إلغاء
               </button>
@@ -848,7 +980,7 @@ function MonthRowItem({
                   type="button"
                   onClick={() => setEditing(true)}
                   disabled={disabled}
-                  className="inline-flex h-9 items-center justify-center rounded-xl bg-slate-100 px-3 text-xs font-medium text-slate-900 border border-slate-200 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                  className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-100 px-3 text-sm font-medium text-slate-900 border border-slate-200 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                 >
                   تعديل
                 </button>
@@ -861,7 +993,7 @@ function MonthRowItem({
                       setEditing(false);
                     }}
                     disabled={disabled}
-                    className="inline-flex h-9 items-center justify-center rounded-xl bg-slate-900 px-3 text-xs font-medium text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                    className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-3 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                   >
                     حفظ
                   </button>
@@ -873,7 +1005,7 @@ function MonthRowItem({
                       setEditing(false);
                     }}
                     disabled={disabled}
-                    className="inline-flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-medium text-slate-700 border border-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                    className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-3 text-sm font-medium text-slate-700 border border-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                   >
                     إلغاء
                   </button>
@@ -887,7 +1019,7 @@ function MonthRowItem({
                   setConfirmDelete(true);
                 }}
                 disabled={disabled}
-                className="inline-flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-medium text-rose-700 border border-rose-200 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-3 text-sm font-medium text-rose-700 border border-rose-200 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 حذف
               </button>
@@ -902,14 +1034,14 @@ function MonthRowItem({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="عنوان الشهر"
-            className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+            className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
           />
           <input
             value={num}
             onChange={(e) => setNum(e.target.value)}
             placeholder="رقم الشهر"
             inputMode="numeric"
-            className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+            className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
           />
         </div>
       ) : null}
@@ -947,14 +1079,14 @@ function DayRowItem({
   return (
     <div
       className={
-        "rounded-xl border p-4 " +
-        (active ? "bg-violet-50 border-violet-200" : "bg-white border-slate-200")
+        "rounded-2xl border p-4 " +
+        (active ? "bg-slate-50 border-slate-300" : "bg-white border-slate-200")
       }
     >
       <div className="flex items-start justify-between gap-3">
         <button type="button" onClick={onSelect} disabled={disabled} className="min-w-0 text-right">
-          <div className="truncate text-sm font-semibold text-slate-900">{day.title ?? "يوم"}</div>
-          <div className="mt-1 text-xs text-slate-500">اليوم #{day.day_number ?? "—"}</div>
+          <div className="truncate text-base font-semibold text-slate-900">{day.title ?? "يوم"}</div>
+          <div className="mt-1 text-sm text-slate-500">اليوم #{day.day_number ?? "—"}</div>
         </button>
 
         <div className="flex items-center gap-2">
@@ -967,7 +1099,7 @@ function DayRowItem({
                   setConfirmDelete(false);
                 }}
                 disabled={disabled}
-                className="inline-flex h-9 items-center justify-center rounded-xl bg-rose-600 px-3 text-xs font-medium text-white shadow-sm transition hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-600 px-3 text-sm font-medium text-white shadow-sm transition hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 تأكيد
               </button>
@@ -975,7 +1107,7 @@ function DayRowItem({
                 type="button"
                 onClick={() => setConfirmDelete(false)}
                 disabled={disabled}
-                className="inline-flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-medium text-slate-700 border border-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-3 text-sm font-medium text-slate-700 border border-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 إلغاء
               </button>
@@ -987,7 +1119,7 @@ function DayRowItem({
               type="button"
               onClick={() => setEditing(true)}
               disabled={disabled || confirmDelete}
-              className="inline-flex h-9 items-center justify-center rounded-xl bg-slate-100 px-3 text-xs font-medium text-slate-900 border border-slate-200 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+              className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-100 px-3 text-sm font-medium text-slate-900 border border-slate-200 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
             >
               تعديل
             </button>
@@ -1000,7 +1132,7 @@ function DayRowItem({
                   setEditing(false);
                 }}
                 disabled={disabled || confirmDelete}
-                className="inline-flex h-9 items-center justify-center rounded-xl bg-slate-900 px-3 text-xs font-medium text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-3 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 حفظ
               </button>
@@ -1012,7 +1144,7 @@ function DayRowItem({
                   setEditing(false);
                 }}
                 disabled={disabled || confirmDelete}
-                className="inline-flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-medium text-slate-700 border border-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-3 text-sm font-medium text-slate-700 border border-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 إلغاء
               </button>
@@ -1026,7 +1158,7 @@ function DayRowItem({
               setConfirmDelete(true);
             }}
             disabled={disabled || confirmDelete}
-            className="inline-flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-medium text-rose-700 border border-rose-200 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+            className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-3 text-sm font-medium text-rose-700 border border-rose-200 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
           >
             حذف
           </button>
@@ -1039,14 +1171,14 @@ function DayRowItem({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="عنوان اليوم"
-            className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+            className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
           />
           <input
             value={num}
             onChange={(e) => setNum(e.target.value)}
             placeholder="رقم اليوم"
             inputMode="numeric"
-            className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+            className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
           />
         </div>
       ) : null}
@@ -1061,42 +1193,58 @@ function VideoRowItem({
   disabled,
 }: {
   video: VideoRow;
-  onUpdate: (title: string, url: string, isFree: boolean, details: string) => void;
+  onUpdate: (title: string, url: string, isFree: boolean, details: string, thumbnailUrl: string | null) => void;
   onDelete: () => void;
   disabled: boolean;
 }) {
   const [title, setTitle] = useState(video.title ?? "");
   const [url, setUrl] = useState(video.video_url ?? "");
   const [details, setDetails] = useState(video.details ?? "");
+  const [thumbUrl, setThumbUrl] = useState(video.thumbnail_url ?? "");
+  const [thumbBusy, setThumbBusy] = useState(false);
+  const [thumbError, setThumbError] = useState<string | null>(null);
   const [isFree, setIsFree] = useState(Boolean(video.is_free_preview));
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const thumbInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setTitle(video.title ?? "");
     setUrl(video.video_url ?? "");
     setDetails(video.details ?? "");
+    setThumbUrl(video.thumbnail_url ?? "");
+    setThumbError(null);
     setIsFree(Boolean(video.is_free_preview));
     setEditing(false);
     setConfirmDelete(false);
-  }, [video.details, video.id, video.is_free_preview, video.title, video.video_url]);
+  }, [video.details, video.id, video.is_free_preview, video.thumbnail_url, video.title, video.video_url]);
 
   const videoUrl = (video.video_url ?? "").trim();
   const canOpen = Boolean(videoUrl);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 text-right">
-          <div className="truncate text-sm font-semibold text-slate-900">{video.title ?? "فيديو"}</div>
-          <div className="mt-1 truncate text-xs text-slate-500" dir="ltr">
+          <div className="truncate text-base font-semibold text-slate-900">{video.title ?? "فيديو"}</div>
+          <div className="mt-1 truncate text-sm text-slate-500 sm:text-xs" dir="ltr">
             {video.video_url ?? ""}
           </div>
+          {video.thumbnail_url ? (
+            <div className="mt-3">
+              <img
+                src={video.thumbnail_url}
+                alt="thumbnail"
+                className="h-20 w-36 rounded-2xl border border-slate-200 object-cover"
+              />
+            </div>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {video.is_free_preview ? (
-            <div className="inline-flex h-8 items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 text-xs font-medium text-emerald-700">
+            <div className="inline-flex h-8 items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 text-sm font-medium text-emerald-700 sm:text-xs">
               معاينة مجانية
             </div>
           ) : null}
@@ -1110,7 +1258,7 @@ function VideoRowItem({
                   setConfirmDelete(false);
                 }}
                 disabled={disabled}
-                className="inline-flex h-9 items-center justify-center rounded-xl bg-rose-600 px-3 text-xs font-medium text-white shadow-sm transition hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-600 px-3 text-sm font-medium text-white shadow-sm transition hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 تأكيد
               </button>
@@ -1118,7 +1266,7 @@ function VideoRowItem({
                 type="button"
                 onClick={() => setConfirmDelete(false)}
                 disabled={disabled}
-                className="inline-flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-medium text-slate-700 border border-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-3 text-sm font-medium text-slate-700 border border-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 إلغاء
               </button>
@@ -1130,7 +1278,7 @@ function VideoRowItem({
               href={videoUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-medium text-slate-700 border border-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-3 text-sm font-medium text-slate-700 border border-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
             >
               فتح الرابط
             </a>
@@ -1141,7 +1289,7 @@ function VideoRowItem({
               type="button"
               onClick={() => setEditing(true)}
               disabled={disabled || confirmDelete}
-              className="inline-flex h-9 items-center justify-center rounded-xl bg-slate-100 px-3 text-xs font-medium text-slate-900 border border-slate-200 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+              className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-100 px-3 text-sm font-medium text-slate-900 border border-slate-200 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
             >
               تعديل
             </button>
@@ -1150,11 +1298,11 @@ function VideoRowItem({
               <button
                 type="button"
                 onClick={() => {
-                  onUpdate(title, url, isFree, details);
+                  onUpdate(title, url, isFree, details, thumbUrl.trim() ? thumbUrl.trim() : null);
                   setEditing(false);
                 }}
                 disabled={disabled || confirmDelete}
-                className="inline-flex h-9 items-center justify-center rounded-xl bg-violet-600 px-3 text-xs font-medium text-white shadow-sm transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-3 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 حفظ
               </button>
@@ -1164,11 +1312,13 @@ function VideoRowItem({
                   setTitle(video.title ?? "");
                   setUrl(video.video_url ?? "");
                   setDetails(video.details ?? "");
+                  setThumbUrl(video.thumbnail_url ?? "");
+                  setThumbError(null);
                   setIsFree(Boolean(video.is_free_preview));
                   setEditing(false);
                 }}
                 disabled={disabled || confirmDelete}
-                className="inline-flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-medium text-slate-700 border border-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-3 text-sm font-medium text-slate-700 border border-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 إلغاء
               </button>
@@ -1182,7 +1332,7 @@ function VideoRowItem({
               setConfirmDelete(true);
             }}
             disabled={disabled || confirmDelete}
-            className="inline-flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-medium text-rose-700 border border-rose-200 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+            className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-3 text-sm font-medium text-rose-700 border border-rose-200 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
           >
             حذف
           </button>
@@ -1196,14 +1346,87 @@ function VideoRowItem({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="عنوان الفيديو"
-              className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+              className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
             />
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="رابط الفيديو"
-              className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+              className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:h-10 sm:text-sm"
             />
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div>
+              <div className="text-sm font-medium text-slate-700">صورة الفيديو (Thumbnail)</div>
+              <input
+                ref={thumbInputRef}
+                type="file"
+                accept="image/*"
+                disabled={disabled || thumbBusy}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  if (!file) return;
+                  setThumbError(null);
+                  setThumbBusy(true);
+
+                  try {
+                    const supabase = createSupabaseBrowserClient();
+                    const ext = safeFileName(file.name).split(".").pop() || "png";
+                    const path = `videos/${video.id}/${randomId()}.${ext}`;
+                    const up = await supabase.storage.from("video-thumbnails").upload(path, file, {
+                      upsert: true,
+                      contentType: file.type || undefined,
+                    });
+                    if (up.error) throw new Error(up.error.message);
+                    const pub = supabase.storage.from("video-thumbnails").getPublicUrl(path);
+                    const url = pub.data.publicUrl;
+                    setThumbUrl(url || "");
+                  } catch (err) {
+                    setThumbError(err instanceof Error ? err.message : "فشل رفع الصورة");
+                  }
+
+                  setThumbBusy(false);
+                }}
+                className="hidden"
+              />
+
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => thumbInputRef.current?.click()}
+                  disabled={disabled || thumbBusy}
+                  className="inline-flex h-9 items-center justify-center rounded-2xl bg-white px-4 text-xs font-semibold text-slate-700 border border-slate-200 transition hover:bg-slate-50 disabled:opacity-60"
+                >
+                  اختيار صورة من المعرض
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setThumbUrl("")}
+                  disabled={disabled || thumbBusy}
+                  className="inline-flex h-9 items-center justify-center rounded-2xl bg-white px-4 text-xs font-semibold text-slate-700 border border-slate-200 transition hover:bg-slate-50 disabled:opacity-60"
+                >
+                  مسح الصورة
+                </button>
+                {thumbBusy ? <div className="text-xs text-slate-500">رفع...</div> : null}
+              </div>
+
+              {thumbError ? <div className="mt-2 text-xs text-rose-700">{thumbError}</div> : null}
+            </div>
+
+            <div className="flex items-start justify-end">
+              {thumbUrl ? (
+                <img
+                  src={thumbUrl}
+                  alt="thumbnail"
+                  className="h-24 w-40 rounded-2xl border border-slate-200 object-cover"
+                />
+              ) : (
+                <div className="grid h-24 w-40 place-items-center rounded-2xl border border-dashed border-slate-300 bg-white text-xs text-slate-500">
+                  لا يوجد
+                </div>
+              )}
+            </div>
           </div>
 
           <textarea
@@ -1211,7 +1434,7 @@ function VideoRowItem({
             onChange={(e) => setDetails(e.target.value)}
             placeholder="تفاصيل الفيديو (اختياري)"
             rows={3}
-            className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+            className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 sm:text-sm"
           />
 
           <label className="mt-3 inline-flex items-center gap-3 text-sm text-slate-700">
@@ -1219,7 +1442,7 @@ function VideoRowItem({
               type="checkbox"
               checked={isFree}
               onChange={(e) => setIsFree(e.target.checked)}
-              className="h-4 w-4 accent-violet-500"
+              className="h-4 w-4 accent-slate-700"
             />
             معاينة مجانية
           </label>

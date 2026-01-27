@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { AdminCard } from "@/features/admin/ui/AdminCard";
@@ -813,21 +814,25 @@ export function AdminPackagesScreen() {
   };
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-5" dir="rtl">
       <AdminCard>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <div className="text-lg font-semibold text-slate-900">الباقات</div>
-            <div className="mt-1 text-sm text-slate-600">إضافة وتعديل وإدارة الباقات وربط الكورسات.</div>
+        <div className="space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-base font-extrabold text-slate-900">الباقات</div>
+              <div className="mt-1 text-sm text-slate-600">إضافة وتعديل وإدارة الباقات وربط الكورسات.</div>
+            </div>
+            <div className="text-xs text-slate-500 whitespace-nowrap">{loading ? "تحميل..." : `${packages.length} باقة`}</div>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+
+          <div className="grid gap-2 sm:grid-cols-2">
             {confirmApplyFeaturePresets ? (
               <>
                 <button
                   type="button"
                   onClick={applyFeaturePresets}
                   disabled={saving}
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                  className="inline-flex h-10 w-full items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition enabled:hover:bg-slate-800 disabled:opacity-50"
                 >
                   تأكيد تعبئة المميزات
                 </button>
@@ -835,7 +840,7 @@ export function AdminPackagesScreen() {
                   type="button"
                   onClick={() => setConfirmApplyFeaturePresets(false)}
                   disabled={saving}
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-4 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                  className="inline-flex h-10 w-full items-center justify-center rounded-2xl bg-white px-4 text-sm font-semibold text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 disabled:opacity-50"
                 >
                   إلغاء
                 </button>
@@ -845,7 +850,7 @@ export function AdminPackagesScreen() {
                 type="button"
                 onClick={() => setConfirmApplyFeaturePresets(true)}
                 disabled={saving}
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-4 text-sm font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 w-full items-center justify-center rounded-2xl bg-slate-100 px-4 text-sm font-semibold text-slate-800 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-200 disabled:opacity-50"
               >
                 تعبئة مميزات الباقات
               </button>
@@ -854,11 +859,10 @@ export function AdminPackagesScreen() {
               type="button"
               onClick={() => setCreateOpen((v) => !v)}
               disabled={saving}
-              className="inline-flex h-10 items-center justify-center rounded-xl bg-violet-600 px-5 text-sm font-medium text-white shadow-sm transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+              className="inline-flex h-10 w-full items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white shadow-sm transition enabled:hover:bg-slate-800 disabled:opacity-50"
             >
-              إضافة باقة
+              {createOpen ? "إغلاق" : "إضافة باقة"}
             </button>
-            <div className="text-xs text-slate-500">{loading ? "تحميل..." : `${packages.length} باقة`}</div>
           </div>
         </div>
 
@@ -868,7 +872,7 @@ export function AdminPackagesScreen() {
             (error || notice?.kind === "error"
               ? "border-rose-200 bg-rose-50 text-rose-700"
               : loading || saving || notice?.kind === "info"
-                ? "border-violet-100 bg-violet-50 text-violet-700"
+                ? "border-slate-200 bg-slate-50 text-slate-700"
                 : notice?.kind === "success"
                   ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                   : "border-slate-200 bg-slate-50 text-slate-600")
@@ -886,7 +890,7 @@ export function AdminPackagesScreen() {
         </div>
 
         {createOpen ? (
-          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
             <div>
               <div className="text-sm font-semibold text-slate-900">إضافة باقة</div>
               <div className="mt-1 text-sm text-slate-600">املأ البيانات الأساسية ثم احفظ.</div>
@@ -899,7 +903,7 @@ export function AdminPackagesScreen() {
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="Small / Medium / VIP"
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                 />
               </label>
               <label className="block">
@@ -908,7 +912,7 @@ export function AdminPackagesScreen() {
                   value={newSlug}
                   onChange={(e) => setNewSlug(e.target.value)}
                   placeholder="small"
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                 />
               </label>
             </div>
@@ -919,7 +923,7 @@ export function AdminPackagesScreen() {
                 <input
                   value={newSubtitle}
                   onChange={(e) => setNewSubtitle(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                 />
               </label>
               <label className="block">
@@ -928,7 +932,7 @@ export function AdminPackagesScreen() {
                   value={newBadge}
                   onChange={(e) => setNewBadge(e.target.value)}
                   placeholder="POPULAR"
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                 />
               </label>
             </div>
@@ -941,7 +945,7 @@ export function AdminPackagesScreen() {
                   onChange={(e) => setNewPrice(e.target.value)}
                   inputMode="numeric"
                   placeholder="اختياري"
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                 />
               </label>
               <label className="block">
@@ -951,7 +955,7 @@ export function AdminPackagesScreen() {
                   onChange={(e) => setNewSort(e.target.value)}
                   inputMode="numeric"
                   placeholder="0"
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                 />
               </label>
               <label className="block">
@@ -962,7 +966,7 @@ export function AdminPackagesScreen() {
                     const v = e.target.value;
                     if (v === "orange" || v === "blue" || v === "vip") setNewTheme(v);
                   }}
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                 >
                   <option value="orange">Orange</option>
                   <option value="blue">Blue</option>
@@ -976,7 +980,7 @@ export function AdminPackagesScreen() {
                 type="checkbox"
                 checked={newActive}
                 onChange={(e) => setNewActive(e.target.checked)}
-                className="h-4 w-4 accent-violet-500"
+                className="h-4 w-4 accent-slate-700"
               />
               مفعّلة
             </label>
@@ -987,7 +991,7 @@ export function AdminPackagesScreen() {
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 rows={3}
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
               />
             </label>
 
@@ -997,11 +1001,11 @@ export function AdminPackagesScreen() {
                 value={newFeatures}
                 onChange={(e) => setNewFeatures(e.target.value)}
                 rows={4}
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
               />
             </label>
 
-            <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
               <div className="text-sm font-semibold text-slate-900">العروض (اختياري)</div>
               <div className="mt-2 text-xs text-slate-600">
                 لو العرض مفعّل ومعاه وقت بداية/نهاية، هيتعرض تلقائياً في صفحة الباقات.
@@ -1012,7 +1016,7 @@ export function AdminPackagesScreen() {
                   type="checkbox"
                   checked={newOfferActive}
                   onChange={(e) => setNewOfferActive(e.target.checked)}
-                  className="h-4 w-4 accent-violet-500"
+                  className="h-4 w-4 accent-slate-700"
                 />
                 تفعيل العرض
               </label>
@@ -1024,7 +1028,7 @@ export function AdminPackagesScreen() {
                     value={newOfferBadge}
                     onChange={(e) => setNewOfferBadge(e.target.value)}
                     placeholder="SALE"
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                    className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                   />
                 </label>
 
@@ -1035,7 +1039,7 @@ export function AdminPackagesScreen() {
                     onChange={(e) => setNewOfferPrice(e.target.value)}
                     inputMode="numeric"
                     placeholder="اختياري"
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                    className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                   />
                 </label>
               </div>
@@ -1048,7 +1052,7 @@ export function AdminPackagesScreen() {
                     onChange={(e) => setNewOfferPercent(e.target.value)}
                     inputMode="numeric"
                     placeholder="مثال: 20"
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                    className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                   />
                 </label>
 
@@ -1058,7 +1062,7 @@ export function AdminPackagesScreen() {
                     type="datetime-local"
                     value={newOfferStartAt}
                     onChange={(e) => setNewOfferStartAt(e.target.value)}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                    className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                   />
                 </label>
 
@@ -1068,7 +1072,7 @@ export function AdminPackagesScreen() {
                     type="datetime-local"
                     value={newOfferEndAt}
                     onChange={(e) => setNewOfferEndAt(e.target.value)}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                    className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                   />
                 </label>
               </div>
@@ -1079,7 +1083,7 @@ export function AdminPackagesScreen() {
                 type="button"
                 onClick={createPackage}
                 disabled={saving}
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white shadow-sm transition enabled:hover:bg-slate-800 disabled:opacity-50"
               >
                 حفظ
               </button>
@@ -1090,7 +1094,7 @@ export function AdminPackagesScreen() {
                   setCreateOpen(false);
                 }}
                 disabled={saving}
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-5 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-5 text-sm font-semibold text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 disabled:opacity-50"
               >
                 إلغاء
               </button>
@@ -1100,9 +1104,9 @@ export function AdminPackagesScreen() {
       </AdminCard>
 
       <AdminCard>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="text-sm font-semibold text-slate-900">قائمة الباقات</div>
-          <div className="text-xs text-slate-500">{sorted.length} باقة</div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="text-base font-extrabold text-slate-900">قائمة الباقات</div>
+          <div className="text-xs text-slate-500 whitespace-nowrap">{sorted.length} باقة</div>
         </div>
 
         <div className="mt-4 space-y-3">
@@ -1110,17 +1114,24 @@ export function AdminPackagesScreen() {
             const isEditing = editingId === p.id;
 
             return (
-              <div key={p.id} className="rounded-xl border border-slate-200 bg-white p-4">
+              <div key={p.id} className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-[0_12px_40px_-28px_rgba(2,6,23,0.45)] backdrop-blur">
                 {!isEditing ? (
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
+                    <Link href={`/admin/packages/${encodeURIComponent(p.slug)}`} className="block">
                       <div className="text-base font-semibold text-slate-900">{p.title}</div>
                       <div className="mt-1 text-xs text-slate-500" dir="ltr">
                         {p.slug}
                       </div>
-                    </div>
+                    </Link>
 
                     <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/admin/packages/${encodeURIComponent(p.slug)}`}
+                        className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                      >
+                        فتح
+                      </Link>
+
                       <span
                         className={
                           "rounded-full px-3 py-1 text-xs font-medium border " +
@@ -1136,7 +1147,7 @@ export function AdminPackagesScreen() {
                         type="button"
                         onClick={() => startEdit(p)}
                         disabled={saving || confirmDeletePackageId === p.id}
-                        className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-100 px-4 text-sm font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                        className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-100 px-4 text-sm font-semibold text-slate-800 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-200 disabled:opacity-50"
                       >
                         تعديل
                       </button>
@@ -1147,7 +1158,7 @@ export function AdminPackagesScreen() {
                             type="button"
                             onClick={() => void deletePackage(p.id)}
                             disabled={saving}
-                            className="inline-flex h-10 items-center justify-center rounded-xl bg-rose-600 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                            className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-600 px-4 text-sm font-semibold text-white shadow-sm transition enabled:hover:bg-rose-700 disabled:opacity-50"
                           >
                             تأكيد الحذف
                           </button>
@@ -1155,7 +1166,7 @@ export function AdminPackagesScreen() {
                             type="button"
                             onClick={() => setConfirmDeletePackageId(null)}
                             disabled={saving}
-                            className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-4 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                            className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-4 text-sm font-semibold text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 disabled:opacity-50"
                           >
                             إلغاء
                           </button>
@@ -1165,7 +1176,7 @@ export function AdminPackagesScreen() {
                           type="button"
                           onClick={() => setConfirmDeletePackageId(p.id)}
                           disabled={saving}
-                          className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-4 text-sm font-medium text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-4 text-sm font-semibold text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-50 disabled:opacity-50"
                         >
                           حذف
                         </button>
@@ -1180,7 +1191,7 @@ export function AdminPackagesScreen() {
                         <input
                           value={editTitle}
                           onChange={(e) => setEditTitle(e.target.value)}
-                          className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                          className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                         />
                       </label>
 
@@ -1189,7 +1200,7 @@ export function AdminPackagesScreen() {
                         <input
                           value={editSubtitle}
                           onChange={(e) => setEditSubtitle(e.target.value)}
-                          className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                          className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                         />
                       </label>
                     </div>
@@ -1200,7 +1211,7 @@ export function AdminPackagesScreen() {
                         <input
                           value={editBadge}
                           onChange={(e) => setEditBadge(e.target.value)}
-                          className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                          className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                         />
                       </label>
 
@@ -1210,7 +1221,7 @@ export function AdminPackagesScreen() {
                           value={editPrice}
                           onChange={(e) => setEditPrice(e.target.value)}
                           inputMode="numeric"
-                          className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                          className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                         />
                       </label>
                     </div>
@@ -1224,7 +1235,7 @@ export function AdminPackagesScreen() {
                             const v = e.target.value;
                             if (v === "orange" || v === "blue" || v === "vip") setEditTheme(v);
                           }}
-                          className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                          className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                         >
                           <option value="orange">Orange</option>
                           <option value="blue">Blue</option>
@@ -1238,7 +1249,7 @@ export function AdminPackagesScreen() {
                           value={editSort}
                           onChange={(e) => setEditSort(e.target.value)}
                           inputMode="numeric"
-                          className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                          className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                         />
                       </label>
 
@@ -1247,7 +1258,7 @@ export function AdminPackagesScreen() {
                           type="checkbox"
                           checked={editActive}
                           onChange={(e) => setEditActive(e.target.checked)}
-                          className="h-4 w-4 accent-violet-500"
+                          className="h-4 w-4 accent-slate-700"
                         />
                         مفعّلة
                       </label>
@@ -1259,7 +1270,7 @@ export function AdminPackagesScreen() {
                         value={editDescription}
                         onChange={(e) => setEditDescription(e.target.value)}
                         rows={3}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                       />
                     </label>
 
@@ -1269,18 +1280,18 @@ export function AdminPackagesScreen() {
                         value={editFeatures}
                         onChange={(e) => setEditFeatures(e.target.value)}
                         rows={4}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                       />
                     </label>
 
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <div className="text-sm font-semibold text-slate-900">العروض (اختياري)</div>
                       <label className="mt-3 inline-flex items-center gap-3 text-sm text-slate-700">
                         <input
                           type="checkbox"
                           checked={editOfferActive}
                           onChange={(e) => setEditOfferActive(e.target.checked)}
-                          className="h-4 w-4 accent-violet-500"
+                          className="h-4 w-4 accent-slate-700"
                         />
                         تفعيل العرض
                       </label>
@@ -1292,7 +1303,7 @@ export function AdminPackagesScreen() {
                             value={editOfferBadge}
                             onChange={(e) => setEditOfferBadge(e.target.value)}
                             placeholder="SALE"
-                            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                            className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                           />
                         </label>
 
@@ -1303,7 +1314,7 @@ export function AdminPackagesScreen() {
                             onChange={(e) => setEditOfferPrice(e.target.value)}
                             inputMode="numeric"
                             placeholder="اختياري"
-                            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                            className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                           />
                         </label>
                       </div>
@@ -1316,7 +1327,7 @@ export function AdminPackagesScreen() {
                             onChange={(e) => setEditOfferPercent(e.target.value)}
                             inputMode="numeric"
                             placeholder="مثال: 20"
-                            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                            className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                           />
                         </label>
 
@@ -1326,7 +1337,7 @@ export function AdminPackagesScreen() {
                             type="datetime-local"
                             value={editOfferStartAt}
                             onChange={(e) => setEditOfferStartAt(e.target.value)}
-                            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                            className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                           />
                         </label>
 
@@ -1336,7 +1347,7 @@ export function AdminPackagesScreen() {
                             type="datetime-local"
                             value={editOfferEndAt}
                             onChange={(e) => setEditOfferEndAt(e.target.value)}
-                            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                            className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                           />
                         </label>
                       </div>
@@ -1347,7 +1358,7 @@ export function AdminPackagesScreen() {
                         type="button"
                         onClick={saveEdit}
                         disabled={saving}
-                        className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                        className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white shadow-sm transition enabled:hover:bg-slate-800 disabled:opacity-50"
                       >
                         حفظ
                       </button>
@@ -1355,7 +1366,7 @@ export function AdminPackagesScreen() {
                         type="button"
                         onClick={cancelEdit}
                         disabled={saving}
-                        className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-5 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                        className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-5 text-sm font-semibold text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 disabled:opacity-50"
                       >
                         إلغاء
                       </button>
@@ -1367,7 +1378,7 @@ export function AdminPackagesScreen() {
           })}
 
           {!loading && sorted.length === 0 ? (
-            <div className="rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
+            <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
               لا توجد باقات.
             </div>
           ) : null}
@@ -1375,7 +1386,7 @@ export function AdminPackagesScreen() {
       </AdminCard>
 
       <AdminCard>
-        <div className="text-sm font-semibold text-slate-900">ربط الباقة بالكورسات</div>
+        <div className="text-base font-extrabold text-slate-900">ربط الباقة بالكورسات</div>
         <div className="mt-2 text-sm text-slate-600">اختار باقة، واربطها بالكورسات، وبعدها حدد الأعمار (اختياري).</div>
 
         <div className="mt-5 grid gap-3 md:grid-cols-[260px_1fr]">
@@ -1384,7 +1395,7 @@ export function AdminPackagesScreen() {
             <select
               value={selectedPackageId}
               onChange={(e) => setSelectedPackageId(e.target.value)}
-              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+              className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
             >
               <option value="">اختر…</option>
               {packages.map((p) => (
@@ -1395,7 +1406,7 @@ export function AdminPackagesScreen() {
             </select>
           </label>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-[0_12px_40px_-28px_rgba(2,6,23,0.45)] backdrop-blur">
             {!selectedPackage ? (
               <div className="text-sm text-slate-600">اختار باقة علشان تظهر الكورسات.</div>
             ) : (
@@ -1415,7 +1426,7 @@ export function AdminPackagesScreen() {
                     value={courseQuery}
                     onChange={(e) => setCourseQuery(e.target.value)}
                     placeholder="بحث عن كورس..."
-                    className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                    className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                   />
                   <div className="flex items-center justify-end text-xs text-slate-500">
                     علّم/الغِ تعليم الكورس داخل هذه الباقة
@@ -1433,8 +1444,8 @@ export function AdminPackagesScreen() {
                       <div
                         key={c.id}
                         className={
-                          "rounded-xl border px-4 py-3 " +
-                          (selected ? "border-violet-200 bg-violet-50" : "border-slate-200 bg-white")
+                          "rounded-2xl border px-4 py-3 " +
+                          (selected ? "border-slate-300 bg-slate-50" : "border-slate-200 bg-white")
                         }
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -1463,7 +1474,7 @@ export function AdminPackagesScreen() {
                                 type="button"
                                 onClick={() => void removeCourseFromSelectedPackage(c.id)}
                                 disabled={saving}
-                                className="inline-flex h-9 items-center justify-center rounded-xl bg-rose-600 px-3 text-xs font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                className="inline-flex h-9 items-center justify-center rounded-2xl bg-rose-600 px-3 text-xs font-semibold text-white shadow-sm transition enabled:hover:bg-rose-700 disabled:opacity-50"
                               >
                                 تأكيد
                               </button>
@@ -1471,7 +1482,7 @@ export function AdminPackagesScreen() {
                                 type="button"
                                 onClick={() => setConfirmRemoveCourseId(null)}
                                 disabled={saving}
-                                className="inline-flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-medium text-slate-700 border border-slate-200 transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                className="inline-flex h-9 items-center justify-center rounded-2xl bg-white px-3 text-xs font-semibold text-slate-700 border border-slate-200 transition enabled:hover:bg-slate-50 disabled:opacity-50"
                               >
                                 إلغاء
                               </button>
@@ -1489,7 +1500,7 @@ export function AdminPackagesScreen() {
                                 if (inPkg) setConfirmRemoveCourseId(c.id);
                               }}
                               disabled={saving || pendingCourseAdds.has(c.id)}
-                              className="mt-1 h-4 w-4 accent-violet-500"
+                              className="mt-1 h-4 w-4 accent-slate-700"
                             />
                           )}
                         </div>
@@ -1502,14 +1513,14 @@ export function AdminPackagesScreen() {
                   })}
 
                   {filteredCourses.length === 0 ? (
-                    <div className="rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200 md:col-span-2">
+                    <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200 md:col-span-2">
                       لا توجد نتائج.
                     </div>
                   ) : null}
                 </div>
 
                 {selectedCourseId ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="text-sm font-semibold text-slate-900">الأعمار داخل الكورس</div>
                       <div className="text-xs text-slate-500">{ageGroups.length} عمر</div>
@@ -1525,7 +1536,7 @@ export function AdminPackagesScreen() {
                         return (
                           <label
                             key={ag.id}
-                            className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
+                            className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
                           >
                             <div className="text-right">
                               <div className="text-sm text-slate-900">{ag.title ?? "عمر"}</div>
@@ -1540,7 +1551,7 @@ export function AdminPackagesScreen() {
                               checked={checked}
                               onChange={(e) => toggleAllowedAgeGroup(ag.id, e.target.checked)}
                               disabled={saving}
-                              className="h-4 w-4 accent-violet-500"
+                              className="h-4 w-4 accent-slate-700"
                             />
                           </label>
                         );

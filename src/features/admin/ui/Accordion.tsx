@@ -20,11 +20,11 @@ export function Accordion({
   const [open, setOpen] = useState(Boolean(defaultOpen));
 
   return (
-    <div className="admin-surface rounded-xl bg-white border border-slate-200 shadow-sm">
+    <div className="rounded-2xl bg-white/90 border border-slate-200/70 shadow-[0_12px_40px_-28px_rgba(2,6,23,0.45)] backdrop-blur">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="admin-hover flex w-full items-center justify-between gap-4 px-5 py-4 text-right transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-right transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
       >
         <span className="min-w-0">
           <span className="block truncate text-sm font-semibold text-slate-900">

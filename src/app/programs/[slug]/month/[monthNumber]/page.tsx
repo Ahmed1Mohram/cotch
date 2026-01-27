@@ -245,7 +245,10 @@ export default async function ProgramMonthPage({
     const candidateAgIds = effectiveAgeGroupId ? [effectiveAgeGroupId] : agIds;
 
     for (const agId of candidateAgIds) {
-      const monthsRes = await supabase.rpc("preview_months", { p_age_group_id: agId });
+      const monthsRes = await supabase.rpc("preview_months_for_package", {
+        p_age_group_id: agId,
+        p_package_id: pkg ? pkg.id : null,
+      });
       const m = (((monthsRes as any)?.data ?? []) as any[]).find((r) => Number(r.month_number) === monthNumber);
       if (m?.id) {
         month = {
@@ -370,24 +373,78 @@ export default async function ProgramMonthPage({
 
   const monthRes = agIds.length
     ? effectiveAgeGroupId
-      ? await supabase
-          .from("months")
-          .select("id,age_group_id,title,month_number,sort_order,created_at")
-          .eq("age_group_id", effectiveAgeGroupId)
-          .eq("month_number", monthNumber)
-          .order("sort_order", { ascending: true })
-          .order("created_at", { ascending: true })
-          .limit(1)
-          .maybeSingle()
-      : await supabase
-          .from("months")
-          .select("id,age_group_id,title,month_number,sort_order,created_at")
-          .in("age_group_id", agIds)
-          .eq("month_number", monthNumber)
-          .order("sort_order", { ascending: true })
-          .order("created_at", { ascending: true })
-          .limit(1)
-          .maybeSingle()
+      ? pkg
+        ? await (async () => {
+            const pkgRes = await supabase
+              .from("months")
+              .select("id,age_group_id,title,month_number,sort_order,created_at")
+              .eq("age_group_id", effectiveAgeGroupId)
+              .eq("month_number", monthNumber)
+              .eq("package_id", pkg.id)
+              .order("sort_order", { ascending: true })
+              .order("created_at", { ascending: true })
+              .limit(1)
+              .maybeSingle();
+
+            if (!pkgRes.error && pkgRes.data) return pkgRes;
+
+            return supabase
+              .from("months")
+              .select("id,age_group_id,title,month_number,sort_order,created_at")
+              .eq("age_group_id", effectiveAgeGroupId)
+              .eq("month_number", monthNumber)
+              .is("package_id", null)
+              .order("sort_order", { ascending: true })
+              .order("created_at", { ascending: true })
+              .limit(1)
+              .maybeSingle();
+          })()
+        : await supabase
+            .from("months")
+            .select("id,age_group_id,title,month_number,sort_order,created_at")
+            .eq("age_group_id", effectiveAgeGroupId)
+            .eq("month_number", monthNumber)
+            .is("package_id", null)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true })
+            .limit(1)
+            .maybeSingle()
+      : pkg
+        ? await (async () => {
+            const pkgRes = await supabase
+              .from("months")
+              .select("id,age_group_id,title,month_number,sort_order,created_at")
+              .in("age_group_id", agIds)
+              .eq("month_number", monthNumber)
+              .eq("package_id", pkg.id)
+              .order("sort_order", { ascending: true })
+              .order("created_at", { ascending: true })
+              .limit(1)
+              .maybeSingle();
+
+            if (!pkgRes.error && pkgRes.data) return pkgRes;
+
+            return supabase
+              .from("months")
+              .select("id,age_group_id,title,month_number,sort_order,created_at")
+              .in("age_group_id", agIds)
+              .eq("month_number", monthNumber)
+              .is("package_id", null)
+              .order("sort_order", { ascending: true })
+              .order("created_at", { ascending: true })
+              .limit(1)
+              .maybeSingle();
+          })()
+        : await supabase
+            .from("months")
+            .select("id,age_group_id,title,month_number,sort_order,created_at")
+            .in("age_group_id", agIds)
+            .eq("month_number", monthNumber)
+            .is("package_id", null)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true })
+            .limit(1)
+            .maybeSingle()
     : { data: null, error: null };
 
   if ((monthRes as any).error) {

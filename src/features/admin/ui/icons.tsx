@@ -148,3 +148,51 @@ export function IconSpark(props: IconProps) {
     </svg>
   );
 }
+
+export function IconMenu(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M4 7h16M4 12h16M4 17h16"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+export function IconBell(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M12 22a2.2 2.2 0 0 0 2.1-1.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M6 18h12c-1.4-1.2-2-2.6-2-4.4V11a4 4 0 1 0-8 0v2.6C8 15.4 7.4 16.8 6 18Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function IconChat(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M7 4h10a4 4 0 0 1 4 4v6a4 4 0 0 1-4 4H10l-5 3V8a4 4 0 0 1 4-4Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path d="M9 11h.01" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M12 11h.01" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M15 11h.01" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}

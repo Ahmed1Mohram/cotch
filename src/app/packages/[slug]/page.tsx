@@ -23,45 +23,11 @@ type PackageRow = {
   title: string;
   subtitle: string | null;
   description: string | null;
-  badge: string | null;
-  price_egp: number | null;
-  offer_active: boolean;
-  offer_badge: string | null;
-  offer_price_egp: number | null;
-  offer_percent: number | null;
-  offer_start_at: string | null;
-  offer_end_at: string | null;
   theme: string;
 };
 
 function normalizeSlug(input: string) {
   return input.trim().toLowerCase().replace(/\/+$/, "").replace(/\.html$/, "");
-}
-
-function isOfferLive(p: PackageRow) {
-  if (!p.offer_active) return false;
-  const now = Date.parse(new Date().toISOString());
-  const start = p.offer_start_at ? new Date(p.offer_start_at).getTime() : NaN;
-  const end = p.offer_end_at ? new Date(p.offer_end_at).getTime() : NaN;
-  if (Number.isFinite(start) && now < start) return false;
-  if (Number.isFinite(end) && now > end) return false;
-  return true;
-}
-
-function effectiveOfferPrice(p: PackageRow): number | null {
-  if (!isOfferLive(p)) return null;
-  if (typeof p.offer_price_egp === "number" && Number.isFinite(p.offer_price_egp)) return p.offer_price_egp;
-  if (
-    typeof p.price_egp === "number" &&
-    Number.isFinite(p.price_egp) &&
-    typeof p.offer_percent === "number" &&
-    Number.isFinite(p.offer_percent) &&
-    p.offer_percent > 0 &&
-    p.offer_percent <= 100
-  ) {
-    return p.price_egp * (1 - p.offer_percent / 100);
-  }
-  return null;
 }
 
 const uiFallback: Record<string, { emoji: string; imageClassName: string }> = {
@@ -87,7 +53,7 @@ export default async function PackageDetailsPage({
   const { data: pkgRow } = await supabase
     .from("packages")
     .select(
-      "id,slug,title,subtitle,description,badge,price_egp,offer_active,offer_badge,offer_price_egp,offer_percent,offer_start_at,offer_end_at,theme",
+      "id,slug,title,subtitle,description,theme",
     )
     .eq("slug", pkgSlug)
     .maybeSingle();
@@ -100,23 +66,6 @@ export default async function PackageDetailsPage({
           title: String((pkgRow as any).title ?? ""),
           subtitle: (pkgRow as any).subtitle ?? null,
           description: (pkgRow as any).description ?? null,
-          badge: (pkgRow as any).badge ?? null,
-          price_egp:
-            (pkgRow as any).price_egp === null || (pkgRow as any).price_egp === undefined
-              ? null
-              : Number((pkgRow as any).price_egp),
-          offer_active: Boolean((pkgRow as any).offer_active),
-          offer_badge: (pkgRow as any).offer_badge ?? null,
-          offer_price_egp:
-            (pkgRow as any).offer_price_egp === null || (pkgRow as any).offer_price_egp === undefined
-              ? null
-              : Number((pkgRow as any).offer_price_egp),
-          offer_percent:
-            (pkgRow as any).offer_percent === null || (pkgRow as any).offer_percent === undefined
-              ? null
-              : Number((pkgRow as any).offer_percent),
-          offer_start_at: (pkgRow as any).offer_start_at ? String((pkgRow as any).offer_start_at) : null,
-          offer_end_at: (pkgRow as any).offer_end_at ? String((pkgRow as any).offer_end_at) : null,
           theme: String((pkgRow as any).theme ?? "orange"),
         }
       : null;
@@ -184,13 +133,6 @@ export default async function PackageDetailsPage({
       }));
   }
 
-  const offerPriceRaw = effectiveOfferPrice(pkg);
-  const offerPrice =
-    typeof offerPriceRaw === "number" && Number.isFinite(offerPriceRaw) ? offerPriceRaw : null;
-  const basePrice =
-    typeof pkg.price_egp === "number" && Number.isFinite(pkg.price_egp) ? pkg.price_egp : null;
-  const offerBadge = pkg.offer_badge ? pkg.offer_badge : pkg.offer_percent ? `-${pkg.offer_percent}%` : null;
-
   return (
     <div className="min-h-screen bg-[#0B0B0B]">
       <Navbar />
@@ -215,40 +157,6 @@ export default async function PackageDetailsPage({
                 </div>
 
                 <div className="flex flex-col items-end gap-3">
-                  {offerBadge ? (
-                    <div className="rounded-full bg-[#FF2424]/10 px-4 py-2 text-xs tracking-[0.22em] text-[#FFB35A] shadow-[0_0_0_1px_rgba(255,36,36,0.20)]">
-                      {offerBadge}
-                    </div>
-                  ) : pkg.badge ? (
-                    <div className="rounded-full bg-white/5 px-4 py-2 text-xs tracking-[0.22em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
-                      {pkg.badge}
-                    </div>
-                  ) : null}
-
-                  {basePrice !== null || offerPrice !== null ? (
-                    <div className="rounded-3xl bg-black/45 px-5 py-4 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]" dir="rtl">
-                      <div className="text-right text-xs tracking-[0.22em] text-white/60">السعر</div>
-                      {offerPrice !== null ? (
-                        <div className="mt-2">
-                          <div className="text-right font-heading text-3xl tracking-[0.10em] text-white">
-                            {Math.round(offerPrice).toLocaleString("en-US")}
-                            <span className="ms-2 text-sm text-white/65">EGP</span>
-                          </div>
-                          {basePrice !== null ? (
-                            <div className="mt-1 text-right text-sm text-white/55 line-through">
-                              {Math.round(basePrice).toLocaleString("en-US")} EGP
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : basePrice !== null ? (
-                        <div className="mt-2 text-right font-heading text-3xl tracking-[0.10em] text-white">
-                          {Math.round(basePrice).toLocaleString("en-US")}
-                          <span className="ms-2 text-sm text-white/65">EGP</span>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-
                   <Link
                     href="/packages"
                     className="inline-flex h-12 items-center justify-center rounded-full bg-white/5 px-6 text-xs font-semibold tracking-[0.18em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10 hover:text-white"

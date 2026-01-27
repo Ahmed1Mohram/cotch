@@ -104,7 +104,7 @@ export function Hero() {
                 href="#contact"
                 size="lg"
                 variant="primary"
-                className="rounded-full normal-case tracking-[0.12em] backdrop-blur-md"
+                className="rounded-full normal-case tracking-[0.12em] backdrop-blur-md text-white"
               >
                 START YOUR TRANSFORMATION
               </Button>
@@ -121,7 +121,7 @@ export function Hero() {
                 href="#contact"
                 size="lg"
                 variant="primary"
-                className="rounded-full normal-case tracking-[0.12em] backdrop-blur-md"
+                className="rounded-full normal-case tracking-[0.12em] backdrop-blur-md text-white"
               >
                 START YOUR TRANSFORMATION
               </Button>

@@ -21,7 +21,7 @@ export function Tabs<T extends string>({
   return (
     <div
       className={cn(
-        "admin-surface-subtle max-w-full overflow-x-auto whitespace-nowrap rounded-xl bg-slate-100 p-1 border border-slate-200",
+        "max-w-full overflow-x-auto whitespace-nowrap rounded-2xl bg-slate-100/80 p-1 border border-slate-200",
         className,
       )}
     >
@@ -34,10 +34,10 @@ export function Tabs<T extends string>({
             type="button"
             onClick={() => onChange(it.key)}
             className={cn(
-              "h-10 rounded-lg px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
+              "h-10 rounded-2xl px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
               active
-                ? "bg-violet-50 text-violet-700 shadow-sm border border-violet-100"
-                : "admin-hover text-slate-700 hover:bg-slate-50 hover:text-slate-900",
+                ? "bg-white text-slate-900 shadow-sm border border-slate-200"
+                : "text-slate-700 hover:bg-white/70 hover:text-slate-900",
             )}
           >
             {it.label}

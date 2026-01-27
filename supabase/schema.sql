@@ -47,6 +47,10 @@ create table if not exists public.courses (
   updated_at timestamptz not null default now()
 );
 
+alter table public.courses add column if not exists featured boolean not null default false;
+alter table public.courses add column if not exists featured_sort_order int;
+alter table public.courses add column if not exists featured_package_id uuid;
+
 create index if not exists courses_published_idx on public.courses(is_published);
 
 create table if not exists public.age_groups (
@@ -97,7 +101,18 @@ create table if not exists public.months (
   constraint months_days_count_chk check (days_count >= 1 and days_count <= 60)
 );
 
-create index if not exists months_course_idx on public.months(course_id);
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'months'
+      and column_name = 'course_id'
+  ) then
+    execute 'create index if not exists months_course_idx on public.months(course_id)';
+  end if;
+end $$;
 create index if not exists months_age_group_idx on public.months(age_group_id);
 create unique index if not exists months_unique_month_index on public.months(age_group_id, month_index);
 

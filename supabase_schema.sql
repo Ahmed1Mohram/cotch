@@ -20,6 +20,10 @@ create table if not exists public.courses (
   updated_at timestamptz not null default now()
 );
 
+alter table public.courses add column if not exists featured boolean not null default false;
+alter table public.courses add column if not exists featured_sort_order int;
+alter table public.courses add column if not exists featured_package_id uuid;
+
 create table if not exists public.packages (
   id uuid primary key default gen_random_uuid(),
   slug text not null unique,
@@ -183,12 +187,16 @@ create table if not exists public.player_cards (
 create table if not exists public.months (
   id uuid primary key default gen_random_uuid(),
   age_group_id uuid not null references public.age_groups(id) on delete cascade,
+  package_id uuid references public.packages(id) on delete cascade,
   title text,
   month_number int,
   sort_order int not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.months
+  add column if not exists package_id uuid references public.packages(id) on delete cascade;
 
 create table if not exists public.days (
   id uuid primary key default gen_random_uuid(),
@@ -367,6 +375,29 @@ alter table public.contact_requests add column if not exists package_id uuid ref
 alter table public.contact_requests add column if not exists package_title text;
 alter table public.contact_requests add column if not exists course_id uuid references public.courses(id) on delete set null;
 
+create table if not exists public.chat_threads (
+  id uuid primary key default gen_random_uuid(),
+  course_id uuid not null references public.courses(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  user_full_name text,
+  user_phone text,
+  last_message_at timestamptz,
+  last_message_text text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(course_id, user_id)
+);
+
+create table if not exists public.chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  thread_id uuid not null references public.chat_threads(id) on delete cascade,
+  sender_user_id uuid not null references auth.users(id) on delete cascade,
+  sender_role text not null default 'user',
+  body text not null,
+  created_at timestamptz not null default now(),
+  constraint chat_messages_sender_role_check check (sender_role in ('user','admin'))
+);
+
 create table if not exists public.subscription_codes (
   id uuid primary key default gen_random_uuid(),
   code text not null unique,
@@ -484,6 +515,24 @@ begin
 end;
 $$;
 
+create or replace function public.trg_chat_messages_touch_thread_fn()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.chat_threads
+  set
+    last_message_at = new.created_at,
+    last_message_text = left(new.body, 240),
+    updated_at = now()
+  where id = new.thread_id;
+
+  return new;
+end;
+$$;
+
 create or replace function public.request_device_id()
 returns text
 language sql
@@ -518,8 +567,6 @@ drop function if exists public.generate_month_codes(text, int, int, int, int);
 drop function if exists public.redeem_age_group_code(text);
 drop function if exists public.redeem_any_code(text);
 drop function if exists public.generate_age_group_codes(text, uuid, int, int, int);
-drop function if exists public.has_active_age_group_access(uuid, uuid);
-drop function if exists public.has_active_player_card_access(uuid, uuid);
 
 create or replace function public.preview_months(p_age_group_id uuid)
 returns table (
@@ -551,6 +598,7 @@ begin
   select m.id, m.age_group_id, m.title, m.month_number, m.sort_order, m.created_at
   from public.months m
   where m.age_group_id = p_age_group_id
+    and m.package_id is null
   order by m.month_number nulls last, m.sort_order, m.created_at;
 end;
 $$;
@@ -914,6 +962,77 @@ begin
 end;
 $$;
 
+create or replace function public.preview_months_for_package(
+  p_age_group_id uuid,
+  p_package_id uuid default null
+)
+returns table (
+  id uuid,
+  age_group_id uuid,
+  package_id uuid,
+  title text,
+  month_number int,
+  sort_order int,
+  created_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid;
+  v_use_pkg boolean := false;
+  v_course_id uuid;
+begin
+  if public.is_device_banned() then
+    raise exception 'Device banned';
+  end if;
+
+  v_uid := auth.uid();
+  if v_uid is not null and public.is_user_banned(v_uid) then
+    raise exception 'User banned';
+  end if;
+
+  select ag.course_id into v_course_id
+  from public.age_groups ag
+  where ag.id = p_age_group_id
+  limit 1;
+
+  if p_package_id is not null then
+    if v_course_id is not null
+      and exists (
+        select 1
+        from public.package_courses pc
+        join public.packages p on p.id = pc.package_id
+        where pc.course_id = v_course_id
+          and pc.package_id = p_package_id
+          and p.active = true
+      )
+    then
+      v_use_pkg := exists (
+        select 1
+        from public.months m
+        where m.age_group_id = p_age_group_id
+          and m.package_id = p_package_id
+      );
+    else
+      v_use_pkg := false;
+    end if;
+  end if;
+
+  return query
+  select m.id, m.age_group_id, m.package_id, m.title, m.month_number, m.sort_order, m.created_at
+  from public.months m
+  where m.age_group_id = p_age_group_id
+    and (
+      (v_use_pkg and m.package_id = p_package_id)
+      or (not v_use_pkg and m.package_id is null)
+    )
+  order by m.month_number nulls last, m.sort_order, m.created_at;
+end;
+$$;
+
 create or replace function public.track_device()
 returns jsonb
 language plpgsql
@@ -1046,6 +1165,16 @@ begin
     create trigger trg_user_profiles_updated_at before update on public.user_profiles
     for each row execute function public.set_updated_at();
   end if;
+
+  if not exists (select 1 from pg_trigger where tgname = 'trg_chat_threads_updated_at') then
+    create trigger trg_chat_threads_updated_at before update on public.chat_threads
+    for each row execute function public.set_updated_at();
+  end if;
+
+  if not exists (select 1 from pg_trigger where tgname = 'trg_chat_messages_touch_thread') then
+    create trigger trg_chat_messages_touch_thread after insert on public.chat_messages
+    for each row execute function public.trg_chat_messages_touch_thread_fn();
+  end if;
 end $$;
 
 -- =========================================================
@@ -1152,14 +1281,15 @@ begin
     raise exception 'Missing slug';
   end if;
 
-  insert into public.courses (slug, title_ar, title_en, description, cover_image_url, theme)
+  insert into public.courses (slug, title_ar, title_en, description, cover_image_url, theme, featured_package_id)
   values (
     lower(trim(p_slug)),
     nullif(trim(coalesce(p_title_ar, '')), ''),
     nullif(trim(coalesce(p_title_en, '')), ''),
     nullif(trim(coalesce(p_description, '')), ''),
     nullif(trim(coalesce(p_cover_image_url, '')), ''),
-    nullif(trim(coalesce(p_theme, '')), '')
+    nullif(trim(coalesce(p_theme, '')), ''),
+    p_package_id
   )
   returning id into v_course_id;
 
@@ -1251,6 +1381,45 @@ as $$
       and (e.end_at is null or e.end_at > now())
       and coalesce(e.source, 'manual') in ('code', 'manual', 'admin')
   );
+$$;
+
+create or replace function public.can_chat_course(
+  p_course_id uuid,
+  uid uuid default auth.uid()
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    public.is_admin(uid)
+    or (
+      uid is not null
+      and public.is_device_banned() = false
+      and public.is_user_banned(uid) = false
+      and exists (select 1 from public.courses c where c.id = p_course_id and c.is_published = true)
+      and (
+        public.has_full_course_access(p_course_id, uid)
+        or exists (
+          select 1
+          from public.course_month_access a
+          where a.user_id = uid
+            and a.course_id = p_course_id
+            and a.status = 'active'
+            and (a.end_at is null or a.end_at > now())
+        )
+        or exists (
+          select 1
+          from public.course_age_group_access a
+          where a.user_id = uid
+            and a.course_id = p_course_id
+            and a.status = 'active'
+            and (a.end_at is null or a.end_at > now())
+        )
+      )
+    );
 $$;
 
 create or replace function public.has_active_month_access(
@@ -1852,6 +2021,8 @@ alter table public.device_bans enable row level security;
 alter table public.user_bans enable row level security;
 alter table public.user_profiles enable row level security;
 alter table public.contact_requests enable row level security;
+alter table public.chat_threads enable row level security;
+alter table public.chat_messages enable row level security;
 alter table public.course_age_group_access enable row level security;
 alter table public.age_group_codes enable row level security;
 alter table public.age_group_code_redemptions enable row level security;
@@ -2288,6 +2459,98 @@ to authenticated
 using (public.is_admin(auth.uid()))
 with check (public.is_admin(auth.uid()));
 
+drop policy if exists "chat_threads_select" on public.chat_threads;
+create policy "chat_threads_select" on public.chat_threads
+for select
+to authenticated
+using (
+  public.is_admin(auth.uid())
+  or (user_id = auth.uid() and public.is_device_banned() = false and public.is_user_banned(auth.uid()) = false)
+);
+
+drop policy if exists "chat_threads_insert" on public.chat_threads;
+create policy "chat_threads_insert" on public.chat_threads
+for insert
+to authenticated
+with check (
+  public.is_admin(auth.uid())
+  or (
+    user_id = auth.uid()
+    and public.can_chat_course(course_id, auth.uid())
+    and public.is_device_banned() = false
+    and public.is_user_banned(auth.uid()) = false
+  )
+);
+
+drop policy if exists "chat_threads_admin_update" on public.chat_threads;
+create policy "chat_threads_admin_update" on public.chat_threads
+for update
+to authenticated
+using (public.is_admin(auth.uid()))
+with check (public.is_admin(auth.uid()));
+
+drop policy if exists "chat_threads_admin_delete" on public.chat_threads;
+create policy "chat_threads_admin_delete" on public.chat_threads
+for delete
+to authenticated
+using (public.is_admin(auth.uid()));
+
+drop policy if exists "chat_messages_select" on public.chat_messages;
+create policy "chat_messages_select" on public.chat_messages
+for select
+to authenticated
+using (
+  public.is_admin(auth.uid())
+  or (
+    public.is_device_banned() = false
+    and public.is_user_banned(auth.uid()) = false
+    and exists (
+      select 1
+      from public.chat_threads t
+      where t.id = thread_id
+        and t.user_id = auth.uid()
+    )
+  )
+);
+
+drop policy if exists "chat_messages_insert" on public.chat_messages;
+create policy "chat_messages_insert" on public.chat_messages
+for insert
+to authenticated
+with check (
+  (
+    sender_role = 'user'
+    and sender_user_id = auth.uid()
+    and public.is_device_banned() = false
+    and public.is_user_banned(auth.uid()) = false
+    and exists (
+      select 1
+      from public.chat_threads t
+      where t.id = thread_id
+        and t.user_id = auth.uid()
+        and public.can_chat_course(t.course_id, auth.uid())
+    )
+  )
+  or (
+    sender_role = 'admin'
+    and sender_user_id = auth.uid()
+    and public.is_admin(auth.uid())
+  )
+);
+
+drop policy if exists "chat_messages_admin_update" on public.chat_messages;
+create policy "chat_messages_admin_update" on public.chat_messages
+for update
+to authenticated
+using (public.is_admin(auth.uid()))
+with check (public.is_admin(auth.uid()));
+
+drop policy if exists "chat_messages_admin_delete" on public.chat_messages;
+create policy "chat_messages_admin_delete" on public.chat_messages
+for delete
+to authenticated
+using (public.is_admin(auth.uid()));
+
 -- User devices: user can upsert their own device row; admin can view all
 drop policy if exists "user_devices_select" on public.user_devices;
 create policy "user_devices_select" on public.user_devices
@@ -2390,15 +2653,18 @@ grant select, insert, update, delete on table public.age_group_codes to authenti
 grant select, insert, update, delete on table public.age_group_code_redemptions to authenticated;
 grant select, insert, update, delete on table public.user_devices to authenticated;
 grant select, insert, update, delete on table public.device_bans to authenticated;
-grant select, insert, update, delete on table public.user_bans to authenticated;
-grant select, insert, update, delete on table public.user_profiles to authenticated;
-grant select, insert, update, delete on table public.contact_requests to authenticated;
+ grant select, insert, update, delete on table public.user_bans to authenticated;
+ grant select, insert, update, delete on table public.user_profiles to authenticated;
+ grant select, insert, update, delete on table public.contact_requests to authenticated;
+ grant select, insert, update, delete on table public.chat_threads to authenticated;
+ grant select, insert, update, delete on table public.chat_messages to authenticated;
 
 grant insert on table public.contact_requests to anon;
 
 grant execute on function public.request_device_id() to anon, authenticated;
 grant execute on function public.is_device_banned() to anon, authenticated;
 grant execute on function public.preview_months(uuid) to anon, authenticated;
+grant execute on function public.preview_months_for_package(uuid, uuid) to anon, authenticated;
 grant execute on function public.preview_days(uuid) to anon, authenticated;
 grant execute on function public.preview_videos(uuid) to anon, authenticated;
 grant execute on function public.preview_age_groups(uuid) to anon, authenticated;
@@ -2411,29 +2677,41 @@ grant execute on function public.has_active_enrollment(uuid, uuid) to authentica
 grant execute on function public.has_full_course_access(uuid, uuid) to authenticated;
 grant execute on function public.has_active_month_access(uuid, int, uuid) to authenticated;
 grant execute on function public.has_any_active_month_access(uuid, uuid) to authenticated;
-grant execute on function public.has_active_age_group_access(uuid, uuid) to authenticated;
-grant execute on function public.has_active_player_card_access(uuid, uuid) to authenticated;
-grant execute on function public.track_device() to authenticated;
+ grant execute on function public.has_active_age_group_access(uuid, uuid) to authenticated;
+ grant execute on function public.has_active_player_card_access(uuid, uuid) to authenticated;
+ grant execute on function public.can_chat_course(uuid, uuid) to authenticated;
+ grant execute on function public.track_device() to authenticated;
 grant execute on function public.admin_create_course_in_package(uuid, text, text, text, text, text, text) to authenticated;
 grant execute on function public.redeem_subscription_code(text) to authenticated;
 grant execute on function public.generate_subscription_codes(text, int, int, int) to authenticated;
 grant execute on function public.redeem_month_code(text) to authenticated;
 grant execute on function public.generate_month_codes(text, int, int, int, int) to authenticated;
-grant execute on function public.redeem_age_group_code(text) to authenticated;
-grant execute on function public.redeem_any_code(text) to authenticated;
-grant execute on function public.generate_age_group_codes(text, uuid, int, int, int) to authenticated;
+ grant execute on function public.redeem_age_group_code(text) to authenticated;
+ grant execute on function public.redeem_any_code(text) to authenticated;
+ grant execute on function public.generate_age_group_codes(text, uuid, int, int, int) to authenticated;
 
 -- =========================================================
 -- Helpful indexes
 -- =========================================================
 
 create index if not exists idx_age_groups_course_id on public.age_groups(course_id);
-create index if not exists idx_player_cards_age_group_id on public.player_cards(age_group_id);
-create index if not exists idx_months_age_group_id on public.months(age_group_id);
-create index if not exists idx_days_month_id on public.days(month_id);
-create index if not exists idx_course_month_access_user_course on public.course_month_access(user_id, course_id);
-create index if not exists idx_month_codes_course_month on public.month_codes(course_id, month_number);
-create index if not exists idx_month_code_redemptions_code_id on public.month_code_redemptions(code_id);
+ create index if not exists idx_player_cards_age_group_id on public.player_cards(age_group_id);
+ create index if not exists idx_months_age_group_id on public.months(age_group_id);
+ create index if not exists idx_months_package_id on public.months(package_id);
+ create index if not exists idx_months_age_group_package_id on public.months(age_group_id, package_id);
+
+ create unique index if not exists ux_months_default_age_group_month_number
+ on public.months(age_group_id, month_number)
+ where package_id is null;
+
+ create unique index if not exists ux_months_pkg_age_group_package_month_number
+ on public.months(age_group_id, package_id, month_number)
+ where package_id is not null;
+
+ create index if not exists idx_days_month_id on public.days(month_id);
+ create index if not exists idx_course_month_access_user_course on public.course_month_access(user_id, course_id);
+ create index if not exists idx_month_codes_course_month on public.month_codes(course_id, month_number);
+ create index if not exists idx_month_code_redemptions_code_id on public.month_code_redemptions(code_id);
 create index if not exists idx_course_age_group_access_user_course on public.course_age_group_access(user_id, course_id);
 create index if not exists idx_course_age_group_access_player_card_id on public.course_age_group_access(player_card_id);
 create unique index if not exists ux_course_age_group_access_user_course_card on public.course_age_group_access(user_id, course_id, player_card_id);
@@ -2456,9 +2734,761 @@ create unique index if not exists idx_user_bans_user_id_active_unique on public.
 create index if not exists idx_contact_requests_course_title on public.contact_requests(course_title);
 create index if not exists idx_contact_requests_created_at on public.contact_requests(created_at);
 
--- =========================================================
--- Optional: minimal seed (edit as needed)
--- =========================================================
--- insert into public.courses (slug, title_ar, title_en, description, cover_image_url, theme)
--- values
--- ('football','كورس كرة القدم','Football','...','/kalya.png','green');
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    begin
+      alter publication supabase_realtime add table public.chat_threads;
+    exception when duplicate_object then
+      null;
+    end;
+    begin
+      alter publication supabase_realtime add table public.chat_messages;
+    exception when duplicate_object then
+      null;
+    end;
+  end if;
+end $$;
+
+create index if not exists idx_chat_threads_user_id on public.chat_threads(user_id);
+create index if not exists idx_chat_threads_course_id on public.chat_threads(course_id);
+create index if not exists idx_chat_threads_last_message_at on public.chat_threads(last_message_at);
+create index if not exists idx_chat_messages_thread_id_created_at on public.chat_messages(thread_id, created_at);
+
+ -- =========================================================
+ -- Optional: minimal seed (edit as needed)
+ -- =========================================================
+ -- insert into public.courses (slug, title_ar, title_en, description, cover_image_url, theme)
+ -- values
+ -- ('football','كورس كرة القدم','Football','...','/kalya.png','green');
+
+ do $$
+ declare
+   v_pkg_id uuid;
+   v_course_id uuid;
+   v_ag_id uuid;
+   v_month_id uuid;
+   v_day1 uuid;
+   v_day2 uuid;
+   v_day3 uuid;
+   v_day4 uuid;
+ begin
+   select id into v_pkg_id from public.packages where slug = 'small' limit 1;
+   if v_pkg_id is null then
+     return;
+   end if;
+
+   select id into v_course_id from public.courses where slug = 'football' limit 1;
+   if v_course_id is null then
+     insert into public.courses (slug, title_ar, title_en, theme, is_published)
+     values ('football', 'كورس كرة القدم', 'Football', 'green', true)
+     returning id into v_course_id;
+   end if;
+
+   if not exists (
+     select 1
+     from public.package_courses pc
+     where pc.package_id = v_pkg_id
+       and pc.course_id = v_course_id
+   ) then
+     insert into public.package_courses (package_id, course_id, sort_order)
+     values (
+       v_pkg_id,
+       v_course_id,
+       coalesce((select max(pc2.sort_order) + 1 from public.package_courses pc2 where pc2.package_id = v_pkg_id), 0)
+     );
+   end if;
+
+   if not exists (select 1 from public.age_groups ag where ag.course_id = v_course_id) then
+     insert into public.age_groups (course_id, title, min_age, max_age, sort_order)
+     values (v_course_id, 'عام', null, null, 0);
+   end if;
+
+   for v_ag_id in
+     select ag.id
+     from public.age_groups ag
+     where ag.course_id = v_course_id
+     order by ag.sort_order, ag.created_at
+   loop
+     select m.id into v_month_id
+     from public.months m
+     where m.age_group_id = v_ag_id
+       and m.package_id = v_pkg_id
+       and m.month_number = 1
+     limit 1;
+
+     if v_month_id is null then
+       insert into public.months (age_group_id, package_id, title, month_number, sort_order)
+       values (v_ag_id, v_pkg_id, 'الشهر الأول', 1, 0)
+       returning id into v_month_id;
+     end if;
+
+     select d.id into v_day1 from public.days d where d.month_id = v_month_id and d.day_number = 1 limit 1;
+     if v_day1 is null then
+       insert into public.days (month_id, title, day_number, sort_order)
+       values (v_month_id, 'اليوم الأول', 1, 0)
+       returning id into v_day1;
+     end if;
+
+     select d.id into v_day2 from public.days d where d.month_id = v_month_id and d.day_number = 2 limit 1;
+     if v_day2 is null then
+       insert into public.days (month_id, title, day_number, sort_order)
+       values (v_month_id, 'اليوم الثاني', 2, 1)
+       returning id into v_day2;
+     end if;
+
+     select d.id into v_day3 from public.days d where d.month_id = v_month_id and d.day_number = 3 limit 1;
+     if v_day3 is null then
+       insert into public.days (month_id, title, day_number, sort_order)
+       values (v_month_id, 'اليوم الثالث (بدني في الملعب)', 3, 2)
+       returning id into v_day3;
+     end if;
+
+     select d.id into v_day4 from public.days d where d.month_id = v_month_id and d.day_number = 4 limit 1;
+     if v_day4 is null then
+       insert into public.days (month_id, title, day_number, sort_order)
+       values (v_month_id, 'اليوم الرابع', 4, 3)
+       returning id into v_day4;
+     end if;
+
+     -- Day 1 videos
+     if not exists (select 1 from public.videos v where v.day_id = v_day1 and v.sort_order = 0) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day1,
+         'تمرين 1',
+         'https://drive.google.com/file/d/1KkINO_uD2rsPTh312EpP7oMArths6Rhf/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ دنبل 10 كيلو – 12 عدة
+2️⃣ دنبل 12.5 كيلو – 12 عدة
+3️⃣ دنبل 15 كيلو – 10 عدات
+
+وقت الراحة بين كل مجموعة: دقيقة واحدة
+$txt$,
+         false,
+         0
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day1 and v.sort_order = 1) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day1,
+         'تمرين 2',
+         'https://drive.google.com/file/d/1Cxm9pZMsNN8YeVjXepDOqi6Xx8LGjyTZ/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ دنبل 10 كيلو – 15 عدة
+2️⃣ دنبل 12.5 كيلو – 15 عدة
+3️⃣ دنبل 15 كيلو – 10 عدات
+
+وقت الراحة: دقيقة ونصف
+$txt$,
+         false,
+         1
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day1 and v.sort_order = 2) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day1,
+         'تمرين 3',
+         'https://drive.google.com/file/d/1OZ4rtp34jppxFntB-hwQZoGlMT8C3I-P/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ 12 عدة لكل رجل (من غير وزن)
+2️⃣ 12 عدة لكل رجل (دنبل 5 كيلو في كل إيد)
+3️⃣ 12 عدة لكل رجل (دنبل 5 كيلو في كل إيد)
+
+وقت الراحة بين المجاميع: دقيقتين
+$txt$,
+         false,
+         2
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day1 and v.sort_order = 3) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day1,
+         'تمرين 4',
+         'https://drive.google.com/file/d/1OeDz0ygoneKZiwww9n4o0qyC-lePvTWP/view',
+         $txt$
+📌 مجموعتين
+1️⃣ 25 عدة يمين وشمال
+2️⃣ 30 عدة يمين وشمال
+
+وقت الراحة بين المجاميع: 30 ثانية
+$txt$,
+         false,
+         3
+       );
+     end if;
+
+     -- Day 2 videos
+     if not exists (select 1 from public.videos v where v.day_id = v_day2 and v.sort_order = 0) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day2,
+         'تمرين 1',
+         'https://drive.google.com/file/d/1kk8XVxulLHCwhhg98avSAQB6c26jaKJA/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ 12 جامب لكل رجل (من غير وزن)
+2️⃣ 10 جمبات لكل رجل (دنبل 5 كيلو في كل إيد)
+3️⃣ 8 جمبات لكل رجل (دنبل 7.5 كيلو – دنبل واحد في الإيد العكسية)
+
+وقت الراحة: دقيقتين
+$txt$,
+         false,
+         0
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day2 and v.sort_order = 1) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day2,
+         'تمرين 2',
+         'https://drive.google.com/file/d/15dQA7dtUzEoz_eiMhigNTzjk4bQ_eiD0/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ 12 جامب لكل رجل
+2️⃣ 15 جامب لكل رجل
+3️⃣ 12 جامب لكل رجل (دنبل 5 كيلو في كل إيد)
+
+وقت الراحة: دقيقتين
+$txt$,
+         false,
+         1
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day2 and v.sort_order = 2) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day2,
+         'تمرين 3',
+         'https://drive.google.com/file/d/17rBMxGrfJllRr5sPrza6esjPGbE4D68f/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ 15 عدة لكل رجل
+2️⃣ 15 عدة لكل رجل
+3️⃣ 10 عدات لكل رجل (دنبل 5 كيلو في إيد واحدة والتانية فاضية)
+
+وقت الراحة: دقيقة واحدة
+$txt$,
+         false,
+         2
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day2 and v.sort_order = 3) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day2,
+         'تمرين 4',
+         'https://drive.google.com/file/d/1MtVR4oCC1qMrhG5HcBdbKxwUVAP5ldX4/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ 30 ثانية
+2️⃣ 40 ثانية
+3️⃣ من 50 إلى 60 ثانية
+
+وقت الراحة: 30 ثانية
+$txt$,
+         false,
+         3
+       );
+     end if;
+
+     -- Day 3 (field conditioning)
+     if not exists (select 1 from public.videos v where v.day_id = v_day3 and v.sort_order = 0) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day3,
+         'بدني في الملعب',
+         null,
+         $txt$
+📌 جري
+1️⃣ جري 10 دقائق حول الملعب بسرعة 50% — راحة: دقيقتين
+2️⃣ جري 5 دقائق حول الملعب بسرعة 70% — راحة: 4 دقائق
+3️⃣ جري 3 دقائق حول الملعب بسرعة 100% — راحة: دقيقة
+4️⃣ جري دقيقة واحدة بسرعة 100%
+$txt$,
+         false,
+         0
+       );
+     end if;
+
+     -- Day 4 videos
+     if not exists (select 1 from public.videos v where v.day_id = v_day4 and v.sort_order = 0) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day4,
+         'تمرين 1',
+         'https://drive.google.com/file/d/1w8db3y8kqUeGV1Kp2tChIqHQ6uHN-tZo/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ 12 عدة (البار فاضي)
+2️⃣ 10 عدات (البار فيه طارة 5)
+3️⃣ 8 عدات (البار فيه وزن 7.5)
+
+وقت الراحة: دقيقة ونصف
+$txt$,
+         false,
+         0
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day4 and v.sort_order = 1) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day4,
+         'تمرين 2',
+         'https://drive.google.com/file/d/1DpEimw8YkJp7epv_BoI6Sb4j39CbXhjW/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ 12
+2️⃣ 12
+3️⃣ 12
+
+وقت الراحة: دقيقتين
+$txt$,
+         false,
+         1
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day4 and v.sort_order = 2) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day4,
+         'تمرين 3',
+         'https://drive.google.com/file/d/1JNVXbZmyFkDr6a4Rq2vT9_p6m4WWhC_o/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ 15 عدة
+2️⃣ 20 عدة
+3️⃣ 20 عدة
+
+وقت الراحة: دقيقة ونصف
+$txt$,
+         false,
+         2
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day4 and v.sort_order = 3) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day4,
+         'تمرين 4',
+         'https://drive.google.com/file/d/1y_yVkmnxqHb7pi39vAbXXClF96XDKR5_/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ 12 عدة (وزن 5 كيلو)
+2️⃣ 12 عدة (وزن 5 كيلو)
+3️⃣ 10 عدات (وزن 10 كيلو)
+
+وقت الراحة: دقيقة ونصف
+$txt$,
+         false,
+         3
+       );
+     end if;
+   end loop;
+ end $$;
+
+ do $$
+ declare
+   v_pkg_id uuid;
+   v_course_id uuid;
+   v_ag_id uuid;
+   v_month_id uuid;
+   v_day1 uuid;
+   v_day2 uuid;
+   v_day3 uuid;
+   v_day4 uuid;
+   v_day5 uuid;
+ begin
+   select id into v_pkg_id from public.packages where slug = 'medium' limit 1;
+   if v_pkg_id is null then
+     return;
+   end if;
+
+   select id into v_course_id from public.courses where slug = 'football' limit 1;
+   if v_course_id is null then
+     insert into public.courses (slug, title_ar, title_en, theme, is_published)
+     values ('football', 'كورس كرة القدم', 'Football', 'green', true)
+     returning id into v_course_id;
+   end if;
+
+   if not exists (
+     select 1
+     from public.package_courses pc
+     where pc.package_id = v_pkg_id
+       and pc.course_id = v_course_id
+   ) then
+     insert into public.package_courses (package_id, course_id, sort_order)
+     values (
+       v_pkg_id,
+       v_course_id,
+       coalesce((select max(pc2.sort_order) + 1 from public.package_courses pc2 where pc2.package_id = v_pkg_id), 0)
+     );
+   end if;
+
+   if not exists (select 1 from public.age_groups ag where ag.course_id = v_course_id) then
+     insert into public.age_groups (course_id, title, min_age, max_age, sort_order)
+     values (v_course_id, 'عام', null, null, 0);
+   end if;
+
+   for v_ag_id in
+     select ag.id
+     from public.age_groups ag
+     where ag.course_id = v_course_id
+     order by ag.sort_order, ag.created_at
+   loop
+     select m.id into v_month_id
+     from public.months m
+     where m.age_group_id = v_ag_id
+       and m.package_id = v_pkg_id
+       and m.month_number = 1
+     limit 1;
+
+     if v_month_id is null then
+       insert into public.months (age_group_id, package_id, title, month_number, sort_order)
+       values (v_ag_id, v_pkg_id, 'الشهر الأول', 1, 0)
+       returning id into v_month_id;
+     end if;
+
+     select d.id into v_day1 from public.days d where d.month_id = v_month_id and d.day_number = 1 limit 1;
+     if v_day1 is null then
+       insert into public.days (month_id, title, day_number, sort_order)
+       values (v_month_id, 'اليوم الأول', 1, 0)
+       returning id into v_day1;
+     end if;
+
+     select d.id into v_day2 from public.days d where d.month_id = v_month_id and d.day_number = 2 limit 1;
+     if v_day2 is null then
+       insert into public.days (month_id, title, day_number, sort_order)
+       values (v_month_id, 'اليوم الثاني (بدني في الملعب)', 2, 1)
+       returning id into v_day2;
+     end if;
+
+     select d.id into v_day3 from public.days d where d.month_id = v_month_id and d.day_number = 3 limit 1;
+     if v_day3 is null then
+       insert into public.days (month_id, title, day_number, sort_order)
+       values (v_month_id, 'اليوم الثالث', 3, 2)
+       returning id into v_day3;
+     end if;
+
+     select d.id into v_day4 from public.days d where d.month_id = v_month_id and d.day_number = 4 limit 1;
+     if v_day4 is null then
+       insert into public.days (month_id, title, day_number, sort_order)
+       values (v_month_id, 'اليوم الرابع', 4, 3)
+       returning id into v_day4;
+     end if;
+
+     select d.id into v_day5 from public.days d where d.month_id = v_month_id and d.day_number = 5 limit 1;
+     if v_day5 is null then
+       insert into public.days (month_id, title, day_number, sort_order)
+       values (v_month_id, 'اليوم الخامس', 5, 4)
+       returning id into v_day5;
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day1 and v.sort_order = 0) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day1,
+         'تمرين 1',
+         null,
+         $txt$
+📌 3 مجاميع
+1️⃣ 12 عدة لكل جنب من جسمك (وزن 5 كيلو / طارة أو كرة طبية)
+2️⃣ 12 عدة (وزن 10 كيلو)
+3️⃣ 12 عدة (وزن 10 كيلو)
+
+وقت الراحة: دقيقتين
+$txt$,
+         false,
+         0
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day1 and v.sort_order = 1) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day1,
+         'تمرين 2',
+         'https://drive.google.com/file/d/12BQtixNw3-susYrT_Tl-XqzRDd3iixYA/view',
+         $txt$
+📌 (مجموعتين)
+1️⃣ 20 عدة يمين وشمال
+2️⃣ 30 عدة يمين وشمال
+
+وقت الراحة: 30 ثانية
+$txt$,
+         false,
+         1
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day2 and v.sort_order = 0) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day2,
+         'بدني في الملعب',
+         null,
+         $txt$
+📌 بدني (في الملعب)
+1️⃣ جري 10 دقائق حولين الملعب سرعة 50% — راحة: دقيقتين
+2️⃣ جري 5 دقائق حولين الملعب سرعة 70% — راحة: 4 دقائق
+3️⃣ جري 3 دقائق حولين الملعب سرعة 10% — راحة: دقيقة
+4️⃣ جري دقيقة واحدة سرعة 100%
+$txt$,
+         false,
+         0
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day3 and v.sort_order = 0) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day3,
+         'تمرين 1',
+         'https://drive.google.com/file/d/1Cxm9pZMsNN8YeVjXepDOqi6Xx8LGjyTZ/view',
+         $txt$
+📌 (3 مجاميع)
+1️⃣ دنبل 10 كيلو — 15 عدة
+2️⃣ دنبل 12.5 كيلو — 15 عدة
+3️⃣ دنبل 15 كيلو — 10 عدات
+
+وقت الراحة: دقيقة ونصف
+$txt$,
+         false,
+         0
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day3 and v.sort_order = 1) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day3,
+         'تمرين 2',
+         'https://drive.google.com/file/d/1OZ4rtp34jppxFntB-hwQZoGlMT8C3I-P/view',
+         $txt$
+📌 (3 مجاميع)
+1️⃣ 12 عدة لكل رجل (من غير وزن)
+2️⃣ 12 عدة لكل رجل (دنبل 5 كيلو في كل إيد)
+3️⃣ 12 عدة لكل رجل (دنبل 5 كيلو في كل إيد)
+
+وقت الراحة مبين المجاميع: دقيقتين
+$txt$,
+         false,
+         1
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day3 and v.sort_order = 2) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day3,
+         'تمرين 3',
+         'https://drive.google.com/file/d/1KkINO_uD2rsPTh312EpP7oMArths6Rhf/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ دنبل 10 كيلو — 12 عدة
+2️⃣ دنبل 12.5 كيلو — 12 عدة
+3️⃣ دنبل 15 كيلو — 10 عدات
+
+وقت الراحة مبين كل مجموعة: دقيقة واحدة
+$txt$,
+         false,
+         2
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day3 and v.sort_order = 3) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day3,
+         'تمرين 4',
+         'https://drive.google.com/file/d/1ldtvSE5fVH4dQn9eDyyLgppsgzuPERGH/view',
+         $txt$
+📌 (مجموعتين)
+1️⃣ 20 عدة لكل رجل
+2️⃣ 20 عدة لكل رجل
+$txt$,
+         false,
+         3
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day4 and v.sort_order = 0) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day4,
+         'بداية اليوم الرابع',
+         'https://drive.google.com/file/d/1IH6tTVWYiYtEGQzqzZ9T3PSfZQdtFrJm/view',
+         null,
+         false,
+         0
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day4 and v.sort_order = 1) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day4,
+         'تمرين 1',
+         'https://drive.google.com/file/d/1hlnS66Zy2BeZc10aAYaDkpTSNyPgT5wJ/view',
+         $txt$
+📌 (مجموعتين)
+1️⃣ 3 اسبرنتات لكل رجل والمسافة لكل واحد 5 متر بالظبط
+2️⃣ 4 اسبرنتات لكل رجل والمسافة هي هي
+
+أوقات الراحة: 20 ثانية مبين كل اسبرنت للتاني
+$txt$,
+         false,
+         1
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day4 and v.sort_order = 2) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day4,
+         'تمرين 2',
+         'https://drive.google.com/file/d/1OaFuvqZrGgg1EYV8iX0SynI2if5ig4J5/view',
+         $txt$
+📌 مجموعتين
+1️⃣ 3 اسبرنتات لكل رجل والمسافة ثابتة
+2️⃣ 4 اسبرنتات لكل رجل والمسافة ثابتة
+
+أوقات الراحة: 20 ثانية مبين كل اسبرنت
+$txt$,
+         false,
+         2
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day4 and v.sort_order = 3) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day4,
+         'تمرين 3',
+         'https://drive.google.com/file/d/1xDEbhviVEi70mq_mml0Y5M36x8MD8Xix/view',
+         $txt$
+📌 مجموعتين
+1️⃣ 20 عدة لكل رجل يمين وشمال
+2️⃣ 25 عدة لكل رجل يمين وشمال
+
+وقت الراحة: 20 ثانية
+$txt$,
+         false,
+         3
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day5 and v.sort_order = 0) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day5,
+         'تمرين 1',
+         'https://drive.google.com/file/d/1DpEimw8YkJp7epv_BoI6Sb4j39CbXhjW/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ 12
+2️⃣ 12
+3️⃣ 12
+
+أوقات الراحة: دقيقتين
+$txt$,
+         false,
+         0
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day5 and v.sort_order = 1) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day5,
+         'تمرين 2',
+         'https://drive.google.com/file/d/1JNVXbZmyFkDr6a4Rq2vT9_p6m4WWhC_o/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ 15 عدة
+2️⃣ 20 عدة
+3️⃣ 20 عدة
+
+وقت الراحة: دقيقة ونصف
+$txt$,
+         false,
+         1
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day5 and v.sort_order = 2) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day5,
+         'تمرين 3',
+         'https://drive.google.com/file/d/1y_yVkmnxqHb7pi39vAbXXClF96XDKR5_/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ 12 عدة (وزن 5 كيلو)
+2️⃣ 12 عدة (وزن 5 كيلو)
+3️⃣ 10 عدات (وزن 10 كيلو)
+
+أوقات الراحة: دقيقة ونصف
+$txt$,
+         false,
+         2
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day5 and v.sort_order = 3) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day5,
+         'تمرين 4',
+         'https://drive.google.com/file/d/1Nu8MwOcI4wG_rnp93pFkcbQHHNcSAXqQ/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ 20 عدة (وزن 2.5 كيلو في كل إيد)
+2️⃣ 25 عدة (وزن 2.5 كيلو في كل إيد)
+3️⃣ 15 عدة (دنبل 5 كيلو في كل إيد)
+
+⏱️ وقت الراحة: دقيقة ونص
+$txt$,
+         false,
+         3
+       );
+     end if;
+
+     if not exists (select 1 from public.videos v where v.day_id = v_day5 and v.sort_order = 4) then
+       insert into public.videos (day_id, title, video_url, details, is_free_preview, sort_order)
+       values (
+         v_day5,
+         'تمرين 5',
+         'https://drive.google.com/file/d/1PI86Cq4Aw3dG8t4Qsi_Ri_eKst1HBkCz/view',
+         $txt$
+📌 3 مجاميع
+1️⃣ 15 عدة يمين / شمال (من غير وزن)
+2️⃣ 15 عدة يمين / شمال (دنبل 5 كيلو في كل إيد)
+3️⃣ 12 عدة يمين / شمال
+
+دنبل 10 كيلو في إيد واحدة
+6 عدات وتبدل الدنبل للإيد التانية في الـ 6 عدات الباقيين
+
+⏱️ وقت الراحة: دقيقة ونص
+$txt$,
+         false,
+         4
+       );
+     end if;
+   end loop;
+ end $$;

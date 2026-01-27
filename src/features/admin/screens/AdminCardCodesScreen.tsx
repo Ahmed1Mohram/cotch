@@ -313,18 +313,18 @@ export function AdminCardCodesScreen() {
   };
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-5" dir="rtl">
       <AdminCard>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="text-lg font-semibold text-slate-900">أكواد الكروت</div>
+            <div className="text-base font-extrabold text-slate-900">أكواد الكروت</div>
             <div className="mt-1 text-sm text-slate-600">اختار كورس ثم اختار كارت وولّد الأكواد.</div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {selectedCourse?.slug ? (
               <Link
                 href={`/admin/courses/${encodeURIComponent(selectedCourse.slug)}?tab=cards`}
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
               >
                 فتح صفحة الكورس
               </Link>
@@ -338,7 +338,7 @@ export function AdminCardCodesScreen() {
             (error
               ? "border-rose-200 bg-rose-50 text-rose-700"
               : coursesLoading || cardsLoading || generating
-                ? "border-violet-100 bg-violet-50 text-violet-700"
+                ? "border-slate-200 bg-slate-50 text-slate-700"
                 : "border-slate-200 bg-slate-50 text-slate-600")
           }
         >
@@ -357,13 +357,13 @@ export function AdminCardCodesScreen() {
       </AdminCard>
 
       <AdminCard>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <div className="mb-2 text-right text-xs font-medium text-slate-600">الكورس</div>
             <select
               value={selectedCourseId}
               onChange={(e) => setSelectedCourseId(e.target.value)}
-              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+              className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
               disabled={coursesLoading}
             >
               {courses.length === 0 ? <option value="">لا يوجد كورسات</option> : null}
@@ -380,7 +380,7 @@ export function AdminCardCodesScreen() {
             <select
               value={selectedCardId}
               onChange={(e) => setSelectedCardId(e.target.value)}
-              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+              className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
               disabled={cardsLoading || !selectedCourseId}
             >
               {cards.length === 0 ? <option value="">لا يوجد كروت</option> : null}
@@ -393,7 +393,7 @@ export function AdminCardCodesScreen() {
           </label>
         </div>
 
-        <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-4">
           <div className="text-sm font-semibold text-slate-900">إعدادات التوليد</div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -402,21 +402,21 @@ export function AdminCardCodesScreen() {
               onChange={(e) => setCount(e.target.value)}
               placeholder="عدد الأكواد"
               inputMode="numeric"
-              className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+              className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
             />
             <input
               value={durationDays}
               onChange={(e) => setDurationDays(e.target.value)}
               placeholder="مدة التفعيل (بالأيام)"
               inputMode="numeric"
-              className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+              className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
             />
             <input
               value={maxRedemptions}
               onChange={(e) => setMaxRedemptions(e.target.value)}
               placeholder="عدد مرات استخدام الكود"
               inputMode="numeric"
-              className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+              className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
             />
           </div>
 
@@ -429,7 +429,7 @@ export function AdminCardCodesScreen() {
                 type="button"
                 onClick={copyAll}
                 disabled={copying || deletingCodes || !generatedCodes.length}
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-4 text-sm font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-4 text-sm font-semibold text-slate-800 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 disabled:opacity-50"
               >
                 {copying ? "جاري النسخ..." : "نسخ الأكواد"}
               </button>
@@ -440,7 +440,7 @@ export function AdminCardCodesScreen() {
                     type="button"
                     onClick={deleteGenerated}
                     disabled={deletingCodes || copying || !generatedCodes.length}
-                    className="inline-flex h-10 items-center justify-center rounded-xl bg-rose-600 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                    className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-600 px-4 text-sm font-semibold text-white shadow-sm transition enabled:hover:bg-rose-700 disabled:opacity-50"
                   >
                     {deletingCodes ? "حذف..." : "تأكيد حذف الأكواد"}
                   </button>
@@ -448,7 +448,7 @@ export function AdminCardCodesScreen() {
                     type="button"
                     onClick={() => setConfirmDeleteCodes(false)}
                     disabled={deletingCodes}
-                    className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-4 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                    className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-4 text-sm font-semibold text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 disabled:opacity-50"
                   >
                     إلغاء
                   </button>
@@ -458,7 +458,7 @@ export function AdminCardCodesScreen() {
                   type="button"
                   onClick={() => setConfirmDeleteCodes(true)}
                   disabled={deletingCodes || copying || !generatedCodes.length}
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-rose-50 px-4 text-sm font-medium text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                  className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-50 px-4 text-sm font-semibold text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-100 disabled:opacity-50"
                 >
                   حذف الأكواد
                 </button>
@@ -474,7 +474,7 @@ export function AdminCardCodesScreen() {
                   !selectedCourse?.slug ||
                   !selectedCardId
                 }
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition enabled:hover:bg-slate-800 disabled:opacity-50"
               >
                 {generating ? "جاري التوليد..." : "توليد الأكواد"}
               </button>
@@ -483,7 +483,7 @@ export function AdminCardCodesScreen() {
         </div>
 
         {generatedCodes.length ? (
-          <div className="mt-4 rounded-xl bg-white px-4 py-4 border border-slate-200">
+          <div className="mt-4 rounded-2xl bg-white px-4 py-4 border border-slate-200">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-sm font-semibold text-slate-900">الأكواد</div>
               <div className="text-xs text-slate-500">{generatedCodes.length}</div>

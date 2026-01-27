@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ChatWidget } from "@/features/chat/ChatWidget";
 import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 type Month = {
@@ -134,11 +135,13 @@ function normalizeEmbedUrl(input: string) {
 }
 
 export function ProgramCardContentViewer({
+  courseId,
   courseSlug,
-  courseTitle: _courseTitle,
+  courseTitle,
   hasCourseAccess,
   initialMonths,
 }: {
+  courseId: string;
   courseSlug: string;
   courseTitle: string;
   hasCourseAccess: boolean;
@@ -163,7 +166,18 @@ export function ProgramCardContentViewer({
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const activeVideo = useMemo(() => {
     if (!activeDay) return null;
-    return activeDay.videos.find((v) => v.id === activeVideoId) ?? activeDay.videos[0] ?? null;
+    const selected = activeDay.videos.find((v) => v.id === activeVideoId) ?? null;
+    if (selected) return selected;
+
+    const firstPlayable =
+      activeDay.videos.find((v) => {
+        const raw = v.video_url?.trim() ?? "";
+        if (!raw) return false;
+        const normalized = normalizeVideoUrl(raw);
+        return Boolean(normalized && isHttpUrl(normalized));
+      }) ?? null;
+
+    return firstPlayable ?? activeDay.videos[0] ?? null;
   }, [activeDay, activeVideoId]);
 
   const activeVideoUrl = activeVideo?.video_url ? normalizeVideoUrl(activeVideo.video_url) : "";
@@ -269,7 +283,16 @@ export function ProgramCardContentViewer({
       const nextDays = Array.from(byDay.values());
       setDays(nextDays);
       setActiveDayId(nextDays[0]?.id ?? null);
-      setActiveVideoId(nextDays[0]?.videos[0]?.id ?? null);
+      setActiveVideoId(
+        nextDays[0]?.videos.find((v) => {
+          const raw = v.video_url?.trim() ?? "";
+          if (!raw) return false;
+          const normalized = normalizeVideoUrl(raw);
+          return Boolean(normalized && isHttpUrl(normalized));
+        })?.id ??
+          nextDays[0]?.videos[0]?.id ??
+          null,
+      );
       setDaysLoading(false);
       return;
     }
@@ -333,7 +356,16 @@ export function ProgramCardContentViewer({
 
     setDays(nextDays);
     setActiveDayId(nextDays[0]?.id ?? null);
-    setActiveVideoId(nextDays[0]?.videos[0]?.id ?? null);
+    setActiveVideoId(
+      nextDays[0]?.videos.find((v) => {
+        const raw = v.video_url?.trim() ?? "";
+        if (!raw) return false;
+        const normalized = normalizeVideoUrl(raw);
+        return Boolean(normalized && isHttpUrl(normalized));
+      })?.id ??
+        nextDays[0]?.videos[0]?.id ??
+        null,
+    );
     setDaysLoading(false);
   }, [hasCourseAccess, supabase]);
 
@@ -455,7 +487,16 @@ export function ProgramCardContentViewer({
                             type="button"
                             onClick={() => {
                               setActiveDayId(d.id);
-                              setActiveVideoId(d.videos[0]?.id ?? null);
+                              setActiveVideoId(
+                                d.videos.find((v) => {
+                                  const raw = v.video_url?.trim() ?? "";
+                                  if (!raw) return false;
+                                  const normalized = normalizeVideoUrl(raw);
+                                  return Boolean(normalized && isHttpUrl(normalized));
+                                })?.id ??
+                                  d.videos[0]?.id ??
+                                  null,
+                              );
                             }}
                             disabled={isAuthLoading}
                             className={
@@ -498,8 +539,17 @@ export function ProgramCardContentViewer({
                                   : "bg-white/5 text-white/80 border-white/10 hover:bg-white/10")
                               }
                             >
-                              <div className="text-right">
-                                <div className="text-sm">{v.title ?? "فيديو"}</div>
+                              <div className="flex flex-row-reverse items-start gap-3">
+                                {v.thumbnail_url ? (
+                                  <img
+                                    src={v.thumbnail_url}
+                                    alt="thumbnail"
+                                    className="h-14 w-20 shrink-0 rounded-xl border border-white/10 object-cover"
+                                  />
+                                ) : null}
+
+                                <div className="min-w-0 text-right">
+                                  <div className="text-sm">{v.title ?? "فيديو"}</div>
                                 {isLocked ? (
                                   <div className="mt-1 text-xs text-[#FFB35A]">مقفول</div>
                                 ) : details ? (
@@ -507,6 +557,7 @@ export function ProgramCardContentViewer({
                                     {details}
                                   </div>
                                 ) : null}
+                                </div>
                               </div>
                             </button>
                           );
@@ -556,6 +607,25 @@ export function ProgramCardContentViewer({
                           </div>
                         </div>
                           );
+                        }
+
+                        if (!isLocked && activeDay && activeDay.videos.length) {
+                          const dayHasPlayableVideo = activeDay.videos.some((v) => {
+                            const raw = v.video_url?.trim() ?? "";
+                            if (!raw) return false;
+                            const normalized = normalizeVideoUrl(raw);
+                            return Boolean(normalized && isHttpUrl(normalized));
+                          });
+
+                          if (!dayHasPlayableVideo) {
+                            return (
+                              <div className="grid h-[420px] place-items-center bg-black px-6" dir="rtl">
+                                <div className="text-right text-sm text-white/70">
+                                  لا يوجد فيديو لهذا اليوم، اتبع التعليمات المكتوبة
+                                </div>
+                              </div>
+                            );
+                          }
                         }
 
                         if (activeDay && activeVideo?.video_url) {
@@ -617,6 +687,8 @@ export function ProgramCardContentViewer({
           )}
         </div>
       </div>
+
+      {hasCourseAccess ? <ChatWidget courseId={courseId} courseTitle={courseTitle} /> : null}
     </div>
   );
 }

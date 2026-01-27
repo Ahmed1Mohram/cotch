@@ -33,7 +33,7 @@ function themeGlow(theme: Course["theme"]) {
 }
 
 function providerBadge(provider: Video["provider"]) {
-  if (provider === "gdrive") return "bg-violet-50 text-violet-800 border border-violet-200";
+  if (provider === "gdrive") return "bg-slate-100 text-slate-800 border border-slate-200";
   return "bg-slate-100 text-slate-700 border border-slate-200";
 }
 
@@ -168,7 +168,7 @@ export function AdminCourseDetailsScreen({ slug }: { slug: string }) {
                     className={cn(
                       "w-full rounded-2xl px-4 py-3 text-right transition border",
                       active
-                        ? "bg-violet-50 text-violet-900 border-violet-200"
+                        ? "bg-slate-50 text-slate-900 border-slate-300"
                         : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100",
                     )}
                   >
@@ -257,7 +257,7 @@ export function AdminCourseDetailsScreen({ slug }: { slug: string }) {
                     الكروت مقفولة افتراضيًا وبتتفتح بالاشتراك.
                   </div>
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-4 py-2 text-xs font-heading tracking-[0.12em] text-violet-800 border border-violet-200">
+                <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-xs font-heading tracking-[0.12em] text-slate-700 border border-slate-200">
                   <IconLock className="h-4 w-4" />
                   مقفولة افتراضيًا
                 </div>
@@ -339,15 +339,15 @@ export function AdminCourseDetailsScreen({ slug }: { slug: string }) {
                                 setVideoOrder([]);
                               }}
                               className={cn(
-                                "relative h-10 w-10 rounded-xl text-xs font-heading tracking-[0.10em] transition border",
+                                "relative h-10 w-10 rounded-2xl text-xs font-heading tracking-[0.10em] transition border",
                                 active
-                                  ? "bg-violet-50 text-violet-900 border-violet-200"
+                                  ? "bg-slate-50 text-slate-900 border-slate-300"
                                   : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100",
                               )}
                             >
                               {dayIndex}
                               {hasVideos ? (
-                                <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-violet-600 text-[10px] text-white shadow-sm">
+                                <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-slate-900 text-[10px] text-white shadow-sm">
                                   <IconSpark className="h-3 w-3" />
                                 </span>
                               ) : null}
@@ -416,7 +416,7 @@ export function AdminCourseDetailsScreen({ slug }: { slug: string }) {
                           }}
                           className={cn(
                             "group cursor-grab rounded-2xl bg-white p-4 border border-slate-200 transition active:cursor-grabbing",
-                            active ? "border-violet-200 bg-violet-50" : "hover:bg-slate-50",
+                            active ? "border-slate-300 bg-slate-50" : "hover:bg-slate-50",
                           )}
                         >
                           <button
@@ -441,7 +441,7 @@ export function AdminCourseDetailsScreen({ slug }: { slug: string }) {
                                   {v.provider}
                                 </span>
                                 {v.provider === "gdrive" ? (
-                                  <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-3 py-1 text-[11px] font-heading tracking-[0.12em] text-violet-800 border border-violet-200">
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-heading tracking-[0.12em] text-slate-700 border border-slate-200">
                                     <IconLock className="h-4 w-4" />
                                     مقفول
                                   </span>

@@ -287,7 +287,7 @@ export function Navbar() {
           <a
             href="#top"
             aria-label="FIT COACH Home"
-            className="absolute left-1/2 top-0 z-30 h-14 w-[220px] -translate-x-1/2 -translate-y-[72%] sm:h-16 sm:w-[280px] sm:-translate-y-[66%] md:h-28 md:w-[620px] md:-translate-y-[58%]"
+            className="absolute left-1/2 top-0 z-30 h-10 w-[160px] -translate-x-1/2 -translate-y-[58%] sm:h-14 sm:w-[260px] sm:-translate-y-[64%] md:h-28 md:w-[620px] md:-translate-y-[58%]"
           >
             <Image
               src={logoSrc}
@@ -341,16 +341,12 @@ export function Navbar() {
             <div className="pointer-events-none absolute inset-0 z-10 opacity-[0.06] mix-blend-soft-light [mask-image:url('/lava-cracks.svg')] [-webkit-mask-image:url('/lava-cracks.svg')] [mask-repeat:repeat-x] [-webkit-mask-repeat:repeat-x] [mask-size:1700px_240px] [-webkit-mask-size:1700px_240px] [mask-position:center_top] [-webkit-mask-position:center_top] bg-gradient-to-r from-[#FFB35A] via-[#FF8A00] to-[#FF6A00]" />
 
             <div className="relative z-40 flex h-14 items-center justify-between px-4 md:grid md:h-16 md:grid-cols-[auto_420px_1fr] lg:grid-cols-[auto_480px_1fr] md:items-center md:px-7">
-              <nav
-                className="md:hidden absolute inset-y-0 left-1/2 w-max -translate-x-1/2 flex items-center justify-center gap-5"
-                aria-label="Primary"
-                dir="rtl"
-              >
+              <nav className="md:hidden flex flex-1 min-w-0 items-center gap-3 pr-1 overflow-hidden" aria-label="Primary" dir="rtl">
                 {links.map((l) => (
                   <a
                     key={l.href}
                     href={l.href}
-                    className="relative inline-flex items-center whitespace-nowrap font-heading text-[15px] font-extrabold leading-none tracking-[0.04em] text-white transition hover:text-white [text-shadow:0_2px_0_rgba(0,0,0,0.85),0_0_18px_rgba(0,0,0,0.60)] after:absolute after:left-0 after:-bottom-2 after:h-px after:w-0 after:bg-gradient-to-r after:from-[#FF6A00] after:to-[#FFB35A] after:transition-all after:duration-200 hover:after:w-full"
+                    className="min-w-0 truncate font-heading text-[12px] font-extrabold tracking-[0.06em] text-white/90 transition hover:text-white [text-shadow:0_2px_0_rgba(0,0,0,0.85)]"
                   >
                     {l.label}
                   </a>
@@ -367,10 +363,8 @@ export function Navbar() {
                       {authReady && isAuthed ? (
                         <>
                           {isAdmin ? (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-11 rounded-full px-5 text-[12px] font-extrabold normal-case tracking-[0.10em] text-white/85 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white"
+                            <button
+                              type="button"
                               onClick={() => {
                                 try {
                                   window.location.assign("/admin");
@@ -378,9 +372,11 @@ export function Navbar() {
                                   router.push("/admin");
                                 }
                               }}
+                              className="h-11 rounded-full px-4 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white/90 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white"
+                              title="الإدارة"
                             >
                               الإدارة
-                            </Button>
+                            </button>
                           ) : null}
                           <button
                             type="button"
@@ -388,7 +384,7 @@ export function Navbar() {
                               void logout();
                             }}
                             disabled={signingOut}
-                            className="h-11 max-w-[180px] rounded-full px-5 text-[12px] font-extrabold normal-case tracking-[0.10em] text-white/85 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white disabled:opacity-60"
+                            className="h-11 max-w-[140px] rounded-full px-5 text-[12px] font-extrabold normal-case tracking-[0.10em] text-white/85 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white disabled:opacity-60"
                             title="تسجيل خروج"
                           >
                             <span className="block min-w-0 truncate">{userLabel}</span>
@@ -408,7 +404,7 @@ export function Navbar() {
                             href="/register"
                             size="sm"
                             variant="primary"
-                            className="h-11 rounded-full px-5 text-[12px] font-extrabold normal-case tracking-[0.10em] shadow-[0_0_0_1px_rgba(255,179,90,0.26),0_18px_70px_-48px_rgba(255,106,0,0.72)]"
+                            className="h-11 rounded-full px-6 text-[12px] font-extrabold normal-case tracking-[0.10em] text-white bg-gradient-to-r from-[#FF2424] via-[#FF6A00] to-[#FFB35A] shadow-[0_0_0_1px_rgba(255,179,90,0.36),0_26px_100px_-54px_rgba(255,36,36,0.98)]"
                           >
                             تسجيل
                           </Button>

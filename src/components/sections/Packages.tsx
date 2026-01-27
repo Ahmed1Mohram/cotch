@@ -12,44 +12,10 @@ type PackageRow = {
   title: string;
   subtitle: string | null;
   description: string | null;
-  badge: string | null;
-  price_egp: number | null;
-  offer_active: boolean;
-  offer_badge: string | null;
-  offer_price_egp: number | null;
-  offer_percent: number | null;
-  offer_start_at: string | null;
-  offer_end_at: string | null;
   features: unknown;
   theme: string;
   sort_order: number;
 };
-
-function isOfferLive(p: PackageRow) {
-  if (!p.offer_active) return false;
-  const now = Date.parse(new Date().toISOString());
-  const start = p.offer_start_at ? new Date(p.offer_start_at).getTime() : NaN;
-  const end = p.offer_end_at ? new Date(p.offer_end_at).getTime() : NaN;
-  if (Number.isFinite(start) && now < start) return false;
-  if (Number.isFinite(end) && now > end) return false;
-  return true;
-}
-
-function effectiveOfferPrice(p: PackageRow): number | null {
-  if (!isOfferLive(p)) return null;
-  if (typeof p.offer_price_egp === "number" && Number.isFinite(p.offer_price_egp)) return p.offer_price_egp;
-  if (
-    typeof p.price_egp === "number" &&
-    Number.isFinite(p.price_egp) &&
-    typeof p.offer_percent === "number" &&
-    Number.isFinite(p.offer_percent) &&
-    p.offer_percent > 0 &&
-    p.offer_percent <= 100
-  ) {
-    return p.price_egp * (1 - p.offer_percent / 100);
-  }
-  return null;
-}
 
 function themeStyles(theme: string) {
   if (theme === "vip") {
@@ -98,7 +64,7 @@ export async function Packages() {
   const { data: rows, error } = await supabase
     .from("packages")
     .select(
-      "id,slug,title,subtitle,description,badge,price_egp,offer_active,offer_badge,offer_price_egp,offer_percent,offer_start_at,offer_end_at,features,theme,sort_order",
+      "id,slug,title,subtitle,description,features,theme,sort_order",
     )
     .eq("active", true)
     .order("sort_order", { ascending: true })
@@ -110,20 +76,6 @@ export async function Packages() {
     title: String(r.title ?? ""),
     subtitle: r.subtitle ?? null,
     description: r.description ?? null,
-    badge: r.badge ?? null,
-    price_egp: r.price_egp === null || r.price_egp === undefined ? null : Number(r.price_egp),
-    offer_active: Boolean((r as any).offer_active),
-    offer_badge: (r as any).offer_badge ?? null,
-    offer_price_egp:
-      (r as any).offer_price_egp === null || (r as any).offer_price_egp === undefined
-        ? null
-        : Number((r as any).offer_price_egp),
-    offer_percent:
-      (r as any).offer_percent === null || (r as any).offer_percent === undefined
-        ? null
-        : Number((r as any).offer_percent),
-    offer_start_at: (r as any).offer_start_at ? String((r as any).offer_start_at) : null,
-    offer_end_at: (r as any).offer_end_at ? String((r as any).offer_end_at) : null,
     features: (r as any).features,
     theme: String(r.theme ?? "orange"),
     sort_order: Number(r.sort_order ?? 0),
@@ -172,14 +124,11 @@ export async function Packages() {
               ) : null}
             </div>
           ) : (
-            <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:overflow-visible sm:px-0">
+              <div className="flex gap-7 snap-x snap-mandatory scroll-px-5 sm:grid sm:gap-7 sm:grid-cols-2 lg:grid-cols-3">
               {items.map((p, idx) => {
                 const st = themeStyles(p.theme);
                 const feats = normalizeFeatures(p.features);
-                const offerPriceRaw = effectiveOfferPrice(p);
-                const offerPrice =
-                  typeof offerPriceRaw === "number" && Number.isFinite(offerPriceRaw) ? offerPriceRaw : null;
-                const offerBadge = p.offer_badge ? p.offer_badge : p.offer_percent ? `-${p.offer_percent}%` : null;
                 const isVip = p.theme === "vip" || p.slug === "vip";
                 const isMedium = p.slug === "medium";
                 const isSmall = p.slug === "small";
@@ -189,7 +138,7 @@ export async function Packages() {
                     <Link
                       href={`/packages/${encodeURIComponent(p.slug)}`}
                       className={
-                        "group relative isolate block overflow-hidden rounded-3xl bg-gradient-to-r p-[2px] transition-transform duration-300 hover:-translate-y-1 " +
+                        "group relative isolate block w-[86vw] max-w-[360px] flex-none snap-start overflow-hidden rounded-3xl bg-gradient-to-r p-[2px] transition-transform duration-300 hover:-translate-y-1 sm:w-auto sm:max-w-none " +
                         st.outer +
                         (isVip ? " hover:-translate-y-2 hover:scale-[1.02]" : "")
                       }
@@ -234,45 +183,7 @@ export async function Packages() {
                               </div>
                             ) : null}
                           </div>
-                          {offerBadge ? (
-                            <div
-                              className={
-                                "shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.14em] ring-1 ring-inset " +
-                                (isVip
-                                  ? "bg-[#FFF2CC]/12 text-[#FFF2CC] ring-[#FFF2CC]/32"
-                                  : "bg-[#FF2424]/10 text-[#FFB35A] ring-[#FF2424]/25")
-                              }
-                            >
-                              {offerBadge}
-                            </div>
-                          ) : p.badge ? (
-                            <div className={"shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.14em] ring-1 ring-inset " + st.badge}>
-                              {p.badge}
-                            </div>
-                          ) : null}
                         </div>
-
-                        {typeof p.price_egp === "number" && Number.isFinite(p.price_egp) ? (
-                          <div className="mt-5 text-right">
-                            <div className="text-xs text-white/60">السعر</div>
-                            {offerPrice !== null ? (
-                              <div className="mt-1">
-                                <div className="font-heading text-3xl tracking-[0.10em] text-white">
-                                  {Math.round(offerPrice).toLocaleString("en-US")}
-                                  <span className="ms-2 text-sm text-white/65">EGP</span>
-                                </div>
-                                <div className="mt-1 text-sm text-white/55 line-through">
-                                  {Math.round(p.price_egp).toLocaleString("en-US")} EGP
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="mt-1 font-heading text-3xl tracking-[0.10em] text-white">
-                                {Math.round(p.price_egp).toLocaleString("en-US")}
-                                <span className="ms-2 text-sm text-white/65">EGP</span>
-                              </div>
-                            )}
-                          </div>
-                        ) : null}
 
                         {p.description ? (
                           <div className="mt-5 text-right text-sm leading-7 text-white/80">{p.description}</div>
@@ -315,6 +226,7 @@ export async function Packages() {
                   </Reveal>
                 );
               })}
+              </div>
             </div>
           )}
         </div>

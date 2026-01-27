@@ -208,8 +208,17 @@ export function ProgramMonthViewer({
                           : "bg-white/5 text-white/80 border-white/10 hover:bg-white/10")
                       }
                     >
-                      <div className="text-right">
-                        <div className="text-sm">{v.title ?? "فيديو"}</div>
+                      <div className="flex flex-row-reverse items-start gap-3">
+                        {v.thumbnail_url ? (
+                          <img
+                            src={v.thumbnail_url}
+                            alt="thumbnail"
+                            className="h-14 w-20 shrink-0 rounded-xl border border-white/10 object-cover"
+                          />
+                        ) : null}
+
+                        <div className="min-w-0 text-right">
+                          <div className="text-sm">{v.title ?? "فيديو"}</div>
                         {isLocked ? (
                           <div className="mt-1 text-xs text-[#FFB35A]">مقفول</div>
                         ) : details ? (
@@ -217,6 +226,7 @@ export function ProgramMonthViewer({
                             {details}
                           </div>
                         ) : null}
+                        </div>
                       </div>
                     </button>
                   );

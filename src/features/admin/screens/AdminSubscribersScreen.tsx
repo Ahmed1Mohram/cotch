@@ -706,11 +706,11 @@ export function AdminSubscribersScreen() {
   }, [requests, groupMode]);
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-5" dir="rtl">
       <AdminCard>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div className="text-2xl font-semibold text-slate-900">المشتركين</div>
+            <div className="text-base font-extrabold text-slate-900">المشتركين</div>
             <div className="mt-1 text-sm text-slate-600">الاشتراكات + طلبات التواصل + حظر الأجهزة.</div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -724,7 +724,7 @@ export function AdminSubscribersScreen() {
             (error || notice?.kind === "error"
               ? "border-rose-200 bg-rose-50 text-rose-700"
               : loading || actionBusy || notice?.kind === "info"
-                ? "border-violet-100 bg-violet-50 text-violet-700"
+                ? "border-slate-200 bg-slate-50 text-slate-700"
                 : "border-emerald-200 bg-emerald-50 text-emerald-700")
           }
         >
@@ -828,7 +828,7 @@ export function AdminSubscribersScreen() {
                                   type="button"
                                   onClick={() => stopEnrollment(e.id)}
                                   disabled={actionBusy}
-                                  className="inline-flex h-10 items-center justify-center rounded-xl bg-violet-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                  className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-50"
                                 >
                                   إيقاف
                                 </button>
@@ -893,7 +893,7 @@ export function AdminSubscribersScreen() {
                               type="button"
                               onClick={() => banDevice(String(r.device_id))}
                               disabled={actionBusy}
-                              className="inline-flex h-10 items-center justify-center rounded-xl bg-rose-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                              className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-50"
                               title={String(r.device_id)}
                             >
                               حظر
@@ -923,13 +923,13 @@ export function AdminSubscribersScreen() {
                 value={grantQuery}
                 onChange={(e) => setGrantQuery(e.target.value)}
                 placeholder="ابحث بالاسم أو رقم الهاتف"
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
               />
               <button
                 type="button"
                 onClick={() => void searchUsers()}
                 disabled={grantLoading}
-                className="inline-flex h-11 items-center justify-center rounded-2xl bg-violet-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:opacity-50"
+                className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-50"
               >
                 بحث
               </button>
@@ -951,7 +951,7 @@ export function AdminSubscribersScreen() {
                           className={
                             "flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-right text-sm transition " +
                             (isActive
-                              ? "border-violet-300 bg-violet-50 text-violet-800"
+                              ? "border-slate-900 bg-slate-900 text-white"
                               : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50")
                           }
                         >
@@ -976,7 +976,7 @@ export function AdminSubscribersScreen() {
                     <select
                       value={selectedPackageId}
                       onChange={(e) => setSelectedPackageId(e.target.value)}
-                      className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                      className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                     >
                       <option value="">اختر</option>
                       {packages.map((p) => (
@@ -993,7 +993,7 @@ export function AdminSubscribersScreen() {
                       value={selectedCourseId}
                       onChange={(e) => setSelectedCourseId(e.target.value)}
                       disabled={!selectedPackageId}
-                      className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-50"
+                      className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:bg-slate-50"
                     >
                       <option value="">اختر</option>
                       {grantCourses.map((c) => (
@@ -1010,7 +1010,7 @@ export function AdminSubscribersScreen() {
                       value={selectedCardId}
                       onChange={(e) => setSelectedCardId(e.target.value)}
                       disabled={!selectedCourseId || cardsLoading}
-                      className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-50"
+                      className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:bg-slate-50"
                     >
                       <option value="">{cardsLoading ? "تحميل..." : "اختر"}</option>
                       {grantCards.map((c) => {

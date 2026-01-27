@@ -501,11 +501,11 @@ export function AdminUsersScreen() {
   }
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-5" dir="rtl">
       <AdminCard>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="text-2xl font-semibold text-slate-900">المستخدمين</div>
+            <div className="text-base font-extrabold text-slate-900">المستخدمين</div>
             <div className="mt-1 text-sm text-slate-600">كل المستخدمين + الحظر + الأجهزة + الاشتراك + صلاحيات الشهور.</div>
           </div>
           <div className="min-w-[260px]">
@@ -513,7 +513,7 @@ export function AdminUsersScreen() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="بحث بالاسم / الموبايل / user_id"
-              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+              className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
             />
           </div>
         </div>
@@ -524,7 +524,7 @@ export function AdminUsersScreen() {
             (error || notice?.kind === "error"
               ? "border-rose-200 bg-rose-50 text-rose-700"
               : loading || actionBusy || notice?.kind === "info"
-                ? "border-violet-100 bg-violet-50 text-violet-700"
+                ? "border-slate-200 bg-slate-50 text-slate-700"
                 : notice?.kind === "success"
                   ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                   : "border-slate-200 bg-slate-50 text-slate-600")
@@ -556,7 +556,7 @@ export function AdminUsersScreen() {
                 subtitle={`${banned ? "محظور" : "غير محظور"} • ${u.devices.length} جهاز • ${u.enrollments.length} اشتراك • ${u.monthAccess.length} صلاحية شهر`}
               >
                 <div className="grid gap-4 lg:grid-cols-2">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div className="text-xs font-semibold text-slate-700">الحساب</div>
                     <div className="mt-2 text-xs text-slate-600" dir="ltr">{u.userId}</div>
 
@@ -566,7 +566,7 @@ export function AdminUsersScreen() {
                           type="button"
                           onClick={() => unbanUser(u.userId)}
                           disabled={actionBusy}
-                          className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
                         >
                           فك حظر الحساب
                         </button>
@@ -575,7 +575,7 @@ export function AdminUsersScreen() {
                           type="button"
                           onClick={() => banUser(u.userId)}
                           disabled={actionBusy}
-                          className="inline-flex h-10 items-center justify-center rounded-xl bg-rose-600 px-4 text-sm font-medium text-white transition hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-600 px-4 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50"
                         >
                           حظر الحساب
                         </button>
@@ -589,7 +589,7 @@ export function AdminUsersScreen() {
                     ) : null}
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
                     <div className="text-xs font-semibold text-slate-700">الأجهزة</div>
 
                     {u.devices.length ? (
@@ -620,7 +620,7 @@ export function AdminUsersScreen() {
                     )}
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 lg:col-span-2">
                     <div className="text-xs font-semibold text-slate-700">الاشتراكات</div>
 
                     {u.enrollments.length ? (
@@ -650,7 +650,7 @@ export function AdminUsersScreen() {
                                           type="button"
                                           onClick={() => stopEnrollment(e.id)}
                                           disabled={actionBusy}
-                                          className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
                                         >
                                           إيقاف
                                         </button>
@@ -659,7 +659,7 @@ export function AdminUsersScreen() {
                                           type="button"
                                           onClick={() => activateEnrollment(e.id)}
                                           disabled={actionBusy}
-                                          className="inline-flex h-10 items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-medium text-white transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
                                         >
                                           تفعيل
                                         </button>
@@ -677,7 +677,7 @@ export function AdminUsersScreen() {
                     )}
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 lg:col-span-2">
                     <div className="text-xs font-semibold text-slate-700">صلاحيات الشهور</div>
 
                     {u.monthAccess.length ? (
@@ -708,7 +708,7 @@ export function AdminUsersScreen() {
                                         type="button"
                                         onClick={() => extendMonthAccess(m.id)}
                                         disabled={actionBusy}
-                                        className="inline-flex h-10 items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-medium text-white transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                        className="inline-flex h-10 items-center justify-center rounded-2xl bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
                                       >
                                         تمديد/تفعيل
                                       </button>
@@ -717,7 +717,7 @@ export function AdminUsersScreen() {
                                           type="button"
                                           onClick={() => stopMonthAccess(m.id)}
                                           disabled={actionBusy}
-                                          className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
                                         >
                                           إيقاف
                                         </button>

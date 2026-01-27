@@ -296,14 +296,14 @@ export function AdminCourseMonthCodesPanel({
             type="button"
             onClick={() => setShowGenerator((v) => !v)}
             disabled={saving}
-            className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-100 px-5 text-sm font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+            className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-100 px-5 text-sm font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
           >
             {showGenerator ? "إخفاء" : "توليد أكواد"}
           </button>
         </div>
 
         {showGenerator ? (
-          <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <div className="mb-1 text-xs text-slate-700">رقم الشهر</div>
@@ -312,7 +312,7 @@ export function AdminCourseMonthCodesPanel({
                   onChange={(e) => setMonthNumber(e.target.value)}
                   placeholder="مثال: 1"
                   inputMode="numeric"
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
                 />
               </div>
 
@@ -323,7 +323,7 @@ export function AdminCourseMonthCodesPanel({
                   onChange={(e) => setCount(e.target.value)}
                   placeholder="مثال: 10"
                   inputMode="numeric"
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
                 />
               </div>
 
@@ -334,7 +334,7 @@ export function AdminCourseMonthCodesPanel({
                   onChange={(e) => setDurationDays(e.target.value)}
                   placeholder="مثال: 40"
                   inputMode="numeric"
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
                 />
               </div>
 
@@ -346,7 +346,7 @@ export function AdminCourseMonthCodesPanel({
                   inputMode="numeric"
                   disabled
                   readOnly
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-100 px-4 text-sm text-slate-900 outline-none"
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 text-sm text-slate-900 outline-none"
                 />
               </div>
             </div>
@@ -356,7 +356,7 @@ export function AdminCourseMonthCodesPanel({
                 type="button"
                 onClick={generate}
                 disabled={saving}
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-violet-600 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 {saving ? "جاري التوليد..." : "توليد"}
               </button>
@@ -364,7 +364,7 @@ export function AdminCourseMonthCodesPanel({
                 type="button"
                 onClick={() => setShowGenerator(false)}
                 disabled={saving}
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-white px-5 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-11 items-center justify-center rounded-2xl bg-white px-5 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 إغلاق
               </button>
@@ -387,13 +387,13 @@ export function AdminCourseMonthCodesPanel({
               onChange={(e) => setMonthNumber(e.target.value)}
               placeholder="مثال: 1"
               inputMode="numeric"
-              className="h-9 w-[120px] rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+              className="h-9 w-[120px] rounded-2xl border border-slate-200 bg-white px-3 text-xs text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
             />
             <button
               type="button"
               onClick={() => void copyAllFiltered()}
               disabled={saving || copyingAll || filteredCodes.length === 0}
-              className="h-9 rounded-xl bg-slate-100 px-4 text-[12px] font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-200 disabled:opacity-50"
+              className="h-9 rounded-2xl bg-slate-100 px-4 text-[12px] font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
             >
               {copyingAll ? "جاري النسخ..." : "نسخ الكل"}
             </button>
@@ -407,7 +407,7 @@ export function AdminCourseMonthCodesPanel({
             const isConfirmingDelete = confirmDeleteId === c.id;
             const isDeleting = deletingId === c.id;
             return (
-              <div key={c.id} className="rounded-xl border border-slate-200 bg-white p-4">
+              <div key={c.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-sm" dir="ltr">
@@ -436,7 +436,7 @@ export function AdminCourseMonthCodesPanel({
                           type="button"
                           onClick={() => void deleteCode(c.id)}
                           disabled={saving || copyingAll || isDeleting}
-                          className="h-9 rounded-xl bg-rose-600 px-4 text-xs font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 disabled:opacity-50"
+                          className="h-9 rounded-2xl bg-rose-600 px-4 text-xs font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                         >
                           {isDeleting ? "حذف..." : "تأكيد الحذف"}
                         </button>
@@ -444,7 +444,7 @@ export function AdminCourseMonthCodesPanel({
                           type="button"
                           onClick={() => setConfirmDeleteId(null)}
                           disabled={saving || copyingAll || isDeleting}
-                          className="h-9 rounded-xl bg-white px-4 text-xs font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 disabled:opacity-50"
+                          className="h-9 rounded-2xl bg-white px-4 text-xs font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                         >
                           إلغاء
                         </button>
@@ -454,7 +454,7 @@ export function AdminCourseMonthCodesPanel({
                         type="button"
                         onClick={() => setConfirmDeleteId(c.id)}
                         disabled={saving || copyingAll || copyingId === c.id || isDeleting}
-                        className="h-9 rounded-xl bg-rose-50 px-4 text-xs font-medium text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-100 disabled:opacity-50"
+                        className="h-9 rounded-2xl bg-rose-50 px-4 text-xs font-medium text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                       >
                         حذف
                       </button>
@@ -464,7 +464,7 @@ export function AdminCourseMonthCodesPanel({
                       type="button"
                       onClick={() => void copyOne(c)}
                       disabled={saving || copyingAll || copyingId === c.id || isConfirmingDelete || isDeleting}
-                      className="h-9 rounded-xl bg-violet-50 px-4 text-xs font-medium text-violet-700 border border-violet-200 shadow-sm transition enabled:hover:bg-violet-100 disabled:opacity-50"
+                      className="h-9 rounded-2xl bg-slate-100 px-4 text-xs font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-200 disabled:opacity-50"
                     >
                       {copyingId === c.id ? "نسخ..." : "نسخ"}
                     </button>
@@ -474,10 +474,10 @@ export function AdminCourseMonthCodesPanel({
                       onClick={() => toggleActive(c.id, !c.active)}
                       disabled={saving || isConfirmingDelete || isDeleting}
                       className={
-                        "h-9 rounded-xl px-4 text-xs font-medium border shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 " +
+                        "h-9 rounded-2xl px-4 text-xs font-medium border shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 " +
                         (c.active
                           ? "bg-slate-100 text-slate-900 border-slate-200 hover:bg-slate-200"
-                          : "bg-white text-violet-700 border-violet-200 hover:bg-violet-50")
+                          : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50")
                       }
                     >
                       {c.active ? "تعطيل" : "تفعيل"}
@@ -489,7 +489,7 @@ export function AdminCourseMonthCodesPanel({
           })}
 
           {filteredCodes.length === 0 ? (
-            <div className="rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
+            <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
               مفيش أكواد (أو مفيش أكواد للشهر ده).
             </div>
           ) : null}

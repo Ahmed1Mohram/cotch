@@ -423,7 +423,7 @@ function LoginPageInner() {
                         animate={swipeControls}
                       >
                         <div className="teaser-neon-text font-[var(--font-cairo)] text-4xl font-black tracking-[0.10em] sm:text-5xl">
-                          ادخل بقا مستني اييي
+                          متنجز سجل
                         </div>
                       </motion.div>
                     </MotionConfig>

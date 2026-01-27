@@ -261,7 +261,10 @@ export default async function ProgramCardPage({
       }
     }
 
-    const monthsRes = await supabase.rpc("preview_months", { p_age_group_id: previewCard.age_group_id });
+    const monthsRes = await supabase.rpc("preview_months_for_package", {
+      p_age_group_id: previewCard.age_group_id,
+      p_package_id: pkg ? pkg.id : null,
+    });
     const initialMonths: MonthRow[] = (((monthsRes as any)?.data ?? []) as any[]).map((m: any) => ({
       id: String(m.id),
       title: m.title ?? null,
@@ -319,6 +322,7 @@ export default async function ProgramCardPage({
             </div>
 
             <ProgramCardContentViewer
+              courseId={course.id}
               courseSlug={course.slug}
               courseTitle={courseTitle}
               hasCourseAccess={false}
@@ -439,14 +443,40 @@ export default async function ProgramCardPage({
   }
 
   const monthsRes = hasContentAccess
-    ? await supabase
-        .from("months")
-        .select("id,title,month_number,sort_order,created_at")
-        .eq("age_group_id", ageGroup.id)
-        .order("month_number", { ascending: true })
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true })
-    : await supabase.rpc("preview_months", { p_age_group_id: ageGroup.id });
+    ? pkg
+      ? await (async () => {
+          const pkgRes = await supabase
+            .from("months")
+            .select("id,title,month_number,sort_order,created_at")
+            .eq("age_group_id", ageGroup.id)
+            .eq("package_id", pkg.id)
+            .order("month_number", { ascending: true })
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true });
+
+          if (!pkgRes.error && (pkgRes.data ?? []).length) return pkgRes;
+
+          return supabase
+            .from("months")
+            .select("id,title,month_number,sort_order,created_at")
+            .eq("age_group_id", ageGroup.id)
+            .is("package_id", null)
+            .order("month_number", { ascending: true })
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true });
+        })()
+      : await supabase
+          .from("months")
+          .select("id,title,month_number,sort_order,created_at")
+          .eq("age_group_id", ageGroup.id)
+          .is("package_id", null)
+          .order("month_number", { ascending: true })
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true })
+    : await supabase.rpc("preview_months_for_package", {
+        p_age_group_id: ageGroup.id,
+        p_package_id: pkg ? pkg.id : null,
+      });
 
   const months: MonthRow[] = (monthsRes.error ? [] : ((monthsRes.data as any) ?? [])).map((m: any) => ({
     id: String(m.id),
@@ -500,6 +530,7 @@ export default async function ProgramCardPage({
           </div>
 
           <ProgramCardContentViewer
+            courseId={course.id}
             courseSlug={course.slug}
             courseTitle={courseTitle}
             hasCourseAccess={hasContentAccess}

@@ -32,6 +32,12 @@ type CourseRow = {
   is_published: boolean;
 };
 
+type PackageRow = {
+  id: string;
+  slug: string;
+  title: string;
+};
+
 type AgeGroupRow = {
   id: string;
   course_id: string;
@@ -91,6 +97,9 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
   const [reloadKey, setReloadKey] = useState(0);
 
   const [course, setCourse] = useState<CourseRow | null>(null);
+  const pkgSlug = useMemo(() => normalizeSlug(searchParams?.get("pkg")), [searchParams]);
+  const [pkg, setPkg] = useState<PackageRow | null>(null);
+  const [pkgError, setPkgError] = useState<string | null>(null);
   const [ageGroups, setAgeGroups] = useState<AgeGroupRow[]>([]);
   const [playerCards, setPlayerCards] = useState<PlayerCardRow[]>([]);
   const [selectedAgeGroupId, setSelectedAgeGroupId] = useState<string | null>(null);
@@ -148,6 +157,59 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
   const [confirmDeleteCardId, setConfirmDeleteCardId] = useState<string | null>(null);
   const [confirmDeleteAgeGroup, setConfirmDeleteAgeGroup] = useState(false);
+
+  useEffect(() => {
+    setPkg(null);
+    setPkgError(null);
+
+    if (!pkgSlug) return;
+    if (!course?.id) return;
+
+    let supabase: ReturnType<typeof createSupabaseBrowserClient>;
+    try {
+      supabase = createSupabaseBrowserClient();
+    } catch (err) {
+      setPkgError(err instanceof Error ? err.message : "فشل الاتصال بقاعدة البيانات");
+      return;
+    }
+
+    const run = async () => {
+      const pRes = await supabase.from("packages").select("id,slug,title").eq("slug", pkgSlug).maybeSingle();
+      if (pRes.error || !pRes.data) {
+        setPkg(null);
+        setPkgError(pRes.error?.message ?? "الباقة غير موجودة");
+        return;
+      }
+
+      const row = pRes.data as any;
+      const candidate: PackageRow = {
+        id: String(row.id),
+        slug: String(row.slug),
+        title: String(row.title ?? ""),
+      };
+
+      const pcRes = await supabase
+        .from("package_courses")
+        .select("course_id")
+        .eq("package_id", candidate.id)
+        .eq("course_id", course.id)
+        .maybeSingle();
+
+      if (pcRes.error || !pcRes.data) {
+        setPkg(null);
+        setPkgError("الكورس غير مرتبط بالباقة");
+        return;
+      }
+
+      setPkg(candidate);
+      setPkgError(null);
+    };
+
+    void run().catch((err) => {
+      setPkg(null);
+      setPkgError(err instanceof Error ? err.message : "حدث خطأ غير متوقع");
+    });
+  }, [course?.id, pkgSlug]);
 
   useEffect(() => {
     if (!hasValidSlug) {
@@ -679,7 +741,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
         <div className="mt-6">
           <Link
             href="/admin/courses"
-            className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-100 px-4 text-sm font-medium text-slate-900 border border-slate-200 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-100 px-4 text-sm font-medium text-slate-900 border border-slate-200 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
           >
             رجوع للكورسات
           </Link>
@@ -700,7 +762,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
         <div className="mt-6">
           <Link
             href="/admin/courses"
-            className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-100 px-4 text-sm font-medium text-slate-900 border border-slate-200 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-100 px-4 text-sm font-medium text-slate-900 border border-slate-200 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
           >
             رجوع للكورسات
           </Link>
@@ -728,24 +790,38 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
           <div className="flex flex-col items-end gap-3">
             <div className="flex flex-wrap items-center justify-end gap-2">
+              {pkg ? (
+                <Link
+                  href={`/admin/packages/${encodeURIComponent(pkg.slug)}`}
+                  className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-4 text-xs font-semibold text-slate-700 border border-slate-200 transition hover:bg-slate-50"
+                >
+                  {pkg.title}
+                </Link>
+              ) : null}
+              <Link
+                href={`/admin/courses/${courseSlug}/subscribers`}
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-4 text-xs font-semibold text-slate-700 border border-slate-200 transition hover:bg-slate-50"
+              >
+                مشتركين الكورس
+              </Link>
               <div
                 className={cn(
-                  "rounded-xl px-4 py-2 text-xs border",
+                  "rounded-2xl px-4 py-2 text-xs border",
                   course?.is_published
-                    ? "bg-violet-50 text-violet-800 border-violet-100"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                     : "bg-slate-100 text-slate-700 border-slate-200",
                 )}
               >
                 {course?.is_published ? "منشور" : "غير منشور"}
               </div>
-              <label className="inline-flex h-10 items-center gap-3 rounded-xl bg-white px-4 text-xs text-slate-700 border border-slate-200">
+              <label className="inline-flex h-10 items-center gap-3 rounded-2xl bg-white px-4 text-xs text-slate-700 border border-slate-200">
                 <span className="font-medium text-slate-900">نشر الكورس</span>
                 <input
                   type="checkbox"
                   checked={Boolean(course?.is_published)}
                   onChange={(e) => toggleCoursePublished(e.target.checked)}
                   disabled={publishing || loading || !course}
-                  className="h-5 w-5 accent-violet-600"
+                  className="h-5 w-5 accent-slate-700"
                 />
               </label>
             </div>
@@ -760,7 +836,9 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
           <Tabs items={tabItems} value={tab} onChange={setTab} />
-          {error ? <div className="text-xs text-rose-700">{error}</div> : null}
+          {error ? <div className="text-xs text-rose-700">{error}</div> : pkgError ? (
+            <div className="text-xs text-rose-700">{pkgError}</div>
+          ) : null}
         </div>
       </AdminCard>
 
@@ -777,7 +855,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                     type="button"
                     onClick={() => setSelectedAgeGroupId(ag.id)}
                     className={cn(
-                      "w-full rounded-xl px-4 py-3 text-right transition border",
+                      "w-full rounded-2xl px-4 py-3 text-right transition border",
                       active
                         ? "bg-slate-50 text-slate-900 border-slate-300"
                         : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100",
@@ -799,7 +877,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
               })}
 
               {ageGroups.length === 0 && !loading ? (
-                <div className="rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
+                <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
                   مفيش مجموعات أعمار لسه.
                 </div>
               ) : null}
@@ -810,11 +888,11 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
             <AdminCard>
               <div className="text-xs font-semibold text-slate-700">إحصائيات سريعة</div>
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-600">
-                <div className="rounded-xl bg-slate-50 px-3 py-3 border border-slate-200">
+                <div className="rounded-2xl bg-slate-50 px-3 py-3 border border-slate-200">
                   كروت
                   <div className="mt-1 text-sm font-semibold text-slate-900">{selectedCards.length}</div>
                 </div>
-                <div className="rounded-xl bg-slate-50 px-3 py-3 border border-slate-200">
+                <div className="rounded-2xl bg-slate-50 px-3 py-3 border border-slate-200">
                   مجموعة عمر
                   <div className="mt-1 text-sm font-semibold text-slate-900">1</div>
                 </div>
@@ -834,33 +912,33 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                 value={newAgeTitle}
                 onChange={(e) => setNewAgeTitle(e.target.value)}
                 placeholder="اسم المجموعة"
-                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
               />
               <input
                 value={newAgeMin}
                 onChange={(e) => setNewAgeMin(e.target.value)}
                 placeholder="من"
                 inputMode="numeric"
-                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
               />
               <input
                 value={newAgeMax}
                 onChange={(e) => setNewAgeMax(e.target.value)}
                 placeholder="إلى"
                 inputMode="numeric"
-                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
               />
               <button
                 type="button"
                 onClick={addAgeGroup}
                 disabled={saving || loading || !course}
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 إضافة
               </button>
             </div>
 
-            <div className="mt-8 rounded-xl bg-slate-50 p-5 border border-slate-200">
+            <div className="mt-8 rounded-2xl bg-slate-50 p-5 border border-slate-200">
               <div className="text-xs font-semibold text-slate-700">تعديل المجموعة المحددة</div>
               <div className="mt-1 text-xs text-slate-600">اختر مجموعة من القائمة على اليمين ثم عدّل بياناتها.</div>
 
@@ -870,7 +948,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                   onChange={(e) => setEditAgeTitle(e.target.value)}
                   placeholder="اسم المجموعة"
                   disabled={!selectedAgeGroupId}
-                  className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100"
+                  className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
                 />
                 <input
                   value={editAgeMin}
@@ -878,7 +956,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                   placeholder="من"
                   inputMode="numeric"
                   disabled={!selectedAgeGroupId}
-                  className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100"
+                  className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
                 />
                 <input
                   value={editAgeMax}
@@ -886,7 +964,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                   placeholder="إلى"
                   inputMode="numeric"
                   disabled={!selectedAgeGroupId}
-                  className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100"
+                  className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
                 />
               </div>
 
@@ -895,7 +973,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                   type="button"
                   onClick={updateSelectedAgeGroup}
                   disabled={saving || !selectedAgeGroupId}
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                  className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                 >
                   حفظ التعديل
                 </button>
@@ -906,7 +984,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                       type="button"
                       onClick={() => selectedAgeGroupId && deleteAgeGroup(selectedAgeGroupId)}
                       disabled={saving || !selectedAgeGroupId}
-                      className="inline-flex h-10 items-center justify-center rounded-xl bg-rose-600 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                      className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-600 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                     >
                       تأكيد الحذف
                     </button>
@@ -914,7 +992,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                       type="button"
                       onClick={() => setConfirmDeleteAgeGroup(false)}
                       disabled={saving}
-                      className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-5 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                      className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-5 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                     >
                       إلغاء
                     </button>
@@ -924,7 +1002,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                     type="button"
                     onClick={() => setConfirmDeleteAgeGroup(true)}
                     disabled={saving || !selectedAgeGroupId}
-                    className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-5 text-sm font-medium text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                    className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-5 text-sm font-medium text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                   >
                     حذف المجموعة
                   </button>
@@ -964,7 +1042,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                     }, 0);
                   }}
                   disabled={!selectedAgeGroupId}
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                  className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                 >
                   فتح تبويب الشهور والفيديوهات
                 </button>
@@ -972,7 +1050,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
               </div>
             </div>
 
-            <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                   <div className="text-sm font-semibold text-slate-900">أكواد اشتراك للكروت</div>
@@ -988,7 +1066,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                       deletingAllGeneratedCardCodes ||
                       Object.values(generatedCodesByCardId).every((list) => !list?.length)
                     }
-                    className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-4 text-sm font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                    className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-4 text-sm font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                   >
                     {copyingAllCardCodes ? "جاري النسخ..." : "نسخ كل الأكواد"}
                   </button>
@@ -1004,7 +1082,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                           deletingAllGeneratedCardCodes ||
                           Object.values(generatedCodesByCardId).every((list) => !list?.length)
                         }
-                        className="inline-flex h-10 items-center justify-center rounded-xl bg-rose-600 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                        className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-600 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                       >
                         {deletingAllGeneratedCardCodes ? "حذف..." : "تأكيد حذف الكل"}
                       </button>
@@ -1012,7 +1090,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                         type="button"
                         onClick={() => setConfirmDeleteAllGeneratedCardCodes(false)}
                         disabled={deletingAllGeneratedCardCodes}
-                        className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-4 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                        className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-4 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                       >
                         إلغاء
                       </button>
@@ -1027,7 +1105,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                         deletingAllGeneratedCardCodes ||
                         Object.values(generatedCodesByCardId).every((list) => !list?.length)
                       }
-                      className="inline-flex h-10 items-center justify-center rounded-xl bg-rose-50 px-4 text-sm font-medium text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                      className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-50 px-4 text-sm font-medium text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                     >
                       حذف كل الأكواد
                     </button>
@@ -1043,7 +1121,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                       !course ||
                       playerCards.length === 0
                     }
-                    className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                    className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                   >
                     {generatingCardCodes ? "جاري التوليد..." : "توليد كود لكل الكروت"}
                   </button>
@@ -1056,21 +1134,21 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                   onChange={(e) => setCardCodesPerCard(e.target.value)}
                   placeholder="عدد الأكواد لكل كارت"
                   inputMode="numeric"
-                  className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
                 />
                 <input
                   value={cardCodesDurationDays}
                   onChange={(e) => setCardCodesDurationDays(e.target.value)}
                   placeholder="مدة الاشتراك (بالأيام)"
                   inputMode="numeric"
-                  className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
                 />
                 <input
                   value={cardCodesMaxRedemptions}
                   onChange={(e) => setCardCodesMaxRedemptions(e.target.value)}
                   placeholder="عدد مرات استخدام الكود"
                   inputMode="numeric"
-                  className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
                 />
               </div>
             </div>
@@ -1082,7 +1160,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                 placeholder="العمر"
                 inputMode="numeric"
                 disabled={!selectedAgeGroupId}
-                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100"
+                className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
               />
               <input
                 value={newCardHeight}
@@ -1090,7 +1168,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                 placeholder="الطول"
                 inputMode="numeric"
                 disabled={!selectedAgeGroupId}
-                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100"
+                className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
               />
               <input
                 value={newCardWeight}
@@ -1098,20 +1176,20 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                 placeholder="الوزن"
                 inputMode="numeric"
                 disabled={!selectedAgeGroupId}
-                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100"
+                className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
               />
               <input
                 value={newCardNote}
                 onChange={(e) => setNewCardNote(e.target.value)}
                 placeholder="عنوان/تفاصيل"
                 disabled={!selectedAgeGroupId}
-                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100"
+                className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
               />
               <button
                 type="button"
                 onClick={addPlayerCard}
                 disabled={saving || !selectedAgeGroupId}
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
               >
                 إضافة كارت
               </button>
@@ -1126,7 +1204,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                   <div
                     key={card.id}
                     className={cn(
-                      "rounded-xl border bg-white p-4",
+                      "rounded-2xl border bg-white p-4",
                       isSelected ? "border-slate-300 bg-slate-50" : "border-slate-200",
                     )}
                   >
@@ -1146,7 +1224,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                                 type="button"
                                 onClick={() => deletePlayerCard(card.id)}
                                 disabled={saving}
-                                className="inline-flex h-10 items-center justify-center rounded-xl bg-rose-600 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-600 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                               >
                                 تأكيد
                               </button>
@@ -1154,7 +1232,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                                 type="button"
                                 onClick={() => setConfirmDeleteCardId(null)}
                                 disabled={saving}
-                                className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-4 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-4 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                               >
                                 إلغاء
                               </button>
@@ -1173,7 +1251,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                                   }, 0);
                                 }}
                                 disabled={saving}
-                                className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                               >
                                 اختيار
                               </button>
@@ -1181,7 +1259,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                                 type="button"
                                 onClick={() => startEditCard(card)}
                                 disabled={saving}
-                                className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-100 px-4 text-sm font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-100 px-4 text-sm font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                               >
                                 تعديل
                               </button>
@@ -1191,7 +1269,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                                   setConfirmDeleteCardId(card.id);
                                 }}
                                 disabled={saving}
-                                className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-4 text-sm font-medium text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-4 text-sm font-medium text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                               >
                                 حذف
                               </button>
@@ -1207,27 +1285,27 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                             onChange={(e) => setEditCardAge(e.target.value)}
                             placeholder="العمر"
                             inputMode="numeric"
-                            className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                            className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
                           />
                           <input
                             value={editCardHeight}
                             onChange={(e) => setEditCardHeight(e.target.value)}
                             placeholder="الطول"
                             inputMode="numeric"
-                            className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                            className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
                           />
                           <input
                             value={editCardWeight}
                             onChange={(e) => setEditCardWeight(e.target.value)}
                             placeholder="الوزن"
                             inputMode="numeric"
-                            className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                            className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
                           />
                           <input
                             value={editCardNote}
                             onChange={(e) => setEditCardNote(e.target.value)}
                             placeholder="عنوان/تفاصيل"
-                            className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                            className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
                           />
                         </div>
 
@@ -1236,7 +1314,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                             type="button"
                             onClick={updateEditingCard}
                             disabled={saving}
-                            className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                            className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                           >
                             حفظ
                           </button>
@@ -1244,7 +1322,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                             type="button"
                             onClick={cancelEditCard}
                             disabled={saving}
-                            className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-100 px-5 text-sm font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                            className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-100 px-5 text-sm font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                           >
                             إلغاء
                           </button>
@@ -1253,7 +1331,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                     )}
 
                     {generatedCodes.length ? (
-                      <div className="mt-3 rounded-xl bg-white px-4 py-3 border border-slate-200">
+                      <div className="mt-3 rounded-2xl bg-white px-4 py-3 border border-slate-200">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div className="text-xs font-semibold text-slate-900">أكواد هذا الكارت</div>
                           <div className="flex flex-wrap items-center gap-2">
@@ -1261,7 +1339,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                               type="button"
                               onClick={() => copyCodesForCard(card.id)}
                               disabled={copyingCardCodeId === card.id || deletingGeneratedCardId === card.id}
-                              className="inline-flex h-9 items-center justify-center rounded-xl bg-slate-100 px-4 text-xs font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                              className="inline-flex h-9 items-center justify-center rounded-2xl bg-slate-100 px-4 text-xs font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                             >
                               {copyingCardCodeId === card.id ? "جاري النسخ..." : "نسخ"}
                             </button>
@@ -1272,7 +1350,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                                   type="button"
                                   onClick={() => deleteGeneratedCodesForCard(card.id)}
                                   disabled={copyingCardCodeId === card.id || deletingGeneratedCardId === card.id}
-                                  className="inline-flex h-9 items-center justify-center rounded-xl bg-rose-600 px-4 text-xs font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                  className="inline-flex h-9 items-center justify-center rounded-2xl bg-rose-600 px-4 text-xs font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                                 >
                                   {deletingGeneratedCardId === card.id ? "حذف..." : "تأكيد"}
                                 </button>
@@ -1280,7 +1358,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                                   type="button"
                                   onClick={() => setConfirmDeleteGeneratedCardId(null)}
                                   disabled={deletingGeneratedCardId === card.id}
-                                  className="inline-flex h-9 items-center justify-center rounded-xl bg-white px-4 text-xs font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                  className="inline-flex h-9 items-center justify-center rounded-2xl bg-white px-4 text-xs font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                                 >
                                   إلغاء
                                 </button>
@@ -1290,7 +1368,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                                 type="button"
                                 onClick={() => setConfirmDeleteGeneratedCardId(card.id)}
                                 disabled={copyingCardCodeId === card.id || deletingGeneratedCardId === card.id}
-                                className="inline-flex h-9 items-center justify-center rounded-xl bg-rose-50 px-4 text-xs font-medium text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                                className="inline-flex h-9 items-center justify-center rounded-2xl bg-rose-50 px-4 text-xs font-medium text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                               >
                                 حذف
                               </button>
@@ -1310,7 +1388,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
               })}
 
               {selectedAgeGroupId && selectedCards.length === 0 && !loading ? (
-                <div className="rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
+                <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
                   مفيش كروت في المجموعة دي لسه.
                 </div>
               ) : null}
@@ -1321,7 +1399,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
           {tab === "months" ? (
             <div id="admin-months-panel" className="scroll-mt-24 space-y-3">
-              <div className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-600 border border-slate-200">
+              <div className="rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-600 border border-slate-200">
                 {selectedAgeGroup ? (
                   <>
                     المجموعة الحالية: <span className="font-semibold text-slate-900">{selectedAgeGroup.title ?? "مجموعة عمر"}</span>
@@ -1335,7 +1413,11 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                   "اختر مجموعة عمر أولاً"
                 )}
               </div>
-              <AdminCourseMonthsVideosPanel ageGroupId={selectedAgeGroupId} onMonthNumberChange={setSelectedMonthNumber} />
+              <AdminCourseMonthsVideosPanel
+                ageGroupId={selectedAgeGroupId}
+                packageId={pkg ? pkg.id : null}
+                onMonthNumberChange={setSelectedMonthNumber}
+              />
             </div>
           ) : null}
 

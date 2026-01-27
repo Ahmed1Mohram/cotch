@@ -7,6 +7,20 @@ const inferredRoot = path.basename(cwd).toLowerCase() === "fit-coach" ? cwd : pa
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "dpvzlefvtrlwbogfnldt.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
+      {
+        protocol: "https",
+        hostname: "dpvzlefvtrlwbogfnldt.supabase.co",
+        pathname: "/**",
+      },
+    ],
+  },
   turbopack: {
     root: inferredRoot,
   },

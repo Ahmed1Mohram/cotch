@@ -46,6 +46,9 @@ export const metadata: Metadata = {
   },
   description:
     "Elite coaching built for serious transformation: strength, fat loss, discipline, and results that show.",
+  icons: {
+    icon: "/s.png",
+  },
   metadataBase: metadataBaseUrl,
   openGraph: {
     title: "Coach Nasr",
@@ -64,10 +67,16 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <body
         className={`${headingFont.variable} ${bodyFont.variable} ${arabicLuxuryFont.variable} antialiased`}
       >
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var k='fitcoach-theme';var v=localStorage.getItem(k);var t=(v==='light'||v==='dark')?v:null;if(!t){t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}var r=document.documentElement;if(t==='light'){r.classList.add('theme-light');}else{r.classList.remove('theme-light');}}catch(e){}})();",
+          }}
+        />
         <Preloader />
         {children}
       </body>
