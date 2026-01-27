@@ -417,32 +417,32 @@ export function FinalCTA() {
                 </div>
 
                 <Reveal delay={0.12}>
-                  <div className="relative mx-auto max-w-md [perspective:1200px]" dir="rtl">
-                    <div className="rounded-3xl p-[1px] bg-gradient-to-r from-white/16 via-white/8 to-transparent">
-                      <div className="group relative overflow-hidden rounded-3xl bg-white/5 p-7 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_44px_160px_-120px_rgba(0,0,0,0.98)]">
+                  <div className="relative mx-auto max-w-md w-full [perspective:1200px]" dir="rtl">
+                    <div className="rounded-3xl p-[1px] bg-gradient-to-r from-white/16 via-white/8 to-transparent w-full">
+                      <div className="group relative overflow-hidden rounded-3xl bg-white/5 p-5 sm:p-7 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_44px_160px_-120px_rgba(0,0,0,0.98)]">
                         <div className="pointer-events-none absolute inset-0 opacity-75 bg-[radial-gradient(900px_320px_at_18%_0%,rgba(59,130,246,0.14),transparent_64%),radial-gradient(900px_340px_at_88%_110%,rgba(168,85,247,0.12),transparent_66%)]" />
                         <div className="pointer-events-none absolute -inset-x-16 -top-20 hidden h-40 opacity-60 blur-3xl sm:block bg-[radial-gradient(600px_140px_at_50%_50%,rgba(255,255,255,0.16),transparent_72%)]" />
                         <div className="pointer-events-none absolute inset-0 opacity-80 [mask-image:linear-gradient(to_bottom,black,transparent_62%)] [-webkit-mask-image:linear-gradient(to_bottom,black,transparent_62%)] bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.06)_32%,transparent_62%)]" />
 
-                        <div className="relative flex flex-col items-center gap-6">
+                        <div className="relative flex flex-col items-center gap-4 sm:gap-6 w-full">
                           <button
                             type="button"
                             onClick={() => setChatOpen((v) => !v)}
                             aria-label="فتح الشات"
-                            className="[transform-style:preserve-3d] flex flex-col items-center gap-3"
+                            className="[transform-style:preserve-3d] flex flex-col items-center gap-2.5 sm:gap-3 w-full"
                           >
                             <Orb3D
                               accentOrb="from-white/18 via-white/8"
-                              className="h-24 w-24 rounded-3xl shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18),0_28px_90px_-70px_rgba(0,0,0,0.98)]"
+                              className="h-20 w-20 sm:h-24 sm:w-24 rounded-3xl shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18),0_28px_90px_-70px_rgba(0,0,0,0.98)]"
                             >
-                              <IconChat className="h-10 w-10 text-white/90" />
+                              <IconChat className="h-8 w-8 sm:h-10 sm:w-10 text-white/90" />
                             </Orb3D>
-                            <span className="text-center text-xs font-semibold text-white/85 [text-shadow:0_0_18px_rgba(255,255,255,0.35)]">
+                            <span className="text-center text-xs font-semibold text-white/85 [text-shadow:0_0_18px_rgba(255,255,255,0.35)] px-2">
                               اضغطني لتسججيل الاشتراك
                             </span>
                           </button>
 
-                          <div className="grid grid-cols-4 gap-3">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-sm sm:max-w-none mx-auto">
                             {socialLinks.map(({ label, href, Icon, accentOrb, hoverGlow, iconClassName }) => (
                               <a
                                 key={label}
@@ -452,13 +452,13 @@ export function FinalCTA() {
                                 aria-label={label}
                                 title={label}
                                 className={
-                                  "rounded-2xl bg-white/5 p-[1px] shadow-[0_0_0_1px_rgba(255,255,255,0.08)] transition duration-300 hover:-translate-y-1 " +
+                                  "rounded-2xl sm:rounded-2xl bg-white/5 p-[1px] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_18px_60px_-44px_rgba(0,0,0,0.95)] transition duration-300 hover:-translate-y-1 " +
                                   hoverGlow
                                 }
                               >
-                                <span className="grid place-items-center rounded-2xl bg-black/35 p-2">
-                                  <Orb3D accentOrb={accentOrb} className="h-14 w-14">
-                                    <Icon className={"h-6 w-6 drop-shadow-[0_10px_26px_rgba(0,0,0,0.85)] " + iconClassName} />
+                                <span className="grid place-items-center rounded-2xl bg-black/35 p-2.5 sm:p-2 w-full">
+                                  <Orb3D accentOrb={accentOrb} className="h-16 w-16 sm:h-14 sm:w-14">
+                                    <Icon className={"h-7 w-7 sm:h-6 sm:w-6 drop-shadow-[0_10px_26px_rgba(0,0,0,0.85)] " + iconClassName} />
                                   </Orb3D>
                                 </span>
                               </a>
