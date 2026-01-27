@@ -107,10 +107,31 @@ export async function middleware(request: NextRequest) {
           .select("user_id")
           .eq("user_id", user.id)
           .maybeSingle();
+        
+        // Check both admin_users table and also try RPC function as fallback
         isAdmin = Boolean(!adminRes.error && adminRes.data);
-      } catch {
+        
+        // If not found in admin_users, try RPC function as fallback
+        if (!isAdmin) {
+          try {
+            // Try with parameter first
+            let rpcRes = await supabase.rpc("is_admin", { uid: user.id });
+            if (rpcRes.error) {
+              // If that fails, try without parameter (uses auth.uid() internally)
+              rpcRes = await supabase.rpc("is_admin");
+            }
+            isAdmin = Boolean(!rpcRes.error && rpcRes.data);
+          } catch {
+            // RPC failed, keep isAdmin as false
+          }
+        }
+      } catch (err) {
         // If admin check fails, assume not admin
         isAdmin = false;
+        // Log error in development only
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Admin check error:", err);
+        }
       }
     }
 

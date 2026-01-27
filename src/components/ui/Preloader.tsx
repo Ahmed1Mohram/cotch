@@ -87,12 +87,34 @@ export function Preloader({ className }: PreloaderProps) {
         if (!user?.id) return;
 
         // Check if user is admin first - admins should bypass ban checks
-        const adminRes = await supabase
-          .from("admin_users")
-          .select("user_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        const isAdmin = Boolean(!adminRes.error && adminRes.data);
+        let isAdmin = false;
+        try {
+          const adminRes = await supabase
+            .from("admin_users")
+            .select("user_id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          
+          isAdmin = Boolean(!adminRes.error && adminRes.data);
+          
+          // If not found in admin_users, try RPC function as fallback
+          if (!isAdmin) {
+            try {
+              // Try with parameter first
+              let rpcRes = await supabase.rpc("is_admin", { uid: user.id });
+              if (rpcRes.error) {
+                // If that fails, try without parameter (uses auth.uid() internally)
+                rpcRes = await supabase.rpc("is_admin");
+              }
+              isAdmin = Boolean(!rpcRes.error && rpcRes.data);
+            } catch {
+              // RPC failed, keep isAdmin as false
+            }
+          }
+        } catch (err) {
+          // If admin check fails, assume not admin
+          isAdmin = false;
+        }
 
         // Skip ban checks for admins
         if (isAdmin) return;
@@ -135,12 +157,34 @@ export function Preloader({ className }: PreloaderProps) {
         if (!user?.id) return;
 
         // Check if user is admin first - admins should bypass ban checks
-        const adminRes = await supabase
-          .from("admin_users")
-          .select("user_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        const isAdmin = Boolean(!adminRes.error && adminRes.data);
+        let isAdmin = false;
+        try {
+          const adminRes = await supabase
+            .from("admin_users")
+            .select("user_id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          
+          isAdmin = Boolean(!adminRes.error && adminRes.data);
+          
+          // If not found in admin_users, try RPC function as fallback
+          if (!isAdmin) {
+            try {
+              // Try with parameter first
+              let rpcRes = await supabase.rpc("is_admin", { uid: user.id });
+              if (rpcRes.error) {
+                // If that fails, try without parameter (uses auth.uid() internally)
+                rpcRes = await supabase.rpc("is_admin");
+              }
+              isAdmin = Boolean(!rpcRes.error && rpcRes.data);
+            } catch {
+              // RPC failed, keep isAdmin as false
+            }
+          }
+        } catch (err) {
+          // If admin check fails, assume not admin
+          isAdmin = false;
+        }
 
         // Skip ban checks for admins
         if (isAdmin) {
