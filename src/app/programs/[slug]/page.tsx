@@ -114,17 +114,57 @@ async function ProgramPageInner({
   pkgSlug: string;
   imageFallback: Record<string, string>;
 }) {
+  if (!courseSlug || courseSlug === "-1" || courseSlug.trim() === "") {
+    return (
+      <div className="min-h-screen bg-[#0B0B0B]">
+        <Navbar />
+        <main className="pt-44 sm:pt-48 md:pt-56">
+          <section className="relative overflow-hidden bg-[#050506] py-20 sm:py-28">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1100px_620px_at_20%_0%,rgba(255,255,255,0.10),transparent_62%),radial-gradient(1000px_620px_at_85%_10%,rgba(255,255,255,0.06),transparent_60%),radial-gradient(900px_520px_at_50%_65%,rgba(255,255,255,0.06),transparent_68%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70" />
+            <Container>
+              <div className="mx-auto max-w-3xl" dir="rtl">
+                <h1 className="text-right font-heading text-4xl tracking-[0.10em] text-white sm:text-6xl drop-shadow-[0_10px_30px_rgba(0,0,0,0.85)]">
+                  الكورس غير موجود
+                </h1>
+                <p className="mt-4 text-right text-base leading-7 text-white/70 sm:text-lg">
+                  الرابط اللي فتحته: <span className="text-white/90">{rawSlug || "(فارغ)"}</span>
+                </p>
+                <p className="mt-3 text-right text-sm text-white/65">
+                  افتح الباقات واختر الكورس من داخل الباقة.
+                </p>
+                <div className="mt-6 flex flex-wrap justify-end gap-3">
+                  <Link
+                    href="/packages"
+                    className="inline-flex h-11 items-center justify-center rounded-full bg-white/5 px-5 text-xs font-semibold tracking-[0.18em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10 hover:text-white"
+                  >
+                    الباقات
+                  </Link>
+                </div>
+              </div>
+            </Container>
+          </section>
+        </main>
+        <FooterClean />
+      </div>
+    );
+  }
+
   const supabase = await createSupabaseServerClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: courseRow } = await supabase
+  const { data: courseRow, error: courseError } = await supabase
     .from("courses")
     .select("id,slug,title_ar,title_en,description,cover_image_url")
     .eq("slug", courseSlug)
     .maybeSingle();
+
+  if (courseError) {
+    console.error("Error fetching course:", courseError);
+  }
 
   const course =
     courseRow && courseRow.slug
@@ -257,79 +297,89 @@ async function ProgramPageInner({
 
   let profiles: Profile[] = [];
   if (cardsLocked) {
-    const previewRes = await supabase.rpc("preview_course_player_cards", {
-      p_course_id: course.id,
-      p_package_id: pkg ? pkg.id : null,
-    });
+    try {
+      const previewRes = await supabase.rpc("preview_course_player_cards", {
+        p_course_id: course.id,
+        p_package_id: pkg ? pkg.id : null,
+      });
 
-    profiles = ((previewRes as any)?.data ?? []).map((r: any) => ({
-      id: String(r.id),
-      ageGroupId: String(r.age_group_id),
-      age: r.age === null || r.age === undefined ? null : Number(r.age),
-      heightCm: r.height_cm === null || r.height_cm === undefined ? null : Number(r.height_cm),
-      weightKg: r.weight_kg === null || r.weight_kg === undefined ? null : Number(r.weight_kg),
-    }));
-  } else {
-    const { data: agRows } = await supabase
-      .from("age_groups")
-      .select("id")
-      .eq("course_id", course.id);
-    let agIds = (agRows ?? []).map((r) => String(r.id)).filter(Boolean);
-
-    if (pkg && agIds.length) {
-      const allowRes = await supabase
-        .from("package_course_age_groups")
-        .select("age_group_id")
-        .eq("package_id", pkg.id)
-        .eq("course_id", course.id);
-
-      const allowed = ((allowRes.data as any[]) ?? [])
-        .map((r) => String(r.age_group_id ?? ""))
-        .filter(Boolean);
-
-      if (allowed.length) {
-        const allowSet = new Set(allowed);
-        agIds = agIds.filter((id) => allowSet.has(id));
-      }
+      profiles = ((previewRes as any)?.data ?? []).map((r: any) => ({
+        id: String(r.id),
+        ageGroupId: String(r.age_group_id),
+        age: r.age === null || r.age === undefined ? null : Number(r.age),
+        heightCm: r.height_cm === null || r.height_cm === undefined ? null : Number(r.height_cm),
+        weightKg: r.weight_kg === null || r.weight_kg === undefined ? null : Number(r.weight_kg),
+      }));
+    } catch (e) {
+      console.error("Error loading preview cards:", e);
+      profiles = [];
     }
+  } else {
+    try {
+      const { data: agRows } = await supabase
+        .from("age_groups")
+        .select("id")
+        .eq("course_id", course.id);
+      let agIds = (agRows ?? []).map((r) => String(r.id)).filter(Boolean);
 
-    if (!isAdmin && !hasCourseAccess && hasAnyCardAccess) {
-      const { data: pcRows } = await supabase
-        .from("player_cards")
-        .select("id,age_group_id,age,height_cm,weight_kg")
-        .in("id", allowedCardIds)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true })
-        .limit(100);
+      if (pkg && agIds.length) {
+        const allowRes = await supabase
+          .from("package_course_age_groups")
+          .select("age_group_id")
+          .eq("package_id", pkg.id)
+          .eq("course_id", course.id);
 
-      const agSet = new Set(agIds);
-      profiles =
-        (pcRows ?? [])
-          .filter((r: any) => (agSet.size ? agSet.has(String((r as any).age_group_id)) : true))
-          .map((r: any) => ({
-            id: String(r.id),
-            ageGroupId: String(r.age_group_id),
+        const allowed = ((allowRes.data as any[]) ?? [])
+          .map((r) => String(r.age_group_id ?? ""))
+          .filter(Boolean);
+
+        if (allowed.length) {
+          const allowSet = new Set(allowed);
+          agIds = agIds.filter((id) => allowSet.has(id));
+        }
+      }
+
+      if (!isAdmin && !hasCourseAccess && hasAnyCardAccess) {
+        const { data: pcRows } = await supabase
+          .from("player_cards")
+          .select("id,age_group_id,age,height_cm,weight_kg")
+          .in("id", allowedCardIds)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true })
+          .limit(100);
+
+        const agSet = new Set(agIds);
+        profiles =
+          (pcRows ?? [])
+            .filter((r: any) => (agSet.size ? agSet.has(String((r as any).age_group_id)) : true))
+            .map((r: any) => ({
+              id: String(r.id),
+              ageGroupId: String(r.age_group_id),
+              age: r.age === null || r.age === undefined ? null : Number(r.age),
+              heightCm: r.height_cm === null || r.height_cm === undefined ? null : Number(r.height_cm),
+              weightKg: r.weight_kg === null || r.weight_kg === undefined ? null : Number(r.weight_kg),
+            })) ?? [];
+      } else if (agIds.length) {
+        const { data: pcRows } = await supabase
+          .from("player_cards")
+          .select("id,age_group_id,age,height_cm,weight_kg")
+          .in("age_group_id", agIds)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true })
+          .limit(100);
+
+        profiles =
+          pcRows?.map((r) => ({
+            id: String((r as any).id),
+            ageGroupId: String((r as any).age_group_id),
             age: r.age === null || r.age === undefined ? null : Number(r.age),
-            heightCm: r.height_cm === null || r.height_cm === undefined ? null : Number(r.height_cm),
-            weightKg: r.weight_kg === null || r.weight_kg === undefined ? null : Number(r.weight_kg),
+            heightCm: (r as any).height_cm === null || (r as any).height_cm === undefined ? null : Number((r as any).height_cm),
+            weightKg: (r as any).weight_kg === null || (r as any).weight_kg === undefined ? null : Number((r as any).weight_kg),
           })) ?? [];
-    } else if (agIds.length) {
-      const { data: pcRows } = await supabase
-        .from("player_cards")
-        .select("id,age_group_id,age,height_cm,weight_kg")
-        .in("age_group_id", agIds)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true })
-        .limit(100);
-
-      profiles =
-        pcRows?.map((r) => ({
-          id: String((r as any).id),
-          ageGroupId: String((r as any).age_group_id),
-          age: r.age === null || r.age === undefined ? null : Number(r.age),
-          heightCm: (r as any).height_cm === null || (r as any).height_cm === undefined ? null : Number((r as any).height_cm),
-          weightKg: (r as any).weight_kg === null || (r as any).weight_kg === undefined ? null : Number((r as any).weight_kg),
-        })) ?? [];
+      }
+    } catch (e) {
+      console.error("Error loading player cards:", e);
+      profiles = [];
     }
   }
 
