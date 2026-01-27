@@ -166,7 +166,6 @@ type CourseOption = {
 
 export function FinalCTA() {
   const [chatOpen, setChatOpen] = useState(false);
-  const [chatMessage, setChatMessage] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [packages, setPackages] = useState<PackageOption[]>([]);
@@ -315,7 +314,6 @@ export function FinalCTA() {
       heightCm ? `الطول: ${heightCm} سم` : "",
       weightKg.trim() ? `الوزن: ${weightKg.trim()} كجم` : "",
       club.trim() ? `النادي: ${club.trim()}` : "",
-      chatMessage.trim() ? `رسالة: ${chatMessage.trim()}` : "",
     ]
       .filter(Boolean)
       .join("\n");
@@ -339,7 +337,7 @@ export function FinalCTA() {
         weight_kg: Number.isFinite(weightNum as any) ? weightNum : null,
 
         club: club.trim() || null,
-        message: chatMessage.trim() || null,
+        message: null,
       });
 
       if (user) {
@@ -360,7 +358,6 @@ export function FinalCTA() {
     const href = whatsappSendHref(whatsAppHref, payload);
     if (href === whatsAppHref) return;
     window.open(href, "_blank", "noopener,noreferrer");
-    setChatMessage("");
     setFullName("");
     setPhone("");
     setPackageId("");
@@ -604,14 +601,6 @@ export function FinalCTA() {
                                   </label>
                                 </div>
 
-                                <div className="font-heading text-xs tracking-[0.22em] text-white/70">رسالتك</div>
-                                <textarea
-                                  value={chatMessage}
-                                  onChange={(e) => setChatMessage(e.target.value)}
-                                  rows={3}
-                                  placeholder="اكتب رسالتك هنا…"
-                                  className="w-full resize-none rounded-2xl bg-black/35 px-4 py-3 text-sm text-white/90 shadow-[0_0_0_1px_rgba(255,255,255,0.12)] outline-none placeholder:text-white/40 focus:shadow-[0_0_0_1px_rgba(37,211,102,0.25),0_28px_90px_-70px_rgba(37,211,102,0.35)]"
-                                />
                                 <button
                                   type="submit"
                                   disabled={!canSend}
