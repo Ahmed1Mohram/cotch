@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 import { cn } from "@/lib/cn";
 import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
@@ -10,12 +11,13 @@ import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 
 const links = [
-  { label: "الباقات", href: "#packages" },
-  { label: "التواصل", href: "#contact" },
+  { label: "الباقات", href: "/packages", hash: "#packages" },
+  { label: "التواصل", href: "/", hash: "#contact" },
 ];
 
 export function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -29,6 +31,23 @@ export function Navbar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userLabel, setUserLabel] = useState("حسابي");
   const [signingOut, setSigningOut] = useState(false);
+
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, link: typeof links[0]) => {
+    e.preventDefault();
+    const isHomePage = pathname === "/";
+    const targetHref = isHomePage ? link.hash : link.href + link.hash;
+    
+    if (isHomePage) {
+      // On home page, scroll to section
+      const element = document.querySelector(link.hash);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    } else {
+      // On other pages, navigate to home page with hash
+      router.push(targetHref);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -261,16 +280,21 @@ export function Navbar() {
 
   const desktopLinkItems = useMemo(
     () =>
-      links.map((l) => (
-        <a
-          key={l.href}
-          href={l.href}
-          className="relative inline-flex items-center whitespace-nowrap font-heading text-[15px] font-extrabold leading-none tracking-[0.10em] text-white transition hover:text-white [text-shadow:0_2px_0_rgba(0,0,0,0.85),0_0_18px_rgba(0,0,0,0.55)] after:absolute after:left-0 after:-bottom-2 after:h-px after:w-0 after:bg-gradient-to-r after:from-[#FF6A00] after:to-[#FFB35A] after:transition-all after:duration-200 hover:after:w-full lg:text-[16px]"
-        >
-          {l.label}
-        </a>
-      )),
-    [],
+      links.map((l) => {
+        const isHomePage = pathname === "/";
+        const href = isHomePage ? l.hash : l.href + l.hash;
+        return (
+          <a
+            key={l.href}
+            href={href}
+            onClick={(e) => handleLinkClick(e, l)}
+            className="relative inline-flex items-center whitespace-nowrap font-heading text-[15px] font-extrabold leading-none tracking-[0.10em] text-white transition hover:text-white [text-shadow:0_2px_0_rgba(0,0,0,0.85),0_0_18px_rgba(0,0,0,0.55)] after:absolute after:left-0 after:-bottom-2 after:h-px after:w-0 after:bg-gradient-to-r after:from-[#FF6A00] after:to-[#FFB35A] after:transition-all after:duration-200 hover:after:w-full lg:text-[16px]"
+          >
+            {l.label}
+          </a>
+        );
+      }),
+    [pathname],
   );
 
   const usingRawFallbackLogo = logoSrc === "/s.png";
@@ -284,8 +308,8 @@ export function Navbar() {
     >
       <Container className="relative">
         <div className="relative mx-auto w-full max-w-7xl">
-          <a
-            href="#top"
+          <Link
+            href="/"
             aria-label="FIT COACH Home"
             className="absolute left-1/2 top-0 z-30 h-10 w-[160px] -translate-x-1/2 -translate-y-[58%] sm:h-14 sm:w-[260px] sm:-translate-y-[64%] md:h-28 md:w-[620px] md:-translate-y-[58%]"
           >
@@ -302,7 +326,7 @@ export function Navbar() {
               )}
               onError={() => setLogoSrc("/s.png")}
             />
-          </a>
+          </Link>
 
           <div
             className={cn(
@@ -342,15 +366,20 @@ export function Navbar() {
 
             <div className="relative z-40 flex h-14 items-center justify-between px-4 md:grid md:h-16 md:grid-cols-[auto_420px_1fr] lg:grid-cols-[auto_480px_1fr] md:items-center md:px-7">
               <nav className="md:hidden flex flex-1 min-w-0 items-center gap-3 pr-1 overflow-hidden" aria-label="Primary" dir="rtl">
-                {links.map((l) => (
-                  <a
-                    key={l.href}
-                    href={l.href}
-                    className="min-w-0 truncate font-heading text-[12px] font-extrabold tracking-[0.06em] text-white/90 transition hover:text-white [text-shadow:0_2px_0_rgba(0,0,0,0.85)]"
-                  >
-                    {l.label}
-                  </a>
-                ))}
+                {links.map((l) => {
+                  const isHomePage = pathname === "/";
+                  const href = isHomePage ? l.hash : l.href + l.hash;
+                  return (
+                    <a
+                      key={l.href}
+                      href={href}
+                      onClick={(e) => handleLinkClick(e, l)}
+                      className="min-w-0 truncate font-heading text-[12px] font-extrabold tracking-[0.06em] text-white/90 transition hover:text-white [text-shadow:0_2px_0_rgba(0,0,0,0.85)]"
+                    >
+                      {l.label}
+                    </a>
+                  );
+                })}
               </nav>
               <nav className="hidden md:flex items-center justify-start gap-6 pr-8 lg:gap-7 lg:pr-10" aria-label="Primary">
                 {desktopLinkItems}
