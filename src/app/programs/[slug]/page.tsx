@@ -411,7 +411,7 @@ async function ProgramPageInner({
     try {
       // Validate course.id before calling RPC
       if (!course.id || course.id === "-1" || course.id.trim() === "") {
-        console.warn("Invalid course.id, skipping RPC call");
+        console.warn("Invalid course.id, skipping RPC call", { courseId: course.id });
         profiles = [];
       } else {
         const previewRes = await supabase.rpc("preview_course_player_cards", {
@@ -420,20 +420,29 @@ async function ProgramPageInner({
         });
 
         if (previewRes.error) {
-          console.error("RPC error:", previewRes.error);
+          console.error("RPC error:", previewRes.error, { courseId: course.id, packageId: pkg?.id });
           profiles = [];
         } else {
-          profiles = ((previewRes.data ?? []) as any[]).map((r: any) => ({
-            id: String(r.id ?? ""),
-            ageGroupId: String(r.age_group_id ?? ""),
-            age: r.age === null || r.age === undefined ? null : Number(r.age),
-            heightCm: r.height_cm === null || r.height_cm === undefined ? null : Number(r.height_cm),
-            weightKg: r.weight_kg === null || r.weight_kg === undefined ? null : Number(r.weight_kg),
-          }));
+          const rawData = previewRes.data ?? [];
+          console.log("RPC preview_course_player_cards result:", { 
+            courseId: course.id, 
+            packageId: pkg?.id, 
+            count: rawData.length 
+          });
+          
+          profiles = (rawData as any[])
+            .filter((r: any) => r?.id) // Filter out invalid entries
+            .map((r: any) => ({
+              id: String(r.id ?? ""),
+              ageGroupId: String(r.age_group_id ?? ""),
+              age: r.age === null || r.age === undefined ? null : Number(r.age),
+              heightCm: r.height_cm === null || r.height_cm === undefined ? null : Number(r.height_cm),
+              weightKg: r.weight_kg === null || r.weight_kg === undefined ? null : Number(r.weight_kg),
+            }));
         }
       }
     } catch (e) {
-      console.error("Error loading preview cards:", e);
+      console.error("Error loading preview cards:", e, { courseId: course.id, packageId: pkg?.id });
       profiles = [];
     }
   } else {
@@ -693,8 +702,21 @@ async function ProgramPageInner({
                         </div>
                       ))
                     ) : (
-                      <div className="col-span-2 md:col-span-3 lg:col-span-5 rounded-3xl bg-white/5 px-6 py-6 text-right text-sm text-white/70 border border-white/10">
-                        مفيش كروت متاحة دلوقتي.
+                      <div className="col-span-2 md:col-span-3 lg:col-span-5 rounded-3xl bg-white/5 px-6 py-8 text-right border border-white/10">
+                        <div className="text-sm font-heading tracking-[0.12em] text-white/90 mb-2">
+                          مفيش كروت متاحة دلوقتي
+                        </div>
+                        <div className="text-xs text-white/60 mb-4">
+                          استخدم الكود في الأعلى لتفعيل الكورس أو اشترك في الباقة.
+                        </div>
+                        {pkg ? (
+                          <Link
+                            href={`/packages/${encodeURIComponent(pkg.slug)}`}
+                            className="inline-flex h-10 items-center justify-center rounded-full bg-white/5 px-5 text-xs font-semibold tracking-[0.18em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10 hover:text-white"
+                          >
+                            رجوع للباقة
+                          </Link>
+                        ) : null}
                       </div>
                     )
                   ) : (
