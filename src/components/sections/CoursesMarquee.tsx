@@ -40,7 +40,7 @@ export function CoursesMarquee({
     // Add smooth scrolling and momentum
     container.style.overflowX = "auto";
     container.style.scrollBehavior = "smooth";
-    container.style.WebkitOverflowScrolling = "touch";
+    container.style.setProperty("-webkit-overflow-scrolling", "touch");
     container.style.scrollSnapType = "x proximity";
     
     // Prevent default scroll chaining
