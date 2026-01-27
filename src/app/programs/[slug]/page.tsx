@@ -18,6 +18,12 @@ type Profile = {
   weightKg: number | null;
 };
 
+ function isImgTagSrc(src: string) {
+   const s = String(src ?? "").trim();
+   if (!s) return false;
+   return /^(https?:)?\/\//i.test(s) || /^data:/i.test(s) || /^blob:/i.test(s);
+ }
+
 export function generateStaticParams() {
   return [];
 }
@@ -128,7 +134,14 @@ async function ProgramPageInner({
           title: String((courseRow as any).title_ar ?? (courseRow as any).title_en ?? courseSlug),
           titleEn: String((courseRow as any).title_en ?? "").trim(),
           desc: String(courseRow.description ?? ""),
-          image: String(courseRow.cover_image_url ?? "").trim() ? String(courseRow.cover_image_url).trim() : "/kalya.png",
+          image: (() => {
+            const raw = String(courseRow.cover_image_url ?? "").trim();
+            const resolved = raw ? raw : "/kalya.png";
+            if (!resolved) return "/kalya.png";
+            if (isImgTagSrc(resolved)) return resolved;
+            if (resolved.startsWith("/")) return resolved;
+            return `/${resolved}`;
+          })(),
           imageClassName: imageFallback[String(courseRow.slug)] ?? "object-center",
         }
       : null;
@@ -370,7 +383,7 @@ async function ProgramPageInner({
 
             <div className="mt-12" dir="rtl">
               <div className="relative isolate aspect-[16/9] overflow-hidden rounded-3xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_70px_210px_-160px_rgba(0,0,0,0.95)] sm:aspect-[16/7]">
-                {/^https?:\/\//i.test(course.image) ? (
+                {isImgTagSrc(course.image) ? (
                   <img
                     src={course.image}
                     alt={course.title}
@@ -414,7 +427,7 @@ async function ProgramPageInner({
                           className="group relative isolate block aspect-[4/5] overflow-hidden rounded-3xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_46px_150px_-120px_rgba(0,0,0,0.95)]"
                           aria-label={`الكارت رقم ${i + 1} (مقفول)`}
                         >
-                          {/^https?:\/\//i.test(course.image) ? (
+                          {isImgTagSrc(course.image) ? (
                             <img
                               src={course.image}
                               alt={course.title}
@@ -492,7 +505,7 @@ async function ProgramPageInner({
                           aria-label={`فتح فيديوهات الكارت رقم ${i + 1}`}
                           className="group relative isolate block aspect-[4/5] overflow-hidden rounded-3xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_46px_150px_-120px_rgba(0,0,0,0.95)] transition-transform duration-300 hover:-translate-y-0.5"
                         >
-                          {/^https?:\/\//i.test(course.image) ? (
+                          {isImgTagSrc(course.image) ? (
                             <img
                               src={course.image}
                               alt={course.title}
