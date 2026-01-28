@@ -10,13 +10,15 @@ import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { AdminCard } from "@/features/admin/ui/AdminCard";
 import { AdminCourseMonthsVideosPanel } from "@/features/admin/screens/AdminCourseMonthsVideosPanel";
 import { AdminCourseMonthCodesPanel } from "@/features/admin/screens/AdminCourseMonthCodesPanel";
+import { AdminCourseSubscriptionCodesPanel } from "@/features/admin/screens/AdminCourseSubscriptionCodesPanel";
 import { Tabs, type TabItem } from "@/features/admin/ui/Tabs";
 
-type TabKey = "months" | "ages" | "cards" | "codes";
+type TabKey = "months" | "ages" | "cards" | "codes" | "subcodes";
 
 const tabItems: Array<TabItem<TabKey>> = [
   { key: "months", label: "الشهور والفيديوهات" },
   { key: "codes", label: "أكواد الشهور" },
+  { key: "subcodes", label: "أكواد اشتراك الكورس" },
   { key: "ages", label: "مجموعات الأعمار" },
   { key: "cards", label: "كروت اللاعبين" },
 ];
@@ -132,7 +134,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
   const initialTab = useMemo<TabKey>(() => {
     const t = searchParams?.get("tab");
-    if (t === "months" || t === "ages" || t === "cards" || t === "codes") return t;
+    if (t === "months" || t === "ages" || t === "cards" || t === "codes" || t === "subcodes") return t;
     return "months";
   }, [searchParams]);
 
@@ -537,6 +539,12 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
     return map;
   }, [playerCards]);
 
+  const visiblePlayerCards = useMemo(() => {
+    if (!pkg) return [];
+    if (!allowedAgeGroupIds.size) return [];
+    return playerCards.filter((pc) => allowedAgeGroupIds.has(pc.age_group_id));
+  }, [allowedAgeGroupIds, pkg, playerCards]);
+
   const selectedCards = useMemo(() => {
     if (!selectedAgeGroupId) return [];
     return cardsByAge.get(selectedAgeGroupId) ?? [];
@@ -575,7 +583,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
   const generateCodesForAllCards = async () => {
     if (!course) return;
-    if (playerCards.length === 0) return;
+    if (visiblePlayerCards.length === 0) return;
 
     const perCard = toIntOrNull(cardCodesPerCard);
     const durationDays = toIntOrNull(cardCodesDurationDays);
@@ -593,7 +601,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
     try {
       const next: Record<string, string[]> = {};
 
-      for (const card of playerCards) {
+      for (const card of visiblePlayerCards) {
         const list: string[] = [];
         for (let i = 0; i < perCard; i++) {
           const genRes = await supabase.rpc("generate_age_group_codes", {
@@ -1069,14 +1077,6 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                 {createPackageOpen ? "إغلاق" : "إضافة باقة"}
               </button>
 
-              {pkg ? (
-                <Link
-                  href={`/admin/packages/${encodeURIComponent(pkg.slug)}`}
-                  className="inline-flex h-9 sm:h-10 items-center justify-center rounded-2xl bg-white px-3 sm:px-4 text-[11px] sm:text-xs font-semibold text-slate-700 border border-slate-200 transition hover:bg-slate-50"
-                >
-                  تفاصيل الباقة
-                </Link>
-              ) : null}
               <Link
                 href={`/admin/courses/${courseSlug}/subscribers`}
                 className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-4 text-xs font-semibold text-slate-700 border border-slate-200 transition hover:bg-slate-50"
@@ -1518,7 +1518,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                       copyingAllCardCodes ||
                       deletingAllGeneratedCardCodes ||
                       !course ||
-                      playerCards.length === 0
+                      visiblePlayerCards.length === 0
                     }
                     className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                   >
@@ -1854,6 +1854,25 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                   courseSlug={courseSlug}
                   monthNumber={selectedMonthNumber}
                   onMonthNumberChange={setSelectedMonthNumber}
+                />
+              )}
+            </div>
+          ) : null}
+
+          {tab === "subcodes" ? (
+            <div id="admin-subscription-codes-panel" className="scroll-mt-24">
+              {!pkg ? (
+                <AdminCard>
+                  <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
+                    اختر باقة أولاً.
+                  </div>
+                </AdminCard>
+              ) : (
+                <AdminCourseSubscriptionCodesPanel
+                  courseId={course?.id ?? null}
+                  courseSlug={courseSlug}
+                  packageId={pkg.id}
+                  packageTitle={pkg.title}
                 />
               )}
             </div>

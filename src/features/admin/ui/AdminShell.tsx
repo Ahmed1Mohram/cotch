@@ -158,13 +158,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
       };
     }
 
-    if (pathname?.startsWith("/admin/packages/")) {
-      return {
-        title: "تفاصيل الباقة",
-        description: "تعديل بيانات الباقة وربطها بالكورسات.",
-      };
-    }
-
     if (pathname === "/admin/subscribers") {
       return {
         title: "المشتركين",

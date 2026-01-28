@@ -322,11 +322,11 @@ export function AdminPackageDetailsScreen({ slug }: { slug: string }) {
       <AdminCard>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-base font-extrabold text-slate-900">تفاصيل الباقة</div>
+            <div className="text-base font-extrabold text-slate-900">{pkg?.title ?? slug}</div>
             <div className="mt-1 text-sm text-slate-600">إدارة الكورسات داخل هذه الباقة.</div>
           </div>
           <Link
-            href="/admin/packages"
+            href="/admin/courses"
             className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-100 px-4 text-sm font-semibold text-slate-800 border border-slate-200 shadow-sm transition hover:bg-slate-200"
           >
             رجوع

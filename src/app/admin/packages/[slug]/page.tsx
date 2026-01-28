@@ -1,10 +1,10 @@
-import { AdminPackageDetailsScreen } from "@/features/admin/screens/AdminPackageDetailsScreen";
+import { notFound } from "next/navigation";
 
 export default async function AdminPackageDetailsPage({
   params,
 }: {
   params: { slug: string } | Promise<{ slug: string }>;
 }) {
-  const p = await Promise.resolve(params as any);
-  return <AdminPackageDetailsScreen slug={p.slug} />;
+  await Promise.resolve(params as any);
+  notFound();
 }

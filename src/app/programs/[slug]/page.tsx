@@ -133,6 +133,13 @@ export default async function ProgramPage({
   try {
     return await ProgramPageInner({ rawSlug, courseSlug, pkgSlug, imageFallback });
   } catch (e) {
+    const digest = (e as any)?.digest;
+    if (
+      typeof digest === "string" &&
+      (digest.startsWith("NEXT_REDIRECT") || digest.startsWith("NEXT_NOT_FOUND"))
+    ) {
+      throw e;
+    }
     console.error("ProgramPage error", { rawSlug, courseSlug, pkgSlug, error: e });
     return (
       <div className="min-h-screen bg-[#0B0B0B]">
@@ -440,10 +447,54 @@ async function ProgramPageInner({
       })()
     : null;
 
-  if (!pkg && availablePackages.length > 0) {
-    const vip = availablePackages.find((p) => String(p.theme ?? "").toLowerCase() === "vip");
-    const best = vip ?? availablePackages[availablePackages.length - 1];
-    const bestSlug = String(best?.slug ?? "").trim();
+  if (!pkg) {
+    const norm = (v: unknown) => String(v ?? "").trim().toLowerCase();
+
+    const vipFromList = availablePackages.find((p) => {
+      const s = norm(p.slug);
+      const t = norm(p.theme);
+      return t === "vip" || s === "vip" || s.includes("vip");
+    });
+
+    const fallbackFromList = availablePackages[availablePackages.length - 1] ?? null;
+
+    let bestSlug = norm(vipFromList?.slug || fallbackFromList?.slug);
+
+    if (!bestSlug) {
+      try {
+        const vipRes = await supabase
+          .from("packages")
+          .select("id,slug,course_id,active")
+          .eq("slug", "vip")
+          .eq("active", true)
+          .maybeSingle();
+
+        if (!vipRes.error && vipRes.data) {
+          const row = vipRes.data as any;
+          const packageCourseId = String((row as any).course_id ?? "");
+
+          let belongs = false;
+          if (packageCourseId && packageCourseId === course.id) {
+            belongs = true;
+          } else {
+            const pcRes = await supabase
+              .from("package_courses")
+              .select("course_id")
+              .eq("package_id", String(row.id))
+              .eq("course_id", course.id)
+              .maybeSingle();
+            belongs = Boolean(!pcRes.error && pcRes.data);
+          }
+
+          if (belongs) {
+            bestSlug = "vip";
+          }
+        }
+      } catch (e) {
+        console.error("Error resolving default VIP package", e);
+      }
+    }
+
     if (bestSlug) {
       redirect(`/programs/${encodeURIComponent(course.slug)}?pkg=${encodeURIComponent(bestSlug)}`);
     }

@@ -284,6 +284,7 @@ create table if not exists public.enrollments (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   course_id uuid not null references public.courses(id) on delete cascade,
+  package_id uuid references public.packages(id) on delete set null,
   status text not null default 'active',
   start_at timestamptz not null default now(),
   end_at timestamptz,
@@ -324,6 +325,16 @@ begin
       and column_name = 'created_by'
   ) then
     alter table public.enrollments add column created_by uuid references auth.users(id);
+  end if;
+
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'enrollments'
+      and column_name = 'package_id'
+  ) then
+    alter table public.enrollments add column package_id uuid references public.packages(id) on delete set null;
   end if;
 
   if not exists (
@@ -402,6 +413,7 @@ create table if not exists public.subscription_codes (
   id uuid primary key default gen_random_uuid(),
   code text not null unique,
   course_id uuid not null references public.courses(id) on delete cascade,
+  package_id uuid references public.packages(id) on delete set null,
   duration_days int not null default 30,
   max_redemptions int not null default 1,
   active boolean not null default true,
@@ -410,6 +422,8 @@ create table if not exists public.subscription_codes (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.subscription_codes add column if not exists package_id uuid references public.packages(id) on delete set null;
 
 create table if not exists public.code_redemptions (
   id uuid primary key default gen_random_uuid(),
@@ -562,6 +576,7 @@ $$;
 drop function if exists public.track_device();
 drop function if exists public.redeem_subscription_code(text);
 drop function if exists public.generate_subscription_codes(text, int, int, int);
+drop function if exists public.generate_subscription_codes(text, uuid, int, int, int);
 drop function if exists public.redeem_month_code(text);
 drop function if exists public.generate_month_codes(text, int, int, int, int);
 drop function if exists public.redeem_age_group_code(text);
@@ -1383,45 +1398,6 @@ as $$
   );
 $$;
 
-create or replace function public.can_chat_course(
-  p_course_id uuid,
-  uid uuid default auth.uid()
-)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select
-    public.is_admin(uid)
-    or (
-      uid is not null
-      and public.is_device_banned() = false
-      and public.is_user_banned(uid) = false
-      and exists (select 1 from public.courses c where c.id = p_course_id and c.is_published = true)
-      and (
-        public.has_full_course_access(p_course_id, uid)
-        or exists (
-          select 1
-          from public.course_month_access a
-          where a.user_id = uid
-            and a.course_id = p_course_id
-            and a.status = 'active'
-            and (a.end_at is null or a.end_at > now())
-        )
-        or exists (
-          select 1
-          from public.course_age_group_access a
-          where a.user_id = uid
-            and a.course_id = p_course_id
-            and a.status = 'active'
-            and (a.end_at is null or a.end_at > now())
-        )
-      )
-    );
-$$;
-
 create or replace function public.has_active_month_access(
   p_course_id uuid,
   p_month_number int,
@@ -1506,6 +1482,45 @@ as $$
   );
 $$;
 
+create or replace function public.can_chat_course(
+  p_course_id uuid,
+  uid uuid default auth.uid()
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    public.is_admin(uid)
+    or (
+      uid is not null
+      and public.is_device_banned() = false
+      and public.is_user_banned(uid) = false
+      and exists (select 1 from public.courses c where c.id = p_course_id and c.is_published = true)
+      and (
+        public.has_full_course_access(p_course_id, uid)
+        or exists (
+          select 1
+          from public.course_month_access a
+          where a.user_id = uid
+            and a.course_id = p_course_id
+            and a.status = 'active'
+            and (a.end_at is null or a.end_at > now())
+        )
+        or exists (
+          select 1
+          from public.course_age_group_access a
+          where a.user_id = uid
+            and a.course_id = p_course_id
+            and a.status = 'active'
+            and (a.end_at is null or a.end_at > now())
+        )
+      )
+    );
+$$;
+
 -- Redeem code: creates/extends enrollment + logs redemption
 create or replace function public.redeem_subscription_code(p_code text)
 returns jsonb
@@ -1573,13 +1588,14 @@ begin
 
   v_end := v_now + make_interval(days => v_code.duration_days);
 
-  insert into public.enrollments as e(user_id, course_id, status, start_at, end_at, source, created_by)
-  values (v_uid, v_code.course_id, 'active', v_now, v_end, 'code', v_uid)
+  insert into public.enrollments as e(user_id, course_id, package_id, status, start_at, end_at, source, created_by)
+  values (v_uid, v_code.course_id, v_code.package_id, 'active', v_now, v_end, 'code', v_uid)
   on conflict (user_id, course_id)
   do update set
     status = 'active',
     start_at = least(e.start_at, excluded.start_at),
     end_at = greatest(coalesce(e.end_at, excluded.end_at), excluded.end_at),
+    package_id = coalesce(excluded.package_id, e.package_id),
     source = 'code',
     updated_at = now();
 
@@ -1829,6 +1845,7 @@ $$;
 -- Admin-only generator
 create or replace function public.generate_subscription_codes(
   p_course_slug text,
+  p_package_id uuid default null,
   p_count int,
   p_duration_days int default 30,
   p_max_redemptions int default 1
@@ -1840,6 +1857,7 @@ set search_path = public, extensions
 as $$
 declare
   v_course_id uuid;
+  v_pkg_id uuid;
   i int;
   v_code text;
 begin
@@ -1856,13 +1874,30 @@ begin
     raise exception 'Count must be > 0';
   end if;
 
+  v_pkg_id := null;
+  if p_package_id is not null then
+    if exists (
+      select 1
+      from public.package_courses pc
+      join public.packages p on p.id = pc.package_id
+      where pc.course_id = v_course_id
+        and pc.package_id = p_package_id
+        and p.active = true
+      limit 1
+    ) then
+      v_pkg_id := p_package_id;
+    else
+      raise exception 'Package not in course';
+    end if;
+  end if;
+
   i := 0;
   while i < p_count loop
     v_code := upper(encode(gen_random_bytes(6), 'hex'));
 
     begin
-      insert into public.subscription_codes(code, course_id, duration_days, max_redemptions, active, created_by)
-      values (v_code, v_course_id, p_duration_days, p_max_redemptions, true, auth.uid());
+      insert into public.subscription_codes(code, course_id, package_id, duration_days, max_redemptions, active, created_by)
+      values (v_code, v_course_id, v_pkg_id, p_duration_days, p_max_redemptions, true, auth.uid());
 
       code := v_code;
       return next;
@@ -2683,7 +2718,7 @@ grant execute on function public.has_any_active_month_access(uuid, uuid) to auth
  grant execute on function public.track_device() to authenticated;
 grant execute on function public.admin_create_course_in_package(uuid, text, text, text, text, text, text) to authenticated;
 grant execute on function public.redeem_subscription_code(text) to authenticated;
-grant execute on function public.generate_subscription_codes(text, int, int, int) to authenticated;
+grant execute on function public.generate_subscription_codes(text, uuid, int, int, int) to authenticated;
 grant execute on function public.redeem_month_code(text) to authenticated;
 grant execute on function public.generate_month_codes(text, int, int, int, int) to authenticated;
  grant execute on function public.redeem_age_group_code(text) to authenticated;

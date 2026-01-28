@@ -16,6 +16,27 @@ type CourseRow = {
   title_en: string | null;
 };
 
+type PackageRow = {
+  id: string;
+  slug: string;
+  title: string;
+  theme: string;
+  sort_order: number;
+};
+
+type PackageCourseRow = {
+  package_id: string;
+  packages: { id: string; slug: string; title: string; theme: string; sort_order: number } | null;
+};
+
+type ContactRequestRow = {
+  user_id: string | null;
+  course_id: string | null;
+  package_id: string | null;
+  package_title: string | null;
+  created_at: string;
+};
+
 type ProfileRow = {
   user_id: string;
   full_name: string | null;
@@ -38,6 +59,7 @@ type EnrollmentRow = {
   id: string;
   user_id: string;
   course_id: string;
+  package_id: string | null;
   status: string;
   start_at: string;
   end_at: string | null;
@@ -127,6 +149,10 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
 
   const [course, setCourse] = useState<CourseRow | null>(null);
 
+  const [coursePackages, setCoursePackages] = useState<PackageRow[]>([]);
+  const [contactRequests, setContactRequests] = useState<ContactRequestRow[]>([]);
+  const [packageFilter, setPackageFilter] = useState<string>("all");
+
   const [enrollments, setEnrollments] = useState<EnrollmentRow[]>([]);
   const [monthAccess, setMonthAccess] = useState<MonthAccessRow[]>([]);
   const [ageAccess, setAgeAccess] = useState<AgeAccessRow[]>([]);
@@ -175,10 +201,10 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
       const c = courseRes.data as CourseRow;
       setCourse(c);
 
-      const [enrRes, monRes, ageRes, profilesRes] = await Promise.all([
+      const [enrRes, monRes, ageRes, profilesRes, directPkgsRes, pcRes, reqRes] = await Promise.all([
         supabase
           .from("enrollments")
-          .select("id,user_id,course_id,status,start_at,end_at,created_at")
+          .select("id,user_id,course_id,package_id,status,start_at,end_at,created_at")
           .eq("course_id", c.id)
           .order("created_at", { ascending: false }),
         supabase
@@ -196,18 +222,37 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
           .select("user_id,full_name,phone,age_years,height_cm,weight_kg")
           .order("updated_at", { ascending: false })
           .limit(250),
+        supabase
+          .from("packages")
+          .select("id,slug,title,theme,sort_order")
+          .eq("course_id", c.id)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("package_courses")
+          .select("package_id,packages(id,slug,title,theme,sort_order)")
+          .eq("course_id", c.id),
+        supabase
+          .from("contact_requests")
+          .select("user_id,course_id,package_id,package_title,created_at")
+          .eq("course_id", c.id)
+          .order("created_at", { ascending: false })
+          .limit(5000),
       ]);
 
       if (enrRes.error) throw new Error(enrRes.error.message);
       if (monRes.error) throw new Error(monRes.error.message);
       if (ageRes.error) throw new Error(ageRes.error.message);
       if (profilesRes.error) throw new Error(profilesRes.error.message);
+      if (directPkgsRes.error && pcRes.error) throw new Error(directPkgsRes.error?.message ?? pcRes.error?.message ?? "فشل تحميل الباقات");
+      if (reqRes.error) throw new Error(reqRes.error.message);
 
       const enr = ((enrRes.data ?? []) as EnrollmentRow[]).map((r) => ({
         ...r,
         id: String((r as any).id),
         user_id: String((r as any).user_id),
         course_id: String((r as any).course_id),
+        package_id: (r as any).package_id ? String((r as any).package_id) : null,
         status: String((r as any).status ?? ""),
         start_at: String((r as any).start_at ?? ""),
         end_at: (r as any).end_at ? String((r as any).end_at) : null,
@@ -237,6 +282,47 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
         end_at: (r as any).end_at ? String((r as any).end_at) : null,
         created_at: String((r as any).created_at ?? ""),
       }));
+
+      const directPkgs = ((directPkgsRes.data ?? []) as any[])
+        .map((p) => ({
+          id: String(p.id),
+          slug: String(p.slug),
+          title: String(p.title ?? p.slug ?? "—"),
+          theme: String(p.theme ?? "orange"),
+          sort_order: Number(p.sort_order ?? 0),
+        }))
+        .filter((p) => Boolean(p.id) && Boolean(p.slug));
+
+      const pcs = ((pcRes.data ?? []) as PackageCourseRow[])
+        .flatMap((r) => (Array.isArray((r as any).packages) ? (r as any).packages : (r as any).packages ? [(r as any).packages] : []))
+        .filter(Boolean)
+        .map((p: any) => ({
+          id: String(p.id),
+          slug: String(p.slug),
+          title: String(p.title ?? p.slug ?? "—"),
+          theme: String(p.theme ?? "orange"),
+          sort_order: Number(p.sort_order ?? 0),
+        }))
+        .filter((p) => Boolean(p.id) && Boolean(p.slug));
+
+      const mergedPackages: PackageRow[] = [];
+      const seen = new Set<string>();
+      for (const p of [...directPkgs, ...pcs]) {
+        if (!p.id || seen.has(p.id)) continue;
+        seen.add(p.id);
+        mergedPackages.push(p);
+      }
+      mergedPackages.sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title));
+      setCoursePackages(mergedPackages);
+
+      const reqs = ((reqRes.data ?? []) as any[]).map((r) => ({
+        user_id: (r as any).user_id ? String((r as any).user_id) : null,
+        course_id: (r as any).course_id ? String((r as any).course_id) : null,
+        package_id: (r as any).package_id ? String((r as any).package_id) : null,
+        package_title: (r as any).package_title ? String((r as any).package_title) : null,
+        created_at: String((r as any).created_at ?? ""),
+      })) as ContactRequestRow[];
+      setContactRequests(reqs);
 
       const all = (profilesRes.data ?? []) as ProfileRow[];
       setAllProfiles(all);
@@ -289,6 +375,11 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
       setMonthAccess(mon);
       setAgeAccess(ages);
 
+      setPackageFilter((prev) => {
+        if (prev === "all" || prev === "unknown") return prev;
+        return mergedPackages.some((p) => p.id === prev) ? prev : "all";
+      });
+
       setLoading(false);
     };
 
@@ -297,6 +388,33 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
       setLoading(false);
     });
   }, [normalizedSlug]);
+
+  const packageById = useMemo(() => new Map(coursePackages.map((p) => [p.id, p] as const)), [coursePackages]);
+
+  const userPackageId = useMemo(() => {
+    const map = new Map<string, { packageId: string | null; packageTitle: string | null }>();
+
+    // Primary source of truth: enrollments.package_id (ordered by created_at desc)
+    for (const e of enrollments) {
+      const uid = String(e.user_id ?? "").trim();
+      if (!uid) continue;
+      if (map.has(uid)) continue;
+      const pid = e.package_id ? String(e.package_id) : null;
+      map.set(uid, { packageId: pid, packageTitle: null });
+    }
+
+    // Fallback: latest contact request per user
+    // contactRequests is ordered by created_at desc from DB, so the first per user is the latest
+    for (const r of contactRequests) {
+      const uid = String(r.user_id ?? "").trim();
+      if (!uid) continue;
+      const existing = map.get(uid);
+      if (existing?.packageId) continue;
+      map.set(uid, { packageId: r.package_id ?? null, packageTitle: r.package_title ?? null });
+    }
+
+    return map;
+  }, [contactRequests, enrollments]);
 
   const summaries = useMemo<AccessSummary[]>(() => {
     const map = new Map<string, AccessSummary>();
@@ -366,6 +484,28 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
       return name.includes(q) || phone.includes(q) || s.userId.toLowerCase().includes(q);
     });
   }, [subQuery, summaries]);
+
+  const packageCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    let unknown = 0;
+    for (const s of filteredSubscribers) {
+      const pid = userPackageId.get(s.userId)?.packageId ?? null;
+      if (!pid) {
+        unknown += 1;
+        continue;
+      }
+      counts.set(pid, (counts.get(pid) ?? 0) + 1);
+    }
+    return { counts, unknown };
+  }, [filteredSubscribers, userPackageId]);
+
+  const visibleSubscribers = useMemo(() => {
+    if (packageFilter === "all") return filteredSubscribers;
+    if (packageFilter === "unknown") {
+      return filteredSubscribers.filter((s) => !(userPackageId.get(s.userId)?.packageId ?? null));
+    }
+    return filteredSubscribers.filter((s) => (userPackageId.get(s.userId)?.packageId ?? null) === packageFilter);
+  }, [filteredSubscribers, packageFilter, userPackageId]);
 
   const headerTitle = course?.title_ar ?? course?.title_en ?? course?.slug ?? normalizedSlug;
 
@@ -442,13 +582,56 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
             />
           </div>
 
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPackageFilter("all")}
+              className={cn(
+                "inline-flex h-9 items-center gap-2 rounded-2xl border px-3 text-xs font-semibold transition",
+                packageFilter === "all" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50",
+              )}
+            >
+              الكل
+              <span className={cn("rounded-full px-2 py-0.5 text-[11px]", packageFilter === "all" ? "bg-white/15 text-white" : "bg-slate-100 text-slate-700")}>{filteredSubscribers.length}</span>
+            </button>
+
+            {coursePackages.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPackageFilter(p.id)}
+                className={cn(
+                  "inline-flex h-9 items-center gap-2 rounded-2xl border px-3 text-xs font-semibold transition",
+                  packageFilter === p.id
+                    ? "bg-slate-900 text-white border-slate-900"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50",
+                )}
+              >
+                {p.title}
+                <span className={cn("rounded-full px-2 py-0.5 text-[11px]", packageFilter === p.id ? "bg-white/15 text-white" : "bg-slate-100 text-slate-700")}>{packageCounts.counts.get(p.id) ?? 0}</span>
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setPackageFilter("unknown")}
+              className={cn(
+                "inline-flex h-9 items-center gap-2 rounded-2xl border px-3 text-xs font-semibold transition",
+                packageFilter === "unknown" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50",
+              )}
+            >
+              غير محدد
+              <span className={cn("rounded-full px-2 py-0.5 text-[11px]", packageFilter === "unknown" ? "bg-white/15 text-white" : "bg-slate-100 text-slate-700")}>{packageCounts.unknown}</span>
+            </button>
+          </div>
+
           {loading ? (
             <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 border border-slate-200">تحميل...</div>
-          ) : filteredSubscribers.length === 0 ? (
+          ) : visibleSubscribers.length === 0 ? (
             <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 border border-slate-200">لا يوجد مشتركين.</div>
           ) : (
             <div className="mt-4 grid gap-3">
-              {filteredSubscribers.map((s) => {
+              {visibleSubscribers.map((s) => {
                 const anyActive =
                   s.enrollments.some((x) => isActive(x.status, x.end_at)) ||
                   s.months.some((x) => isActive(x.status, x.end_at)) ||
@@ -456,6 +639,9 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
 
                 const title =
                   s.profile?.full_name?.trim() || s.profile?.phone?.trim() || s.userId;
+
+                const pkgInfo = userPackageId.get(s.userId) ?? null;
+                const pkgLabel = pkgInfo?.packageId ? packageById.get(pkgInfo.packageId)?.title ?? pkgInfo.packageTitle : pkgInfo?.packageTitle;
 
                 return (
                   <div
@@ -470,6 +656,11 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
                           <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold", badgeCls(anyActive))}>
                             {anyActive ? "نشط" : "غير نشط"}
                           </span>
+                          {pkgLabel ? (
+                            <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-700 border border-slate-200">
+                              {pkgLabel}
+                            </span>
+                          ) : null}
                           {s.enrollments.length ? (
                             <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-700 border border-slate-200">
                               اشتراك كورس ({s.enrollments.length})
