@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bebas_Neue, Cairo, Poppins } from "next/font/google";
 import type { ReactNode } from "react";
+import { NavigationLoadingBar } from "@/components/ui/NavigationLoadingBar";
 import { Preloader } from "@/components/ui/Preloader";
 import "./globals.css";
 
@@ -77,6 +78,7 @@ export default function RootLayout({
               "(function(){try{var k='fitcoach-theme';var v=localStorage.getItem(k);var t=(v==='light'||v==='dark')?v:null;if(!t){t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}var r=document.documentElement;if(t==='light'){r.classList.add('theme-light');}else{r.classList.remove('theme-light');}}catch(e){}})();",
           }}
         />
+        <NavigationLoadingBar />
         <Preloader />
         {children}
       </body>
