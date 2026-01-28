@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { Navbar } from "@/components/sections/Navbar";
 import { FooterClean } from "@/components/sections/FooterClean";
@@ -333,6 +334,7 @@ async function ProgramPageInner({
     slug: string;
     title: string;
     theme: string;
+    sort_order: number;
     subtitle: string | null;
     description: string | null;
     features: unknown;
@@ -341,7 +343,7 @@ async function ProgramPageInner({
     // Try new structure first (course_id in packages)
     const { data: pkgRows } = await supabase
       .from("packages")
-      .select("id,slug,title,theme,subtitle,description,features")
+      .select("id,slug,title,theme,sort_order,subtitle,description,features")
       .eq("course_id", course.id)
       .eq("active", true)
       .order("sort_order", { ascending: true });
@@ -352,6 +354,7 @@ async function ProgramPageInner({
         slug: String(p.slug),
         title: String(p.title ?? ""),
         theme: String(p.theme ?? "orange"),
+        sort_order: Number(p.sort_order ?? 0),
         subtitle: p.subtitle ?? null,
         description: p.description ?? null,
         features: (p as any).features ?? null,
@@ -368,7 +371,7 @@ async function ProgramPageInner({
       if (packageIds.length > 0) {
         const { data: pkgRows2 } = await supabase
           .from("packages")
-          .select("id,slug,title,theme,subtitle,description,features")
+          .select("id,slug,title,theme,sort_order,subtitle,description,features")
           .eq("active", true)
           .in("id", packageIds)
           .order("sort_order", { ascending: true });
@@ -379,6 +382,7 @@ async function ProgramPageInner({
             slug: String(p.slug),
             title: String(p.title ?? ""),
             theme: String(p.theme ?? "orange"),
+            sort_order: Number(p.sort_order ?? 0),
             subtitle: p.subtitle ?? null,
             description: p.description ?? null,
             features: (p as any).features ?? null,
@@ -435,6 +439,15 @@ async function ProgramPageInner({
         }
       })()
     : null;
+
+  if (!pkg && availablePackages.length > 0) {
+    const vip = availablePackages.find((p) => String(p.theme ?? "").toLowerCase() === "vip");
+    const best = vip ?? availablePackages[availablePackages.length - 1];
+    const bestSlug = String(best?.slug ?? "").trim();
+    if (bestSlug) {
+      redirect(`/programs/${encodeURIComponent(course.slug)}?pkg=${encodeURIComponent(bestSlug)}`);
+    }
+  }
 
   let isAdmin = false;
   if (user) {
