@@ -19,87 +19,72 @@ export async function Programs() {
   const supabase = await createSupabaseServerClient();
   
   // Fetch all published courses
-  const { data: courseRows, error: courseError } = await supabase
-    .from("courses")
-    .select("id,slug,title_ar,title_en,description,cover_image_url")
-    .eq("is_published", true)
+  const { data: activePackageRows } = await supabase
+    .from("packages")
+    .select("id,slug,title,theme,sort_order")
+    .eq("active", true)
+    .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
-  const courseIds = (courseRows ?? []).map((r) => String(r.id)).filter(Boolean);
+  const activePackages = ((activePackageRows as any[]) ?? [])
+    .map((r) => ({
+      id: String(r.id ?? "").trim(),
+      slug: String(r.slug ?? "").trim(),
+      title: String(r.title ?? ""),
+      theme: String((r as any).theme ?? "orange"),
+      sort_order: Number((r as any).sort_order ?? 0),
+    }))
+    .filter((p) => Boolean(p.id) && Boolean(p.slug));
+
+  const activePackageIds = activePackages.map((p) => p.id);
+
+  const { data: pcRows } = activePackageIds.length
+    ? await supabase
+        .from("package_courses")
+        .select("package_id,course_id,sort_order")
+        .in("package_id", activePackageIds)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true })
+    : { data: [], error: null };
+
+  const courseIds = Array.from(
+    new Set(
+      ((pcRows as any[]) ?? [])
+        .map((r) => String((r as any).course_id ?? "").trim())
+        .filter(Boolean),
+    ),
+  );
+
+  const { data: courseRows, error: courseError } = courseIds.length
+    ? await supabase
+        .from("courses")
+        .select("id,slug,title_ar,title_en,description,cover_image_url")
+        .in("id", courseIds)
+        .eq("is_published", true)
+        .order("created_at", { ascending: true })
+    : { data: [], error: null };
   
   // Fetch packages for each course (using course_id if available, otherwise fallback to package_courses)
   let packagesByCourseId = new Map<string, Array<{ id: string; slug: string; title: string; theme: string }>>();
-  
+
   if (courseIds.length > 0) {
-    // Try to fetch packages using course_id (new structure)
-    const { data: packageRows } = await supabase
-      .from("packages")
-      .select("id,slug,title,theme,course_id")
-      .eq("active", true)
-      .in("course_id", courseIds)
-      .order("sort_order", { ascending: true });
-    
-    // Group packages by course_id
-    for (const pkg of (packageRows ?? [])) {
-      const courseId = String((pkg as any).course_id ?? "");
-      if (courseId) {
-        const existing = packagesByCourseId.get(courseId) ?? [];
-        existing.push({
-          id: String(pkg.id),
-          slug: String(pkg.slug),
-          title: String(pkg.title ?? ""),
-          theme: String((pkg as any).theme ?? "orange"),
-        });
-        packagesByCourseId.set(courseId, existing);
-      }
-    }
-    
-    // Fallback: If no packages found with course_id, try package_courses (old structure)
-    if (packagesByCourseId.size === 0) {
-      const { data: pcRows } = await supabase
-        .from("package_courses")
-        .select("package_id,course_id")
-        .in("course_id", courseIds);
-      
-      const packageIds = Array.from(new Set((pcRows ?? []).map((r) => String((r as any).package_id)).filter(Boolean)));
-      
-      if (packageIds.length > 0) {
-        const { data: pkgRows } = await supabase
-          .from("packages")
-          .select("id,slug,title,theme")
-          .eq("active", true)
-          .in("id", packageIds)
-          .order("sort_order", { ascending: true });
-        
-        // Create mapping from package_courses
-        const pcMap = new Map<string, string[]>();
-        for (const pc of (pcRows ?? [])) {
-          const courseId = String((pc as any).course_id ?? "");
-          const packageId = String((pc as any).package_id ?? "");
-          if (courseId && packageId) {
-            const existing = pcMap.get(courseId) ?? [];
-            existing.push(packageId);
-            pcMap.set(courseId, existing);
-          }
-        }
-        
-        // Group packages by course_id
-        for (const pkg of (pkgRows ?? [])) {
-          const packageId = String(pkg.id);
-          for (const [courseId, pkgIds] of pcMap.entries()) {
-            if (pkgIds.includes(packageId)) {
-              const existing = packagesByCourseId.get(courseId) ?? [];
-              existing.push({
-                id: packageId,
-                slug: String(pkg.slug),
-                title: String(pkg.title ?? ""),
-                theme: String((pkg as any).theme ?? "orange"),
-              });
-              packagesByCourseId.set(courseId, existing);
-            }
-          }
-        }
-      }
+    const pkgById = new Map(activePackages.map((p) => [p.id, p] as const));
+
+    for (const pc of ((pcRows as any[]) ?? [])) {
+      const courseId = String((pc as any).course_id ?? "").trim();
+      const packageId = String((pc as any).package_id ?? "").trim();
+      if (!courseId || !packageId) continue;
+      const pkg = pkgById.get(packageId);
+      if (!pkg) continue;
+
+      const existing = packagesByCourseId.get(courseId) ?? [];
+      existing.push({
+        id: pkg.id,
+        slug: pkg.slug,
+        title: pkg.title,
+        theme: pkg.theme,
+      });
+      packagesByCourseId.set(courseId, existing);
     }
   }
 
@@ -160,8 +145,9 @@ export async function Programs() {
                 الكورسات مش ظاهرة حالياً
               </h3>
               <p className="mt-3 text-right text-sm leading-7 text-white/75">
-                غالباً جدول <span dir="ltr" className="font-mono text-white/90">courses</span> فاضي أو الكورسات مش منشورة.
-                تأكد إن <span dir="ltr" className="font-mono text-white/90">is_published = true</span>.
+                تأكد إن الباقات <span dir="ltr" className="font-mono text-white/90">active = true</span> وربطت الباقات بالكورسات في
+                <span dir="ltr" className="font-mono text-white/90">package_courses</span>، وكمان الكورسات منشورة
+                <span dir="ltr" className="font-mono text-white/90">is_published = true</span>.
               </p>
               {process.env.NODE_ENV !== "production" && courseError?.message ? (
                 <p className="mt-4 text-right text-xs leading-6 text-white/60" dir="ltr">
