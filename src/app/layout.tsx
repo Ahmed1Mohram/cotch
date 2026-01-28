@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Bebas_Neue, Cairo, Poppins } from "next/font/google";
 import { Suspense, type ReactNode } from "react";
-import { NavigationLoadingBar } from "@/components/ui/NavigationLoadingBar";
 import { Preloader } from "@/components/ui/Preloader";
 import "./globals.css";
 
@@ -79,9 +78,8 @@ export default function RootLayout({
           }}
         />
         <Suspense fallback={null}>
-          <NavigationLoadingBar />
+          <Preloader />
         </Suspense>
-        <Preloader />
         {children}
       </body>
     </html>

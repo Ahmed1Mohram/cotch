@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
@@ -15,6 +15,7 @@ const DEFAULT_ASSETS = ["/111.png", "/kalya.png", "/lava-cracks.svg", "/s.png"];
 
 export function Preloader({ className }: PreloaderProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [visible, setVisible] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -26,9 +27,12 @@ export function Preloader({ className }: PreloaderProps) {
   const assetsPrimedRef = useRef(false);
   const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const killTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const forcedMinVisibleMsRef = useRef<number>(0);
   const restoreOverflowRef = useRef<string | null>(null);
   const restoreHtmlOverflowRef = useRef<string | null>(null);
+  const lastShownKeyRef = useRef<string | null>(null);
   const lastShownPathRef = useRef<string | null>(null);
+  const lastShownPkgRef = useRef<string | null>(null);
 
   const assets = useMemo(() => DEFAULT_ASSETS, []);
 
@@ -54,14 +58,38 @@ export function Preloader({ className }: PreloaderProps) {
 
     forceEnableScroll();
 
-    if (lastShownPathRef.current === pathname) return;
-    lastShownPathRef.current = pathname;
+    const path = typeof pathname === "string" ? pathname : "";
+    const isProgramCoursePage = /^\/programs\/[^/]+$/.test(path);
+
+    let pkg = "";
+    if (isProgramCoursePage) {
+      try {
+        pkg = String(searchParams?.get("pkg") ?? "")
+          .trim()
+          .toLowerCase();
+      } catch {
+        pkg = "";
+      }
+    }
+
+    const key = isProgramCoursePage ? `${path}?pkg=${pkg}` : path;
+
+    if (lastShownKeyRef.current === key) return;
+
+    const wasSamePath = lastShownPathRef.current === path;
+    const prevPkg = lastShownPkgRef.current;
+    const isPkgChange = isProgramCoursePage && wasSamePath && prevPkg !== null && prevPkg !== pkg;
+
+    forcedMinVisibleMsRef.current = isPkgChange ? 2000 : 0;
+    lastShownKeyRef.current = key;
+    lastShownPathRef.current = path;
+    lastShownPkgRef.current = pkg;
 
     hasStartedRef.current = false;
     setClosing(false);
     setProgress(0);
     setVisible(true);
-  }, [pathname]);
+  }, [pathname, searchParams]);
 
   useEffect(() => {
     if (!pathname) return;
@@ -261,13 +289,33 @@ export function Preloader({ className }: PreloaderProps) {
     const MAX_WAIT_MS = 6500;
     const CLOSE_MS = 520;
 
+    const minVisibleMs = forcedMinVisibleMsRef.current > 0 ? forcedMinVisibleMsRef.current : MIN_SHOW_MS;
+    const minFastVisibleMs = forcedMinVisibleMsRef.current > 0 ? forcedMinVisibleMsRef.current : 260;
+
     if (assetsPrimedRef.current) {
       const elapsed = performance.now() - startAt;
-      const waitMs = Math.max(0, 260 - elapsed);
-      setProgress(100);
+      const waitMs = Math.max(0, minFastVisibleMs - elapsed);
+
+      if (forcedMinVisibleMsRef.current > 0) {
+        const total = Math.max(1, minFastVisibleMs);
+        const step = () => {
+          if (cancelled) return;
+          const e = performance.now() - startAt;
+          const t = Math.max(0, Math.min(1, e / total));
+          const p = Math.round(12 + t * 83);
+          setProgress(Math.max(0, Math.min(95, p)));
+          if (t < 1) requestAnimationFrame(step);
+        };
+        setProgress(12);
+        requestAnimationFrame(step);
+      } else {
+        setProgress(100);
+      }
+
       if (finishTimerRef.current) clearTimeout(finishTimerRef.current);
       finishTimerRef.current = setTimeout(() => {
         if (cancelled) return;
+        setProgress(100);
         restoreScroll();
         setClosing(true);
         setTimeout(() => {
@@ -302,7 +350,7 @@ export function Preloader({ className }: PreloaderProps) {
       assetsPrimedRef.current = true;
 
       const elapsed = performance.now() - startAt;
-      const waitMs = Math.max(0, MIN_SHOW_MS - elapsed);
+      const waitMs = Math.max(0, minVisibleMs - elapsed);
 
       if (finishTimerRef.current) clearTimeout(finishTimerRef.current);
       finishTimerRef.current = setTimeout(() => {
