@@ -197,7 +197,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       dir="rtl"
     >
       <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/90 backdrop-blur">
-        <div className="mx-auto w-full max-w-[560px] px-4">
+        <div className="mx-auto w-full max-w-[560px] px-4 sm:max-w-2xl lg:max-w-6xl">
           <div className="flex h-14 items-center justify-between">
             <div ref={userMenuRef} className="relative">
               <button
@@ -345,7 +345,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </div>
       ) : null}
 
-      <div className="mx-auto w-full max-w-[560px] px-3 sm:px-4 pb-8 pt-5">
+      <div className="mx-auto w-full max-w-[560px] px-3 sm:max-w-2xl sm:px-4 lg:max-w-6xl pb-8 pt-5">
         <main className="min-w-0 overflow-x-hidden">{children}</main>
       </div>
     </div>
