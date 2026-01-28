@@ -10,6 +10,11 @@ type PackageRow = {
   id: string;
   slug: string;
   title: string;
+  subtitle: string | null;
+  description: string | null;
+  badge: string | null;
+  price_egp: number | null;
+  features: string[];
   theme: string;
 };
 
@@ -54,6 +59,14 @@ export function AdminPackageDetailsScreen({ slug }: { slug: string }) {
   const [allCourses, setAllCourses] = useState<CourseRow[]>([]);
   const [linkedCourses, setLinkedCourses] = useState<CourseRow[]>([]);
 
+  const [pkgTitle, setPkgTitle] = useState("");
+  const [pkgSubtitle, setPkgSubtitle] = useState("");
+  const [pkgDescription, setPkgDescription] = useState("");
+  const [pkgBadge, setPkgBadge] = useState("");
+  const [pkgTheme, setPkgTheme] = useState<"orange" | "blue" | "vip">("orange");
+  const [pkgPriceEgp, setPkgPriceEgp] = useState("");
+  const [pkgFeaturesText, setPkgFeaturesText] = useState("");
+
   const [linkCourseId, setLinkCourseId] = useState("");
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -97,7 +110,7 @@ export function AdminPackageDetailsScreen({ slug }: { slug: string }) {
 
     const pkgRes = await supabase
       .from("packages")
-      .select("id,slug,title,theme")
+      .select("id,slug,title,subtitle,description,badge,price_egp,features,theme")
       .eq("slug", slug)
       .maybeSingle();
 
@@ -121,9 +134,27 @@ export function AdminPackageDetailsScreen({ slug }: { slug: string }) {
       id: String((pkgRes.data as any).id),
       slug: String((pkgRes.data as any).slug),
       title: String((pkgRes.data as any).title ?? ""),
+      subtitle: (pkgRes.data as any).subtitle ?? null,
+      description: (pkgRes.data as any).description ?? null,
+      badge: (pkgRes.data as any).badge ?? null,
+      price_egp:
+        (pkgRes.data as any).price_egp === null || (pkgRes.data as any).price_egp === undefined
+          ? null
+          : Number((pkgRes.data as any).price_egp),
+      features: Array.isArray((pkgRes.data as any).features)
+        ? ((pkgRes.data as any).features as any[]).map((v) => String(v ?? "").trim()).filter(Boolean)
+        : [],
       theme: String((pkgRes.data as any).theme ?? "orange"),
     };
     setPkg(p);
+
+    setPkgTitle(p.title);
+    setPkgSubtitle(p.subtitle ?? "");
+    setPkgDescription(p.description ?? "");
+    setPkgBadge(p.badge ?? "");
+    setPkgTheme(p.theme === "blue" || p.theme === "vip" ? (p.theme as any) : "orange");
+    setPkgPriceEgp(p.price_egp === null || Number.isNaN(p.price_egp) ? "" : String(p.price_egp));
+    setPkgFeaturesText((p.features ?? []).join("\n"));
 
     const pcRes = await supabase
       .from("package_courses")
@@ -233,6 +264,59 @@ export function AdminPackageDetailsScreen({ slug }: { slug: string }) {
     pushNotice("success", "تم إنشاء الكورس داخل الباقة.");
   };
 
+  const savePackage = async () => {
+    if (!pkg) return;
+
+    const title = pkgTitle.trim();
+    if (!title) {
+      setError("اكتب اسم الباقة.");
+      return;
+    }
+
+    const subtitle = pkgSubtitle.trim();
+    const description = pkgDescription.trim();
+    const badge = pkgBadge.trim();
+    const price = pkgPriceEgp.trim();
+
+    const price_egp = price ? Number(price) : null;
+    if (price && !Number.isFinite(price_egp as any)) {
+      setError("السعر غير صحيح.");
+      return;
+    }
+
+    const features = pkgFeaturesText
+      .split("\n")
+      .map((v) => v.trim())
+      .filter(Boolean);
+
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+
+    const res = await supabase
+      .from("packages")
+      .update({
+        title,
+        subtitle: subtitle || null,
+        description: description || null,
+        badge: badge || null,
+        price_egp,
+        features,
+        theme: pkgTheme,
+      })
+      .eq("id", pkg.id);
+
+    if (res.error) {
+      setError(res.error.message);
+      setSaving(false);
+      return;
+    }
+
+    await fetchPackageAndLinked();
+    setSaving(false);
+    pushNotice("success", "تم حفظ بيانات الباقة.");
+  };
+
   return (
     <div className="space-y-5" dir="rtl">
       <AdminCard>
@@ -277,11 +361,104 @@ export function AdminPackageDetailsScreen({ slug }: { slug: string }) {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-slate-900">{pkg.title}</div>
+                {pkg.subtitle ? <div className="mt-1 text-xs text-slate-600">{pkg.subtitle}</div> : null}
                 <div className="mt-1 text-xs text-slate-500" dir="ltr">
                   {pkg.slug}
                 </div>
               </div>
               <div className="text-xs text-slate-500">{linkedCourses.length} كورس</div>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <label className="block">
+                <div className="mb-2 text-right text-xs font-medium text-slate-600">اسم الباقة</div>
+                <input
+                  value={pkgTitle}
+                  onChange={(e) => setPkgTitle(e.target.value)}
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                />
+              </label>
+
+              <label className="block">
+                <div className="mb-2 text-right text-xs font-medium text-slate-600">النوع</div>
+                <select
+                  value={pkgTheme}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "orange" || v === "blue" || v === "vip") setPkgTheme(v);
+                  }}
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                >
+                  <option value="orange">Orange</option>
+                  <option value="blue">Blue</option>
+                  <option value="vip">VIP</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <label className="block">
+                <div className="mb-2 text-right text-xs font-medium text-slate-600">عنوان فرعي (اختياري)</div>
+                <input
+                  value={pkgSubtitle}
+                  onChange={(e) => setPkgSubtitle(e.target.value)}
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                />
+              </label>
+
+              <label className="block">
+                <div className="mb-2 text-right text-xs font-medium text-slate-600">Badge (اختياري)</div>
+                <input
+                  value={pkgBadge}
+                  onChange={(e) => setPkgBadge(e.target.value)}
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                />
+              </label>
+            </div>
+
+            <label className="mt-3 block">
+              <div className="mb-2 text-right text-xs font-medium text-slate-600">تفاصيل الباقة</div>
+              <textarea
+                value={pkgDescription}
+                onChange={(e) => setPkgDescription(e.target.value)}
+                rows={4}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+              />
+            </label>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <label className="block">
+                <div className="mb-2 text-right text-xs font-medium text-slate-600">السعر (EGP) (اختياري)</div>
+                <input
+                  value={pkgPriceEgp}
+                  onChange={(e) => setPkgPriceEgp(e.target.value)}
+                  inputMode="decimal"
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                  dir="ltr"
+                />
+              </label>
+              <div className="hidden md:block" />
+            </div>
+
+            <label className="mt-3 block">
+              <div className="mb-2 text-right text-xs font-medium text-slate-600">مميزات الباقة (كل سطر = ميزة)</div>
+              <textarea
+                value={pkgFeaturesText}
+                onChange={(e) => setPkgFeaturesText(e.target.value)}
+                rows={5}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+              />
+            </label>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void savePackage()}
+                disabled={saving || loading}
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white shadow-sm transition enabled:hover:bg-slate-800 disabled:opacity-50"
+              >
+                حفظ بيانات الباقة
+              </button>
             </div>
           </div>
         ) : null}
