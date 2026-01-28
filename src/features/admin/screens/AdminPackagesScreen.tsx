@@ -155,6 +155,7 @@ export function AdminPackagesScreen() {
   const [newOfferPercent, setNewOfferPercent] = useState("");
   const [newOfferStartAt, setNewOfferStartAt] = useState("");
   const [newOfferEndAt, setNewOfferEndAt] = useState("");
+  const [newCourseId, setNewCourseId] = useState("");
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -402,11 +403,18 @@ export function AdminPackagesScreen() {
     setNewOfferPercent("");
     setNewOfferStartAt("");
     setNewOfferEndAt("");
+    setNewCourseId("");
   };
 
   const createPackage = async () => {
     const supabase = getSupabase();
     if (!supabase) return;
+
+    if (!newCourseId.trim()) {
+      setError("يجب اختيار الكورس أولاً.");
+      setNotice(null);
+      return;
+    }
 
     const title = newTitle.trim();
     if (!title) {
@@ -452,6 +460,7 @@ export function AdminPackagesScreen() {
       theme: newTheme,
       sort_order: Number.isFinite(sortOrder as any) ? sortOrder : 0,
       active: Boolean(newActive),
+      course_id: newCourseId.trim() || null,
       })
       .select("id");
 
@@ -893,7 +902,7 @@ export function AdminPackagesScreen() {
           <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
             <div>
               <div className="text-sm font-semibold text-slate-900">إضافة باقة</div>
-              <div className="mt-1 text-sm text-slate-600">املأ البيانات الأساسية ثم احفظ.</div>
+              <div className="mt-1 text-sm text-slate-600">اختر الكورس أولاً، ثم املأ بيانات الباقة.</div>
             </div>
 
             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -934,6 +943,24 @@ export function AdminPackagesScreen() {
                   placeholder="POPULAR"
                   className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                 />
+              </label>
+            </div>
+
+            <div className="mt-4">
+              <label className="block">
+                <div className="mb-2 text-right text-xs font-medium text-slate-600">الكورس <span className="text-red-500">*</span></div>
+                <select
+                  value={newCourseId}
+                  onChange={(e) => setNewCourseId(e.target.value)}
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                >
+                  <option value="">اختر الكورس...</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title_ar || c.title_en || c.slug}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
 

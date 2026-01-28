@@ -90,16 +90,39 @@ export function Navbar() {
               .eq("user_id", user.id)
               .maybeSingle();
             isAdminValue = Boolean(!adminRes.error && adminRes.data);
-          } catch {
+            
+            // Log for debugging in development
+            if (process.env.NODE_ENV !== "production") {
+              console.log("Navbar admin check - RPC failed, table query result:", {
+                hasRow: Boolean(adminRes.data),
+                error: adminRes.error?.message,
+                userId: user.id,
+              });
+            }
+          } catch (err) {
             // Table query failed
+            if (process.env.NODE_ENV !== "production") {
+              console.error("Navbar admin check - table query error:", err);
+            }
+          }
+        } else {
+          // Log for debugging in development
+          if (process.env.NODE_ENV !== "production") {
+            console.log("Navbar admin check - RPC success:", {
+              isAdmin: isAdminValue,
+              userId: user.id,
+            });
           }
         }
         
         if (!mounted) return;
         setIsAdmin(isAdminValue);
-      } catch {
+      } catch (err) {
         if (!mounted) return;
         setIsAdmin(false);
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Navbar admin check - general error:", err);
+        }
       }
 
       setAuthReady(true);

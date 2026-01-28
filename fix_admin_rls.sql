@@ -36,3 +36,16 @@ as $$
   select exists(select 1 from public.admin_users au where au.user_id = uid);
 $$;
 
+-- Grant necessary permissions
+grant select, insert, update, delete on table public.admin_users to authenticated;
+
+-- Note: To add yourself as admin, run this query (replace with your user ID or email):
+-- Option 1: Using user ID
+-- INSERT INTO public.admin_users (user_id) VALUES ('YOUR_USER_ID_HERE') ON CONFLICT (user_id) DO NOTHING;
+
+-- Option 2: Using email
+-- INSERT INTO public.admin_users (user_id) SELECT id FROM auth.users WHERE email = 'your-email@example.com' ON CONFLICT (user_id) DO NOTHING;
+
+-- Option 3: Add current logged-in user (run while logged in)
+-- INSERT INTO public.admin_users (user_id) VALUES (auth.uid()) ON CONFLICT (user_id) DO NOTHING;
+

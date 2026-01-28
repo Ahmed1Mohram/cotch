@@ -309,12 +309,62 @@ async function ProgramPageInner({
     );
   }
 
+  // Fetch all packages for this course
+  let availablePackages: Array<{ id: string; slug: string; title: string; theme: string }> = [];
+  try {
+    // Try new structure first (course_id in packages)
+    const { data: pkgRows } = await supabase
+      .from("packages")
+      .select("id,slug,title,theme")
+      .eq("course_id", course.id)
+      .eq("active", true)
+      .order("sort_order", { ascending: true });
+
+    if (pkgRows && pkgRows.length > 0) {
+      availablePackages = pkgRows.map((p: any) => ({
+        id: String(p.id),
+        slug: String(p.slug),
+        title: String(p.title ?? ""),
+        theme: String(p.theme ?? "orange"),
+      }));
+    } else {
+      // Fallback to old structure (package_courses)
+      const { data: pcRows } = await supabase
+        .from("package_courses")
+        .select("package_id")
+        .eq("course_id", course.id);
+
+      const packageIds = Array.from(new Set((pcRows ?? []).map((r: any) => String(r.package_id)).filter(Boolean)));
+
+      if (packageIds.length > 0) {
+        const { data: pkgRows2 } = await supabase
+          .from("packages")
+          .select("id,slug,title,theme")
+          .eq("active", true)
+          .in("id", packageIds)
+          .order("sort_order", { ascending: true });
+
+        if (pkgRows2) {
+          availablePackages = pkgRows2.map((p: any) => ({
+            id: String(p.id),
+            slug: String(p.slug),
+            title: String(p.title ?? ""),
+            theme: String(p.theme ?? "orange"),
+          }));
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error fetching packages:", e);
+  }
+
+  // Validate selected package
   const pkg: { id: string; slug: string; title: string } | null = pkgSlug
     ? await (async () => {
         try {
           const pRes = await supabase
             .from("packages")
-            .select("id,slug,title")
+            .select("id,slug,title,course_id")
             .eq("slug", pkgSlug)
             .maybeSingle();
 
@@ -322,6 +372,17 @@ async function ProgramPageInner({
           const row = pRes.data as any;
           if (!row?.id) return null;
 
+          // Check if package belongs to this course (new structure)
+          const packageCourseId = String((row as any).course_id ?? "");
+          if (packageCourseId && packageCourseId === course.id) {
+            return {
+              id: String(row.id),
+              slug: String(row.slug),
+              title: String(row.title ?? ""),
+            };
+          }
+
+          // Fallback: Check old structure (package_courses)
           const pcRes = await supabase
             .from("package_courses")
             .select("course_id")
@@ -572,24 +633,86 @@ async function ProgramPageInner({
               ) : null}
               <p className="mt-4 text-right text-base leading-7 text-white/70 sm:text-lg">{course.desc}</p>
 
+              {/* Packages Selection */}
+              {availablePackages.length > 0 && (
+                <div className="mt-8" dir="rtl">
+                  <div className="mb-4">
+                    <p className="text-right text-sm font-semibold text-white/90">اختر الباقة:</p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    {availablePackages.map((p) => {
+                      const isSelected = pkg?.slug === p.slug;
+                      const themeColors: Record<string, { outer: string; inner: string }> = {
+                        orange: {
+                          outer: "from-[#FF6A00]/40 via-[#FF6A00]/30 to-[#FF6A00]/40",
+                          inner: "ring-[#FF6A00]/30",
+                        },
+                        blue: {
+                          outer: "from-[#3B82F6]/40 via-[#3B82F6]/30 to-[#3B82F6]/40",
+                          inner: "ring-[#3B82F6]/30",
+                        },
+                        vip: {
+                          outer: "from-[#FFD700]/40 via-[#FFA500]/30 to-[#FFD700]/40",
+                          inner: "ring-[#FFD700]/30",
+                        },
+                      };
+                      const colors = themeColors[p.theme] ?? themeColors.orange;
+
+                      return (
+                        <Link
+                          key={p.id}
+                          href={`/programs/${course.slug}?pkg=${encodeURIComponent(p.slug)}`}
+                          className={`relative isolate block overflow-hidden rounded-2xl bg-gradient-to-r p-[2px] transition-transform duration-300 hover:-translate-y-1 ${
+                            isSelected ? "ring-2 ring-white/50" : ""
+                          } ${colors.outer}`}
+                        >
+                          <div className="relative overflow-hidden rounded-[18px] bg-black/60 px-5 py-4 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] backdrop-blur-2xl">
+                            <div className={`pointer-events-none absolute inset-0 rounded-[18px] ring-1 ring-inset ${colors.inner}`} />
+                            <div className="relative">
+                              <h4 className="text-right font-heading text-base tracking-[0.06em] text-white">
+                                {p.title}
+                                {isSelected && (
+                                  <span className="mr-2 text-xs text-white/70">✓</span>
+                                )}
+                              </h4>
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="mt-8 flex flex-wrap justify-end gap-3">
-                <Button
-                  href={
-                    pkg
-                      ? `/?chat=1&pkg=${encodeURIComponent(pkg.slug)}&course=${encodeURIComponent(course.slug)}#contact`
-                      : "/?chat=1#contact"
-                  }
-                  size="lg"
-                  variant="primary"
-                  className="rounded-full normal-case tracking-[0.12em]"
-                >
-                  احجز مكانك
-                </Button>
+                {user ? (
+                  <Button
+                    href={
+                      pkg
+                        ? `/?chat=1&pkg=${encodeURIComponent(pkg.slug)}&course=${encodeURIComponent(course.slug)}#contact`
+                        : "/?chat=1#contact"
+                    }
+                    size="lg"
+                    variant="primary"
+                    className="rounded-full normal-case tracking-[0.12em]"
+                  >
+                    احجز مكانك
+                  </Button>
+                ) : (
+                  <Button
+                    href={`/login?next=${encodeURIComponent(pkg ? `/programs/${course.slug}?pkg=${encodeURIComponent(pkg.slug)}` : `/programs/${course.slug}`)}`}
+                    size="lg"
+                    variant="primary"
+                    className="rounded-full normal-case tracking-[0.12em]"
+                  >
+                    سجل دخول للاشتراك
+                  </Button>
+                )}
                 <Link
-                  href={pkg ? `/packages/${encodeURIComponent(pkg.slug)}` : "/#programs"}
+                  href="/#programs"
                   className="inline-flex h-14 items-center justify-center rounded-full bg-white/5 px-7 text-xs font-semibold tracking-[0.18em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10 hover:text-white"
                 >
-                  {pkg ? "رجوع للباقة" : "رجوع للكورسات"}
+                  رجوع للكورسات
                 </Link>
               </div>
             </div>
@@ -677,16 +800,25 @@ async function ProgramPageInner({
                             </div>
                             <div className="mt-2 text-sm text-white/75">عمر {p.age ?? "—"} سنة</div>
                             <div className="mt-4 flex flex-wrap justify-end gap-3">
-                              <Link
-                                href={
-                                  pkg
-                                    ? `/?chat=1&pkg=${encodeURIComponent(pkg.slug)}&course=${encodeURIComponent(course.slug)}#contact`
-                                    : "/?chat=1#contact"
-                                }
-                                className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#25D366]/90 px-5 text-xs font-extrabold tracking-[0.12em] text-white shadow-[0_14px_60px_-36px_rgba(37,211,102,0.55)] transition hover:bg-[#25D366]"
-                              >
-                                اشترك
-                              </Link>
+                              {user ? (
+                                <Link
+                                  href={
+                                    pkg
+                                      ? `/?chat=1&pkg=${encodeURIComponent(pkg.slug)}&course=${encodeURIComponent(course.slug)}#contact`
+                                      : "/?chat=1#contact"
+                                  }
+                                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#25D366]/90 px-5 text-xs font-extrabold tracking-[0.12em] text-white shadow-[0_14px_60px_-36px_rgba(37,211,102,0.55)] transition hover:bg-[#25D366]"
+                                >
+                                  اشترك
+                                </Link>
+                              ) : (
+                                <Link
+                                  href={`/login?next=${encodeURIComponent(pkg ? `/programs/${course.slug}?pkg=${encodeURIComponent(pkg.slug)}` : `/programs/${course.slug}`)}`}
+                                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#25D366]/90 px-5 text-xs font-extrabold tracking-[0.12em] text-white shadow-[0_14px_60px_-36px_rgba(37,211,102,0.55)] transition hover:bg-[#25D366]"
+                                >
+                                  سجل دخول للاشتراك
+                                </Link>
+                              )}
                               <Link
                                 href={
                                   pkg
