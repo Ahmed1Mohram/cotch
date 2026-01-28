@@ -211,8 +211,8 @@ export function AdminCourseSubscriptionCodesPanel({
 
     const res = await supabase.rpc("generate_subscription_codes", {
       p_course_slug: courseSlug,
-      p_package_id: packageId,
       p_count: c,
+      p_package_id: packageId,
       p_duration_days: d,
       p_max_redemptions: max,
     });

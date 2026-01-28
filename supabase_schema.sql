@@ -577,6 +577,7 @@ drop function if exists public.track_device();
 drop function if exists public.redeem_subscription_code(text);
 drop function if exists public.generate_subscription_codes(text, int, int, int);
 drop function if exists public.generate_subscription_codes(text, uuid, int, int, int);
+drop function if exists public.generate_subscription_codes(text, int, uuid, int, int);
 drop function if exists public.redeem_month_code(text);
 drop function if exists public.generate_month_codes(text, int, int, int, int);
 drop function if exists public.redeem_age_group_code(text);
@@ -1845,8 +1846,8 @@ $$;
 -- Admin-only generator
 create or replace function public.generate_subscription_codes(
   p_course_slug text,
-  p_package_id uuid default null,
   p_count int,
+  p_package_id uuid default null,
   p_duration_days int default 30,
   p_max_redemptions int default 1
 )
@@ -2718,7 +2719,7 @@ grant execute on function public.has_any_active_month_access(uuid, uuid) to auth
  grant execute on function public.track_device() to authenticated;
 grant execute on function public.admin_create_course_in_package(uuid, text, text, text, text, text, text) to authenticated;
 grant execute on function public.redeem_subscription_code(text) to authenticated;
-grant execute on function public.generate_subscription_codes(text, uuid, int, int, int) to authenticated;
+grant execute on function public.generate_subscription_codes(text, int, uuid, int, int) to authenticated;
 grant execute on function public.redeem_month_code(text) to authenticated;
 grant execute on function public.generate_month_codes(text, int, int, int, int) to authenticated;
  grant execute on function public.redeem_age_group_code(text) to authenticated;

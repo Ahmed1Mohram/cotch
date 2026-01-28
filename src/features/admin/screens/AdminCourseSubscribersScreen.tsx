@@ -26,7 +26,10 @@ type PackageRow = {
 
 type PackageCourseRow = {
   package_id: string;
-  packages: { id: string; slug: string; title: string; theme: string; sort_order: number } | null;
+  packages:
+    | { id: string; slug: string; title: string; theme: string; sort_order: number }
+    | { id: string; slug: string; title: string; theme: string; sort_order: number }[]
+    | null;
 };
 
 type ContactRequestRow = {
