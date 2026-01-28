@@ -31,10 +31,6 @@ function WelcomePageInner() {
   }, [searchParams]);
 
   useEffect(() => {
-    setLogoChecked(true);
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
 
     const load = async () => {

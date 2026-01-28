@@ -65,6 +65,7 @@ function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [logoSrc, setLogoSrc] = useState("/s.png");
+  const setLogoChecked = (_: boolean) => {};
   const [teaserAvailable, setTeaserAvailable] = useState(false);
   const teaserRef = useRef<HTMLVideoElement | null>(null);
   const [swipeKey, setSwipeKey] = useState(0);
@@ -111,10 +112,6 @@ function LoginPageInner() {
     if (raw === "/register" || raw.startsWith("/register?")) return null;
     return raw;
   }, [searchParams]);
-
-  useEffect(() => {
-    setLogoChecked(true);
-  }, []);
 
   useEffect(() => {
     fetch("/register-teaser.mp4", { method: "HEAD" })

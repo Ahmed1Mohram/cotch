@@ -626,6 +626,60 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
     }
   };
 
+  const generateCodesForSelectedCard = async () => {
+    if (!course) return;
+    if (!selectedCardId) return;
+
+    const card = playerCards.find((c) => c.id === selectedCardId);
+    if (!card) return;
+
+    const perCard = toIntOrNull(cardCodesPerCard);
+    const durationDays = toIntOrNull(cardCodesDurationDays);
+    const maxRedemptions = toIntOrNull(cardCodesMaxRedemptions);
+
+    if (!perCard || perCard <= 0) return;
+    if (!durationDays || durationDays <= 0) return;
+    if (!maxRedemptions || maxRedemptions <= 0) return;
+
+    const supabase = createSupabaseBrowserClient();
+
+    setGeneratingCardCodes(true);
+    setError(null);
+
+    try {
+      const list: string[] = [];
+      for (let i = 0; i < perCard; i++) {
+        const genRes = await supabase.rpc("generate_age_group_codes", {
+          p_course_slug: course.slug,
+          p_player_card_id: card.id,
+          p_count: 1,
+          p_duration_days: durationDays,
+          p_max_redemptions: maxRedemptions,
+        });
+
+        if (genRes.error) {
+          throw new Error(genRes.error.message);
+        }
+
+        const code = String((genRes.data as any)?.[0]?.code ?? "").trim();
+        if (!code) {
+          throw new Error("فشل توليد الكود");
+        }
+
+        list.push(code);
+      }
+
+      setGeneratedCodesByCardId((prev) => {
+        const existing = prev[card.id] ?? [];
+        return { ...prev, [card.id]: [...existing, ...list] };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "حدث خطأ غير متوقع");
+    } finally {
+      setGeneratingCardCodes(false);
+    }
+  };
+
   const copyCodesForCard = async (cardId: string) => {
     const list = generatedCodesByCardId[cardId] ?? [];
     if (list.length === 0) return;
@@ -1469,6 +1523,21 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                     className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                   >
                     {generatingCardCodes ? "جاري التوليد..." : "توليد كود لكل الكروت"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={generateCodesForSelectedCard}
+                    disabled={
+                      generatingCardCodes ||
+                      copyingAllCardCodes ||
+                      deletingAllGeneratedCardCodes ||
+                      !course ||
+                      !selectedCardId
+                    }
+                    className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-4 text-sm font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                  >
+                    توليد كود للكارت المختار
                   </button>
                 </div>
               </div>
