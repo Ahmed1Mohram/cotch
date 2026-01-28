@@ -16,13 +16,6 @@ type FeaturedCourseRow = {
   description: string | null;
   cover_image_url: string | null;
   featured_sort_order: number | null;
-  featured_package_id: string | null;
-};
-
-type PackageRow = {
-  id: string;
-  slug: string;
-  title: string | null;
 };
 
 const uiFallback: Record<string, { emoji: string; imageClassName: string }> = {
@@ -40,7 +33,7 @@ export async function FeaturedCourses() {
 
   const coursesRes = await supabase
     .from("courses")
-    .select("id,slug,title_ar,title_en,description,cover_image_url,featured_sort_order,featured_package_id")
+    .select("id,slug,title_ar,title_en,description,cover_image_url,featured_sort_order")
     .eq("featured", true)
     .eq("is_published", true)
     .order("featured_sort_order", { ascending: true, nullsFirst: false })
@@ -58,28 +51,10 @@ export async function FeaturedCourses() {
       cover_image_url: r.cover_image_url ?? null,
       featured_sort_order:
         r.featured_sort_order === null || r.featured_sort_order === undefined ? null : Number(r.featured_sort_order),
-      featured_package_id: r.featured_package_id ? String(r.featured_package_id) : null,
     }))
     .filter((c) => Boolean(c.slug));
 
   if (courses.length === 0) return null;
-
-  const pkgIds = Array.from(new Set(courses.map((c) => c.featured_package_id).filter(Boolean))) as string[];
-
-  const packagesById = new Map<string, PackageRow>();
-  if (pkgIds.length) {
-    const pkgRes = await supabase.from("packages").select("id,slug,title").in("id", pkgIds);
-    const pkgRows = ((pkgRes.data as any[]) ?? []) as any[];
-    for (const r of pkgRows) {
-      const id = String(r.id);
-      if (!id) continue;
-      packagesById.set(id, {
-        id,
-        slug: String(r.slug ?? ""),
-        title: r.title ?? null,
-      });
-    }
-  }
 
   const marqueeDurationSec = Math.max(36, Math.round(courses.length * 6.5));
 
@@ -117,16 +92,12 @@ export async function FeaturedCourses() {
 
           <div className="courses-marquee-track flex w-max gap-7">
             {courses.concat(courses).map((c, idx) => {
-            const pkg = c.featured_package_id ? packagesById.get(c.featured_package_id) ?? null : null;
-            const pkgLabel = pkg?.title ?? pkg?.slug ?? "";
             const fallback = uiFallback[c.slug] ?? { emoji: "🔥", imageClassName: "object-center" };
             const cover = typeof c.cover_image_url === "string" ? String(c.cover_image_url).trim() : "";
             const image = cover ? cover : "/kalya.png";
             const title = (c.title_ar ?? c.title_en ?? c.slug).trim();
 
-            const href = pkg?.slug
-              ? `/programs/${encodeURIComponent(c.slug)}?pkg=${encodeURIComponent(pkg.slug)}`
-              : `/programs/${encodeURIComponent(c.slug)}`;
+            const href = `/programs/${encodeURIComponent(c.slug)}`;
 
             return (
               <Link
@@ -157,11 +128,6 @@ export async function FeaturedCourses() {
                   <div className="pointer-events-none absolute inset-0 rounded-[22px] ring-1 ring-inset ring-white/10 transition group-hover:ring-[#FFB35A]/20" />
 
                   <div className="absolute right-4 top-4 flex flex-wrap items-center justify-end gap-2">
-                    {pkgLabel ? (
-                      <div className="rounded-full bg-black/55 px-3 py-1 text-[11px] font-semibold tracking-[0.10em] text-[#FFE2B8] shadow-[0_0_0_1px_rgba(255,179,90,0.24),0_20px_70px_-50px_rgba(255,106,0,0.85)] backdrop-blur-md">
-                        {pkgLabel}
-                      </div>
-                    ) : null}
                     <div className="rounded-full bg-[#FF6A00]/15 px-3 py-1 text-[11px] font-semibold tracking-[0.10em] text-[#FFB35A] shadow-[0_0_0_1px_rgba(255,106,0,0.22)] backdrop-blur-md">
                       مميز
                     </div>

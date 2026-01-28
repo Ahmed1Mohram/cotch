@@ -75,12 +75,10 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/logo.png", { method: "HEAD" })
-      .then((r) => {
-        if (r.ok) setLogoSrc("/logo.png");
-      })
-      .catch(() => {});
+    setLogoChecked(true);
+  }, []);
 
+  useEffect(() => {
     fetch("/register-teaser.mp4", { method: "HEAD" })
       .then((r) => {
         if (r.ok) setTeaserAvailable(true);

@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
-import { IconBell, IconBook, IconChat, IconGrid, IconMenu, IconSpark, IconUsers } from "./icons";
+import { IconBell, IconBook, IconChat, IconGrid, IconMenu, IconUsers } from "./icons";
 
 type NavItem = {
   label: string;
@@ -37,8 +37,6 @@ const navGroups: NavGroup[] = [
     label: "المحتوى",
     items: [
       { label: "الكورسات", href: "/admin/courses", icon: IconBook },
-      { label: "الباقات", href: "/admin/packages", icon: IconSpark },
-      { label: "أكواد الكروت", href: "/admin/card-codes", icon: IconSpark },
     ],
   },
   {
@@ -139,24 +137,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
       };
     }
 
-    if (pathname === "/admin/packages") {
-      return {
-        title: "الباقات",
-        description: "إنشاء وتعديل الباقات وربط الكورسات.",
-      };
-    }
-
     if (pathname === "/admin/courses") {
       return {
         title: "الكورسات",
         description: "إنشاء وإدارة الكورسات ومحتواها.",
-      };
-    }
-
-    if (pathname === "/admin/card-codes") {
-      return {
-        title: "أكواد الكروت",
-        description: "توليد أكواد تفعيل الكروت (Card codes) لكل كورس.",
       };
     }
 
@@ -171,6 +155,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
       return {
         title: "تفاصيل الكورس",
         description: "إدارة الأعمار والشهور والأيام والفيديوهات والأكواد.",
+      };
+    }
+
+    if (pathname?.startsWith("/admin/packages/")) {
+      return {
+        title: "تفاصيل الباقة",
+        description: "تعديل بيانات الباقة وربطها بالكورسات.",
       };
     }
 

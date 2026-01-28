@@ -113,12 +113,10 @@ function LoginPageInner() {
   }, [searchParams]);
 
   useEffect(() => {
-    fetch("/logo.png", { method: "HEAD" })
-      .then((r) => {
-        if (r.ok) setLogoSrc("/logo.png");
-      })
-      .catch(() => {});
+    setLogoChecked(true);
+  }, []);
 
+  useEffect(() => {
     fetch("/register-teaser.mp4", { method: "HEAD" })
       .then((r) => {
         if (r.ok) setTeaserAvailable(true);
@@ -423,7 +421,7 @@ function LoginPageInner() {
                         animate={swipeControls}
                       >
                         <div className="teaser-neon-text font-[var(--font-cairo)] text-4xl font-black tracking-[0.10em] sm:text-5xl">
-                          متنجز سجل
+ متنجز و سجل
                         </div>
                       </motion.div>
                     </MotionConfig>

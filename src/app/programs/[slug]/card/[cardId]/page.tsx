@@ -325,6 +325,7 @@ export default async function ProgramCardPage({
               courseId={course.id}
               courseSlug={course.slug}
               courseTitle={courseTitle}
+              pkgSlug={pkg ? pkg.slug : pkgSlug}
               hasCourseAccess={false}
               initialMonths={initialMonths}
             />
@@ -533,6 +534,7 @@ export default async function ProgramCardPage({
             courseId={course.id}
             courseSlug={course.slug}
             courseTitle={courseTitle}
+            pkgSlug={pkg ? pkg.slug : pkgSlug}
             hasCourseAccess={hasContentAccess}
             initialMonths={filteredMonths}
           />

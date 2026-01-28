@@ -31,11 +31,7 @@ function WelcomePageInner() {
   }, [searchParams]);
 
   useEffect(() => {
-    fetch("/logo.png", { method: "HEAD" })
-      .then((r) => {
-        if (r.ok) setLogoSrc("/logo.png");
-      })
-      .catch(() => {});
+    setLogoChecked(true);
   }, []);
 
   useEffect(() => {

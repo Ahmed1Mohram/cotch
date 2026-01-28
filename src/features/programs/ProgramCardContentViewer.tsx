@@ -138,19 +138,21 @@ export function ProgramCardContentViewer({
   courseId,
   courseSlug,
   courseTitle,
+  pkgSlug,
   hasCourseAccess,
   initialMonths,
 }: {
   courseId: string;
   courseSlug: string;
   courseTitle: string;
+  pkgSlug?: string;
   hasCourseAccess: boolean;
   initialMonths: Month[];
 }) {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
 
-  const subscribeHref = `/?chat=1&course=${encodeURIComponent(courseSlug)}#contact`;
+  const subscribeHref = `/?chat=1&course=${encodeURIComponent(courseSlug)}${pkgSlug ? `&pkg=${encodeURIComponent(pkgSlug)}` : ""}#contact`;
 
   const [months, setMonths] = useState<Month[]>(initialMonths);
 

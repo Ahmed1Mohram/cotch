@@ -9,7 +9,7 @@ import { Container } from "@/components/ui/Container";
 
 export function Hero() {
   const reduce = useReducedMotion();
-  const candidates = useMemo(() => ["/kalfya.png", "/kalya.png"], []);
+  const candidates = useMemo(() => ["/kalya.png"], []);
   const [src, setSrc] = useState<string | null>(candidates[0]);
   const [mounted, setMounted] = useState(false);
 
@@ -31,11 +31,7 @@ export function Hero() {
             sizes="100vw"
             className="object-cover object-[78%_26%] opacity-100 sm:object-[center_28%] md:object-[center_12%]"
             onError={() => {
-              if (src === candidates[0]) {
-                setSrc(candidates[1]);
-              } else {
-                setSrc(null);
-              }
+              setSrc(null);
             }}
           />
         ) : null}

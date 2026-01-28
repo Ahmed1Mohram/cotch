@@ -20,15 +20,6 @@ type CourseRow = {
   description: string | null;
   cover_image_url: string | null;
   theme: string | null;
-  featured: boolean;
-  featured_sort_order: number | null;
-  featured_package_id: string | null;
-};
-
-type PackageRow = {
-  id: string;
-  slug: string;
-  title: string | null;
 };
 
 function normalizeCourseSlug(input: string) {
@@ -43,7 +34,6 @@ function normalizeCourseSlug(input: string) {
 
 export function AdminCoursesScreen() {
   const [courses, setCourses] = useState<CourseRow[]>([]);
-  const [packages, setPackages] = useState<PackageRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ kind: "success" | "error" | "info"; text: string } | null>(null);
@@ -58,7 +48,6 @@ export function AdminCoursesScreen() {
   const [uploading, setUploading] = useState(false);
 
   const [newSlug, setNewSlug] = useState("");
-  const [newPackageId, setNewPackageId] = useState("");
   const [newTitleAr, setNewTitleAr] = useState("");
   const [newTitleEn, setNewTitleEn] = useState("");
   const [newDesc, setNewDesc] = useState("");
@@ -72,54 +61,6 @@ export function AdminCoursesScreen() {
     window.setTimeout(() => {
       setNotice((prev) => (prev?.text === text ? null : prev));
     }, 3500);
-  };
-
-  const saveFeatured = async (courseId: string, patch: Partial<CourseRow>) => {
-    const supabase = getSupabase();
-    if (!supabase) return;
-
-    setError(null);
-    setNotice(null);
-
-    const res = await supabase
-      .from("courses")
-      .update({
-        featured: typeof patch.featured === "boolean" ? patch.featured : undefined,
-        featured_sort_order:
-          typeof patch.featured_sort_order === "number" && Number.isFinite(patch.featured_sort_order)
-            ? patch.featured_sort_order
-            : patch.featured_sort_order === null
-              ? null
-              : undefined,
-        featured_package_id:
-          typeof patch.featured_package_id === "string" ? patch.featured_package_id : patch.featured_package_id === null ? null : undefined,
-      })
-      .eq("id", courseId);
-
-    if (res.error) {
-      setError(res.error.message);
-      return;
-    }
-
-    setCourses((prev) =>
-      prev.map((c) => {
-        if (c.id !== courseId) return c;
-        return {
-          ...c,
-          featured: typeof patch.featured === "boolean" ? patch.featured : c.featured,
-          featured_sort_order:
-            typeof patch.featured_sort_order === "number" || patch.featured_sort_order === null
-              ? (patch.featured_sort_order as any)
-              : c.featured_sort_order,
-          featured_package_id:
-            typeof patch.featured_package_id === "string" || patch.featured_package_id === null
-              ? (patch.featured_package_id as any)
-              : c.featured_package_id,
-        };
-      }),
-    );
-
-    pushNotice("success", "تم حفظ الكورس المميز.");
   };
 
   const getSupabase = () => {
@@ -136,7 +77,7 @@ export function AdminCoursesScreen() {
     if (!supabase) return;
     const res = await supabase
       .from("courses")
-      .select("id,slug,title_ar,title_en,description,cover_image_url,theme,featured,featured_sort_order,featured_package_id")
+      .select("id,slug,title_ar,title_en,description,cover_image_url,theme")
       .order("created_at", { ascending: true });
 
     if (res.error) {
@@ -152,10 +93,6 @@ export function AdminCoursesScreen() {
         description: r.description ?? null,
         cover_image_url: r.cover_image_url ?? null,
         theme: r.theme ?? null,
-        featured: Boolean(r.featured),
-        featured_sort_order:
-          r.featured_sort_order === null || r.featured_sort_order === undefined ? null : Number(r.featured_sort_order),
-        featured_package_id: r.featured_package_id ? String(r.featured_package_id) : null,
       }));
       setCourses(list);
 
@@ -217,27 +154,9 @@ export function AdminCoursesScreen() {
     }
   };
 
-  const fetchPackages = async () => {
-    const supabase = getSupabase();
-    if (!supabase) return;
-
-    const res = await supabase
-      .from("packages")
-      .select("id,slug,title")
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true });
-
-    if (res.error) {
-      setPackages([]);
-      setError(res.error.message);
-    } else {
-      setPackages((res.data as PackageRow[]) ?? []);
-    }
-  };
-
   useEffect(() => {
     const run = async () => {
-      await Promise.all([fetchPackages(), fetchCourses()]);
+      await fetchCourses();
       setLoaded(true);
     };
 
@@ -285,25 +204,22 @@ export function AdminCoursesScreen() {
       return;
     }
 
-    const pkgId = newPackageId.trim();
-    if (!pkgId) {
-      setError("اختار باقة للكورس.");
-      return;
-    }
-
     setCreating(true);
     setError(null);
     setNotice(null);
 
-    const res = await supabase.rpc("admin_create_course_in_package", {
-      p_package_id: pkgId,
-      p_slug: slug,
-      p_title_ar: newTitleAr.trim() || null,
-      p_title_en: newTitleEn.trim() || null,
-      p_description: newDesc.trim() || null,
-      p_cover_image_url: newCoverUrl.trim() || null,
-      p_theme: newTheme,
-    });
+    const res = await supabase
+      .from("courses")
+      .insert({
+        slug,
+        title_ar: newTitleAr.trim() || null,
+        title_en: newTitleEn.trim() || null,
+        description: newDesc.trim() || null,
+        cover_image_url: newCoverUrl.trim() || null,
+        theme: newTheme,
+      })
+      .select("id")
+      .maybeSingle();
 
     if (res.error) {
       setError(res.error.message);
@@ -312,7 +228,6 @@ export function AdminCoursesScreen() {
     }
 
     setNewSlug("");
-    setNewPackageId("");
     setNewTitleAr("");
     setNewTitleEn("");
     setNewDesc("");
@@ -368,7 +283,7 @@ export function AdminCoursesScreen() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-base font-extrabold text-slate-900">الكورسات</div>
-              <div className="mt-1 text-sm text-slate-600">إدارة الكورسات وربطها بالباقات ثم الدخول لتفاصيل المحتوى.</div>
+              <div className="mt-1 text-sm text-slate-600">إدارة الكورسات والدخول لتفاصيل الكورس لإضافة الباقات والمحتوى.</div>
             </div>
             <div className="text-xs text-slate-500 whitespace-nowrap">{loaded ? `${filteredCourses.length} كورس` : "تحميل..."}</div>
           </div>
@@ -426,22 +341,6 @@ export function AdminCoursesScreen() {
                 <div className="mt-1 text-sm text-slate-600">املأ البيانات الأساسية ثم احفظ.</div>
               </div>
             </div>
-
-            <label className="mt-4 block">
-              <div className="mb-2 text-right text-xs font-medium text-slate-600">الباقة</div>
-              <select
-                value={newPackageId}
-                onChange={(e) => setNewPackageId(e.target.value)}
-                className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-              >
-                <option value="">اختر باقة…</option>
-                {packages.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title ?? p.slug}
-                  </option>
-                ))}
-              </select>
-            </label>
 
             <div className="grid gap-3 md:grid-cols-2">
               <label className="block">
@@ -647,117 +546,7 @@ export function AdminCoursesScreen() {
                 </div>
               </div>
 
-              <div
-                className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                onClick={(e) => {
-                  e.stopPropagation();
-                }}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <label className="inline-flex items-center gap-2 text-xs text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(course.featured)}
-                      onChange={(e) => {
-                        const next = e.target.checked;
-                        void saveFeatured(course.id, {
-                          featured: next,
-                          featured_sort_order: next ? (course.featured_sort_order ?? 0) : null,
-                          featured_package_id: next ? (course.featured_package_id ?? null) : null,
-                        });
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                      className="h-4 w-4 accent-slate-700"
-                    />
-                    كورس مميز
-                  </label>
-
-                  {course.featured ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <label className="flex items-center gap-2 text-xs text-slate-700">
-                        <span className="text-slate-600">ترتيب</span>
-                        <input
-                          defaultValue={course.featured_sort_order === null ? "" : String(course.featured_sort_order)}
-                          inputMode="numeric"
-                          onBlur={(e) => {
-                            const raw = e.target.value.trim();
-                            const n = raw ? Number(raw) : NaN;
-                            void saveFeatured(course.id, {
-                              featured_sort_order: Number.isFinite(n) ? Math.trunc(n) : null,
-                            });
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                          className="h-8 w-20 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-900 outline-none focus:border-slate-400"
-                        />
-                      </label>
-
-                      <label className="flex items-center gap-2 text-xs text-slate-700">
-                        <span className="text-slate-600">الباقة</span>
-                        <select
-                          value={course.featured_package_id ?? ""}
-                          onChange={(e) => {
-                            const v = e.target.value.trim();
-                            void saveFeatured(course.id, {
-                              featured_package_id: v ? v : null,
-                            });
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                          className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-900 outline-none focus:border-slate-400"
-                        >
-                          <option value="">بدون</option>
-                          {packages.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.title ?? p.slug}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-
               <div className="mt-5 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      try {
-                        window.location.assign(`/admin/courses/${course.slug}/subscribers`);
-                      } catch {
-                        // ignore
-                      }
-                    }}
-                    className="inline-flex h-9 items-center justify-center rounded-2xl bg-white px-3 text-xs font-semibold text-slate-700 border border-slate-200 transition hover:bg-slate-50"
-                  >
-                    مشتركين
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      try {
-                        window.location.assign(`/admin/courses/${course.slug}?tab=ages`);
-                      } catch {
-                        // ignore
-                      }
-                    }}
-                    className="inline-flex h-9 items-center justify-center rounded-2xl bg-white px-3 text-xs font-semibold text-slate-700 border border-slate-200 transition hover:bg-slate-50"
-                  >
-                    الأعمار
-                  </button>
-                </div>
-
                 <div className="text-sm font-medium text-slate-700">فتح</div>
               </div>
             </Link>

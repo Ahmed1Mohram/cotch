@@ -1,5 +1,5 @@
-import { AdminCardCodesScreen } from "@/features/admin/screens/AdminCardCodesScreen";
+import { redirect } from "next/navigation";
 
 export default function AdminCardCodesPage() {
-  return <AdminCardCodesScreen />;
+  redirect("/admin/courses");
 }

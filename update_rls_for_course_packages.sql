@@ -13,15 +13,7 @@ CREATE POLICY "packages_select_by_course" ON public.packages
 FOR SELECT
 TO anon, authenticated
 USING (
-  active = true 
-  AND (
-    course_id IS NULL 
-    OR EXISTS (
-      SELECT 1 FROM public.courses c 
-      WHERE c.id = packages.course_id 
-      AND c.is_published = true
-    )
-  )
+  active = true
 );
 
 -- Note: The existing "packages_select_public" policy should still work

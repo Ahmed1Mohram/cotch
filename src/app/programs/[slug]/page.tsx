@@ -24,6 +24,24 @@ function isImgTagSrc(src: string) {
   return /^(https?:)?\/\//i.test(s) || /^data:/i.test(s) || /^blob:/i.test(s);
 }
 
+function normalizeFeatures(features: unknown): string[] {
+  if (!features) return [];
+  if (Array.isArray(features)) {
+    return features.map((x) => String(x)).map((s) => s.trim()).filter(Boolean);
+  }
+  if (typeof features === "string") {
+    const s = features.trim();
+    return s ? [s] : [];
+  }
+  if (typeof features === "object") {
+    const obj = features as any;
+    if (Array.isArray(obj?.items)) {
+      return obj.items.map((x: any) => String(x)).map((s: string) => s.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
 export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
 
@@ -310,12 +328,20 @@ async function ProgramPageInner({
   }
 
   // Fetch all packages for this course
-  let availablePackages: Array<{ id: string; slug: string; title: string; theme: string }> = [];
+  let availablePackages: Array<{
+    id: string;
+    slug: string;
+    title: string;
+    theme: string;
+    subtitle: string | null;
+    description: string | null;
+    features: unknown;
+  }> = [];
   try {
     // Try new structure first (course_id in packages)
     const { data: pkgRows } = await supabase
       .from("packages")
-      .select("id,slug,title,theme")
+      .select("id,slug,title,theme,subtitle,description,features")
       .eq("course_id", course.id)
       .eq("active", true)
       .order("sort_order", { ascending: true });
@@ -326,6 +352,9 @@ async function ProgramPageInner({
         slug: String(p.slug),
         title: String(p.title ?? ""),
         theme: String(p.theme ?? "orange"),
+        subtitle: p.subtitle ?? null,
+        description: p.description ?? null,
+        features: (p as any).features ?? null,
       }));
     } else {
       // Fallback to old structure (package_courses)
@@ -339,7 +368,7 @@ async function ProgramPageInner({
       if (packageIds.length > 0) {
         const { data: pkgRows2 } = await supabase
           .from("packages")
-          .select("id,slug,title,theme")
+          .select("id,slug,title,theme,subtitle,description,features")
           .eq("active", true)
           .in("id", packageIds)
           .order("sort_order", { ascending: true });
@@ -350,6 +379,9 @@ async function ProgramPageInner({
             slug: String(p.slug),
             title: String(p.title ?? ""),
             theme: String(p.theme ?? "orange"),
+            subtitle: p.subtitle ?? null,
+            description: p.description ?? null,
+            features: (p as any).features ?? null,
           }));
         }
       }
@@ -607,6 +639,9 @@ async function ProgramPageInner({
     }
   }
 
+  const requirePackageSelection = availablePackages.length > 0;
+  const showCards = !requirePackageSelection || Boolean(pkg);
+
   return (
     <div className="min-h-screen bg-[#0B0B0B]">
       <Navbar />
@@ -639,42 +674,147 @@ async function ProgramPageInner({
                   <div className="mb-4">
                     <p className="text-right text-sm font-semibold text-white/90">اختر الباقة:</p>
                   </div>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {availablePackages.map((p) => {
                       const isSelected = pkg?.slug === p.slug;
-                      const themeColors: Record<string, { outer: string; inner: string }> = {
+                      const isVip = p.theme === "vip" || String(p.slug ?? "").toLowerCase().includes("vip");
+                      const themeColors: Record<
+                        string,
+                        {
+                          outer: string;
+                          inner: string;
+                          glow: string;
+                          dots: string;
+                          title: string;
+                          chip: string;
+                          chipSelected: string;
+                          featureRing: string;
+                          featureBg: string;
+                          cta: string;
+                        }
+                      > = {
                         orange: {
                           outer: "from-[#FF6A00]/40 via-[#FF6A00]/30 to-[#FF6A00]/40",
                           inner: "ring-[#FF6A00]/30",
+                          glow: "bg-[radial-gradient(680px_420px_at_20%_18%,rgba(255,106,0,0.18),transparent_64%)]",
+                          dots:
+                            "bg-[radial-gradient(circle,rgba(255,179,90,0.55)_1px,transparent_1.7px)] [background-size:28px_28px] [mask-image:radial-gradient(80%_70%_at_50%_50%,transparent_44%,black_76%)]",
+                          title: "text-white",
+                          chip: "bg-black/40 text-white/80 ring-white/10",
+                          chipSelected: "bg-white/14 text-white ring-white/25",
+                          featureRing: "ring-white/10",
+                          featureBg: "bg-black/35",
+                          cta: "bg-white/6 group-hover:bg-white/10",
                         },
                         blue: {
                           outer: "from-[#3B82F6]/40 via-[#3B82F6]/30 to-[#3B82F6]/40",
                           inner: "ring-[#3B82F6]/30",
+                          glow: "bg-[radial-gradient(680px_420px_at_20%_18%,rgba(59,130,246,0.18),transparent_64%)]",
+                          dots:
+                            "bg-[radial-gradient(circle,rgba(59,130,246,0.55)_1px,transparent_1.7px)] [background-size:28px_28px] [mask-image:radial-gradient(80%_70%_at_50%_50%,transparent_44%,black_76%)]",
+                          title: "text-white",
+                          chip: "bg-black/40 text-white/80 ring-white/10",
+                          chipSelected: "bg-white/14 text-white ring-white/25",
+                          featureRing: "ring-white/10",
+                          featureBg: "bg-black/35",
+                          cta: "bg-white/6 group-hover:bg-white/10",
                         },
                         vip: {
                           outer: "from-[#FFD700]/40 via-[#FFA500]/30 to-[#FFD700]/40",
                           inner: "ring-[#FFD700]/30",
+                          glow: "bg-[radial-gradient(720px_460px_at_22%_18%,rgba(255,215,0,0.20),transparent_62%)]",
+                          dots:
+                            "bg-[radial-gradient(circle,rgba(255,215,0,0.55)_1px,transparent_1.7px)] [background-size:28px_28px] [mask-image:radial-gradient(80%_70%_at_50%_50%,transparent_44%,black_76%)]",
+                          title:
+                            "text-transparent bg-clip-text bg-gradient-to-l from-[#FFD700] via-[#FFB35A] to-[#FFD700]",
+                          chip: "bg-[#FFD700]/12 text-[#FFE2B8] ring-[#FFD700]/20",
+                          chipSelected: "bg-[#FFD700]/18 text-[#FFF2CC] ring-[#FFD700]/30",
+                          featureRing: "ring-[#FFD700]/18",
+                          featureBg: "bg-[#140c00]/55",
+                          cta: "bg-[#FFD700]/10 group-hover:bg-[#FFD700]/14",
                         },
                       };
-                      const colors = themeColors[p.theme] ?? themeColors.orange;
+                      const colors = themeColors[isVip ? "vip" : p.theme] ?? themeColors.orange;
+                      const feats = normalizeFeatures(p.features).slice(0, 5);
 
                       return (
                         <Link
                           key={p.id}
                           href={`/programs/${course.slug}?pkg=${encodeURIComponent(p.slug)}`}
-                          className={`relative isolate block overflow-hidden rounded-2xl bg-gradient-to-r p-[2px] transition-transform duration-300 hover:-translate-y-1 ${
-                            isSelected ? "ring-2 ring-white/50" : ""
-                          } ${colors.outer}`}
+                          className={`group relative isolate block overflow-hidden rounded-3xl bg-gradient-to-r p-[2px] transition-transform duration-300 hover:-translate-y-1 ${
+                            isSelected ? "ring-2 ring-white/60" : ""
+                          } ${colors.outer} shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_50px_160px_-120px_rgba(0,0,0,0.92)]`}
                         >
-                          <div className="relative overflow-hidden rounded-[18px] bg-black/60 px-5 py-4 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] backdrop-blur-2xl">
-                            <div className={`pointer-events-none absolute inset-0 rounded-[18px] ring-1 ring-inset ${colors.inner}`} />
+                          <div className="pointer-events-none absolute -inset-[55%] opacity-70 blur-3xl">
+                            <div className={`absolute inset-0 ${colors.glow}`} />
+                          </div>
+                          <div className="pointer-events-none absolute inset-0 opacity-65">
+                            <div className={`absolute inset-0 ${colors.dots}`} />
+                          </div>
+
+                          <div className="relative overflow-hidden rounded-[22px] bg-black/65 px-7 py-7 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] backdrop-blur-2xl">
+                            <div className={`pointer-events-none absolute inset-0 rounded-[22px] ring-1 ring-inset ${colors.inner}`} />
+                            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(860px_460px_at_18%_12%,rgba(255,255,255,0.08),transparent_66%)]" />
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/6 via-transparent to-black/50" />
                             <div className="relative">
-                              <h4 className="text-right font-heading text-base tracking-[0.06em] text-white">
-                                {p.title}
-                                {isSelected && (
-                                  <span className="mr-2 text-xs text-white/70">✓</span>
+                              <div className="flex items-start justify-between gap-3" dir="rtl">
+                                <div className="min-w-0">
+                                  <h4 className={`text-right font-heading text-3xl tracking-[0.14em] ${colors.title}`}>
+                                    {p.title}
+                                  </h4>
+                                  {p.subtitle ? (
+                                    <div className="mt-2 text-right text-sm text-white/70">
+                                      {String(p.subtitle)}
+                                    </div>
+                                  ) : null}
+                                </div>
+                                <div className="shrink-0 flex items-center gap-2">
+                                  {isVip ? (
+                                    <div className="rounded-full bg-[#FFD700]/12 px-3 py-1 text-[11px] font-extrabold tracking-[0.22em] text-[#FFE2B8] shadow-[0_0_0_1px_rgba(255,215,0,0.24),0_18px_60px_-40px_rgba(255,215,0,0.50)] ring-1 ring-inset ring-[#FFD700]/22">
+                                      VIP
+                                    </div>
+                                  ) : null}
+                                  <div
+                                    className={`rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.22em] ring-1 ring-inset ${
+                                      isSelected ? colors.chipSelected : colors.chip
+                                    }`}
+                                  >
+                                    {isSelected ? "مختارة" : "اختيار"}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {p.description ? (
+                                <p className="mt-4 text-right text-sm leading-7 text-white/75 line-clamp-3">
+                                  {String(p.description)}
+                                </p>
+                              ) : null}
+
+                              <div className={`mt-5 rounded-2xl p-5 ring-1 ring-inset ${colors.featureRing} ${colors.featureBg}`}>
+                                <div className="text-right text-xs font-semibold tracking-[0.22em] text-white/85">
+                                  مميزات الباقة
+                                </div>
+                                {feats.length ? (
+                                  <ul className="mt-4 space-y-2 text-right text-sm text-white/85">
+                                    {feats.map((f) => (
+                                      <li key={f} className="flex items-start justify-end gap-2 leading-6">
+                                        <span className="mt-2 h-1.5 w-1.5 rounded-full bg-white/55" />
+                                        <span className="min-w-0">{f}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <div className="mt-3 text-right text-sm text-white/55">
+                                    أضف مميزات للباقة لعرضها هنا
+                                  </div>
                                 )}
-                              </h4>
+                              </div>
+
+                              <div className="mt-6 flex justify-end">
+                                <div className={`inline-flex h-12 items-center justify-center rounded-2xl px-7 text-xs font-extrabold tracking-[0.18em] text-white/90 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition ${colors.cta}`}>
+                                  اختر الباقة
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </Link>
@@ -755,7 +895,16 @@ async function ProgramPageInner({
                       pkgSlug={pkg ? pkg.slug : pkgSlug}
                     />
                   </div>
-                  {cardsLocked ? (
+                  {!showCards ? (
+                    <div className="col-span-2 md:col-span-3 lg:col-span-5 rounded-3xl bg-white/5 px-6 py-8 text-right border border-white/10">
+                      <div className="text-sm font-heading tracking-[0.12em] text-white/90 mb-2">
+                        اختر باقة أولاً
+                      </div>
+                      <div className="text-xs text-white/60">
+                        علشان تظهر كروت الأعمار، اختار الباقة من فوق.
+                      </div>
+                    </div>
+                  ) : cardsLocked ? (
                     profiles.length ? (
                       profiles.map((p, i) => (
                         <div
@@ -853,58 +1002,58 @@ async function ProgramPageInner({
                     )
                   ) : (
                     profiles.map((p, i) => (
-                        <Link
-                          key={p.id}
-                          href={
-                            pkg
-                              ? `/programs/${course.slug}/card/${p.id}?pkg=${encodeURIComponent(pkg.slug)}`
-                              : `/programs/${course.slug}/card/${p.id}`
-                          }
-                          aria-label={`فتح فيديوهات الكارت رقم ${i + 1}`}
-                          className="group relative isolate block aspect-[4/5] overflow-hidden rounded-3xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_46px_150px_-120px_rgba(0,0,0,0.95)] transition-transform duration-300 hover:-translate-y-0.5"
-                        >
-                          {isImgTagSrc(course.image) ? (
-                            <img
-                              src={course.image}
-                              alt={course.title}
-                              loading="lazy"
-                              className={
-                                "absolute inset-0 h-full w-full object-cover contrast-[1.08] saturate-[1.08] brightness-[1.00] transition duration-700 group-hover:scale-[1.06] group-hover:contrast-[1.25] group-hover:saturate-[1.25] " +
-                                course.imageClassName
-                              }
-                            />
-                          ) : (
-                            <Image
-                              src={course.image}
-                              alt={course.title}
-                              fill
-                              sizes="(min-width: 1024px) 20vw, (min-width: 640px) 33vw, 50vw"
-                              className={
-                                "object-cover contrast-[1.08] saturate-[1.08] brightness-[1.00] transition duration-700 group-hover:scale-[1.06] group-hover:contrast-[1.25] group-hover:saturate-[1.25] " +
-                                course.imageClassName
-                              }
-                            />
-                          )}
-                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/42 to-black/0" />
-                          <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10 transition group-hover:ring-white/25" />
+                      <Link
+                        key={p.id}
+                        href={
+                          pkg
+                            ? `/programs/${course.slug}/card/${p.id}?pkg=${encodeURIComponent(pkg.slug)}`
+                            : `/programs/${course.slug}/card/${p.id}`
+                        }
+                        aria-label={`فتح فيديوهات الكارت رقم ${i + 1}`}
+                        className="group relative isolate block aspect-[4/5] overflow-hidden rounded-3xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_46px_150px_-120px_rgba(0,0,0,0.95)] transition-transform duration-300 hover:-translate-y-0.5"
+                      >
+                        {isImgTagSrc(course.image) ? (
+                          <img
+                            src={course.image}
+                            alt={course.title}
+                            loading="lazy"
+                            className={
+                              "absolute inset-0 h-full w-full object-cover contrast-[1.08] saturate-[1.08] brightness-[1.00] transition duration-700 group-hover:scale-[1.06] group-hover:contrast-[1.25] group-hover:saturate-[1.25] " +
+                              course.imageClassName
+                            }
+                          />
+                        ) : (
+                          <Image
+                            src={course.image}
+                            alt={course.title}
+                            fill
+                            sizes="(min-width: 1024px) 20vw, (min-width: 640px) 33vw, 50vw"
+                            className={
+                              "object-cover contrast-[1.08] saturate-[1.08] brightness-[1.00] transition duration-700 group-hover:scale-[1.06] group-hover:contrast-[1.25] group-hover:saturate-[1.25] " +
+                              course.imageClassName
+                            }
+                          />
+                        )}
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/42 to-black/0" />
+                        <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10 transition group-hover:ring-white/25" />
 
-                          <div className="absolute inset-0 flex flex-col justify-end p-5" dir="rtl">
-                            <div className="font-heading text-[11px] tracking-[0.22em] text-white/70">كارت رقم {i + 1}</div>
-                            <div className="mt-2 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
-                              طول {p.heightCm ?? "—"}
-                              <span className="ms-1 text-sm text-white/70">سم</span>
-                            </div>
-                            <div className="mt-1 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
-                              وزن {p.weightKg ?? "—"}
-                              <span className="ms-1 text-sm text-white/70">كجم</span>
-                            </div>
-                            <div className="mt-2 text-sm text-white/75">عمر {p.age ?? "—"} سنة</div>
-                            <div className="mt-4 inline-flex items-center justify-end text-xs font-semibold tracking-[0.18em] text-[#FFB35A]">
-                              افتح الفيديوهات
-                            </div>
+                        <div className="absolute inset-0 flex flex-col justify-end p-5" dir="rtl">
+                          <div className="font-heading text-[11px] tracking-[0.22em] text-white/70">كارت رقم {i + 1}</div>
+                          <div className="mt-2 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
+                            طول {p.heightCm ?? "—"}
+                            <span className="ms-1 text-sm text-white/70">سم</span>
                           </div>
-                        </Link>
-                      ))
+                          <div className="mt-1 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
+                            وزن {p.weightKg ?? "—"}
+                            <span className="ms-1 text-sm text-white/70">كجم</span>
+                          </div>
+                          <div className="mt-2 text-sm text-white/75">عمر {p.age ?? "—"} سنة</div>
+                          <div className="mt-4 inline-flex items-center justify-end text-xs font-semibold tracking-[0.18em] text-[#FFB35A]">
+                            افتح الفيديوهات
+                          </div>
+                        </div>
+                      </Link>
+                    ))
                   )}
                 </div>
               </div>

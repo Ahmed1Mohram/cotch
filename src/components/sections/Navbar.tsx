@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 
 const links = [
+  { label: "الرئيسية", href: "/", hash: "" },
   { label: "الباقات", href: "/packages", hash: "#packages" },
   { label: "التواصل", href: "/", hash: "#contact" },
 ];
@@ -35,8 +36,18 @@ export function Navbar() {
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, link: typeof links[0]) => {
     e.preventDefault();
     const isHomePage = pathname === "/";
-    const targetHref = isHomePage ? link.hash : link.href + link.hash;
+    const hasHash = Boolean(link.hash);
+    const targetHref = hasHash ? (isHomePage ? link.hash : link.href + link.hash) : link.href;
     
+    if (!hasHash) {
+      if (isHomePage) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      router.push(targetHref);
+      return;
+    }
+
     if (isHomePage) {
       // On home page, scroll to section
       const element = document.querySelector(link.hash);
@@ -175,12 +186,7 @@ export function Navbar() {
   }, []);
 
   useEffect(() => {
-    fetch("/logo.png", { method: "HEAD" })
-      .then((r) => {
-        if (r.ok) setLogoSrc("/logo.png");
-      })
-      .catch(() => {})
-      .finally(() => setLogoChecked(true));
+    setLogoChecked(true);
   }, []);
 
   useEffect(() => {
@@ -323,7 +329,7 @@ export function Navbar() {
     () =>
       links.map((l) => {
         const isHomePage = pathname === "/";
-        const href = isHomePage ? l.hash : l.href + l.hash;
+        const href = l.hash ? (isHomePage ? l.hash : l.href + l.hash) : l.href;
         return (
           <a
             key={l.href}
@@ -405,11 +411,11 @@ export function Navbar() {
             <div className="pointer-events-none absolute inset-0 z-10 opacity-10 mix-blend-soft-light blur-md [mask-image:url('/lava-cracks.svg')] [-webkit-mask-image:url('/lava-cracks.svg')] [mask-repeat:repeat-x] [-webkit-mask-repeat:repeat-x] [mask-size:1700px_240px] [-webkit-mask-size:1700px_240px] [mask-position:center_top] [-webkit-mask-position:center_top] bg-gradient-to-r from-[#FF6A00] via-[#FF8A00] to-[#FFB35A]" />
             <div className="pointer-events-none absolute inset-0 z-10 opacity-[0.06] mix-blend-soft-light [mask-image:url('/lava-cracks.svg')] [-webkit-mask-image:url('/lava-cracks.svg')] [mask-repeat:repeat-x] [-webkit-mask-repeat:repeat-x] [mask-size:1700px_240px] [-webkit-mask-size:1700px_240px] [mask-position:center_top] [-webkit-mask-position:center_top] bg-gradient-to-r from-[#FFB35A] via-[#FF8A00] to-[#FF6A00]" />
 
-            <div className="relative z-40 flex h-14 items-center justify-between px-3 sm:px-4 md:grid md:h-16 md:grid-cols-[auto_420px_1fr] lg:grid-cols-[auto_480px_1fr] md:items-center md:px-6 lg:px-7">
+            <div className="relative z-40 flex h-14 items-center justify-between px-3 sm:px-4 md:h-16 md:px-6 lg:px-7">
               <nav className="md:hidden flex flex-1 min-w-0 items-center gap-2.5 pr-1 overflow-hidden" aria-label="Primary" dir="rtl">
                 {links.map((l) => {
                   const isHomePage = pathname === "/";
-                  const href = isHomePage ? l.hash : l.href + l.hash;
+                  const href = l.hash ? (isHomePage ? l.hash : l.href + l.hash) : l.href;
                   return (
                     <a
                       key={l.href}
@@ -422,12 +428,77 @@ export function Navbar() {
                   );
                 })}
               </nav>
-              <nav className="hidden md:flex items-center justify-start gap-5 pr-6 lg:gap-6 lg:pr-8" aria-label="Primary">
-                {desktopLinkItems}
-              </nav>
-              <div className="hidden md:block" />
-              <div className="flex items-center justify-end gap-2 sm:gap-2.5">
-                <div className="relative z-30 flex md:hidden items-center" dir="rtl">
+
+              <div className="hidden md:flex w-full items-center justify-center gap-7" aria-label="Primary">
+                <nav className="flex items-center justify-center gap-5 lg:gap-6" aria-label="Primary">
+                  {desktopLinkItems}
+                </nav>
+
+                <div className="flex items-center justify-center gap-2.5">
+                  {authReady && isAuthed ? (
+                    <>
+                      {isAdmin ? (
+                        <div className="group rounded-full p-[1px] bg-gradient-to-r from-[#FF6A00]/60 via-white/14 to-[#FFB35A]/60 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_14px_44px_-26px_rgba(0,0,0,0.90)] hover:shadow-[0_0_0_1px_rgba(255,206,120,0.18),0_18px_56px_-30px_rgba(0,0,0,0.92)]">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-9 rounded-full px-4 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white bg-black/28 shadow-none hover:bg-black/40 hover:shadow-[inset_0_0_0_1px_rgba(255,106,0,0.22)]"
+                            onClick={() => {
+                              try {
+                                window.location.assign("/admin");
+                              } catch {
+                                router.push("/admin");
+                              }
+                            }}
+                          >
+                            الإدارة
+                          </Button>
+                        </div>
+                      ) : null}
+                      <div className="group rounded-full p-[1px] bg-gradient-to-r from-[#FF6A00]/60 via-white/14 to-[#FFB35A]/60 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_14px_44px_-26px_rgba(0,0,0,0.90)] hover:shadow-[0_0_0_1px_rgba(255,206,120,0.18),0_18px_56px_-30px_rgba(0,0,0,0.92)]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void logout();
+                          }}
+                          disabled={signingOut}
+                          className="h-9 max-w-[200px] rounded-full px-4 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white bg-black/28 shadow-none hover:bg-black/40 hover:shadow-[inset_0_0_0_1px_rgba(255,106,0,0.22)] disabled:opacity-60"
+                          title="تسجيل خروج"
+                        >
+                          <span className="block min-w-0 truncate">{userLabel}</span>
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="group rounded-full p-[1px] bg-gradient-to-r from-[#FF6A00]/60 via-white/14 to-[#FFB35A]/60 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_14px_44px_-26px_rgba(0,0,0,0.90)] hover:shadow-[0_0_0_1px_rgba(255,206,120,0.18),0_18px_56px_-30px_rgba(0,0,0,0.92)]">
+                        <Button
+                          href="/login"
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 rounded-full px-4 text-[10px] font-extrabold normal-case tracking-[0.10em] text-center justify-center text-white bg-black/28 shadow-none hover:bg-black/40 hover:shadow-[inset_0_0_0_1px_rgba(255,106,0,0.22)]"
+                        >
+                          دخول
+                        </Button>
+                      </div>
+                      <div className="relative group overflow-hidden rounded-full">
+                        <Button
+                          href="/register"
+                          size="sm"
+                          variant="primary"
+                          className="relative z-10 h-8 overflow-hidden rounded-full px-4 text-[10px] font-extrabold normal-case tracking-[0.10em] text-center justify-center"
+                        >
+                          تسجيل
+                        </Button>
+                        <span className="pointer-events-none absolute -inset-y-10 -left-16 w-16 rotate-12 bg-white/20 blur-md opacity-0 transition-all duration-500 group-hover:opacity-100 group-hover:translate-x-[360px]" />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 sm:gap-2.5 md:hidden">
+                <div className="relative z-30 flex items-center" dir="rtl">
                   <div className="rounded-full p-[1.5px] bg-gradient-to-r from-[#FF6A00]/70 via-white/10 to-[#FFB35A]/70 shadow-[0_0_0_1px_rgba(255,106,0,0.18),0_22px_70px_-52px_rgba(0,0,0,0.95)]">
                     <div className="flex items-center gap-1 rounded-full bg-black/60 p-0.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
                       {authReady && isAuthed ? (
@@ -466,7 +537,7 @@ export function Navbar() {
                             href="/login"
                             size="sm"
                             variant="ghost"
-                            className="h-9 rounded-full px-3.5 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white/85 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white"
+                            className="h-8 rounded-full px-3 text-[10px] font-extrabold normal-case tracking-[0.10em] text-center justify-center text-white/85 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white"
                           >
                             دخول
                           </Button>
@@ -474,7 +545,7 @@ export function Navbar() {
                             href="/register"
                             size="sm"
                             variant="primary"
-                            className="h-9 rounded-full px-4 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white bg-gradient-to-r from-[#FF2424] via-[#FF6A00] to-[#FFB35A] shadow-[0_0_0_1px_rgba(255,179,90,0.36),0_26px_100px_-54px_rgba(255,36,36,0.98)]"
+                            className="h-8 rounded-full px-3.5 text-[10px] font-extrabold normal-case tracking-[0.10em] text-center justify-center text-white bg-gradient-to-r from-[#FF2424] via-[#FF6A00] to-[#FFB35A] shadow-[0_0_0_1px_rgba(255,179,90,0.36),0_26px_100px_-54px_rgba(255,36,36,0.98)]"
                           >
                             تسجيل
                           </Button>
@@ -525,7 +596,7 @@ export function Navbar() {
                           href="/login"
                           size="sm"
                           variant="ghost"
-                          className="h-9 rounded-full px-4 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white bg-black/28 shadow-none hover:bg-black/40 hover:shadow-[inset_0_0_0_1px_rgba(255,106,0,0.22)]"
+                          className="h-8 rounded-full px-4 text-[10px] font-extrabold normal-case tracking-[0.10em] text-center justify-center text-white bg-black/28 shadow-none hover:bg-black/40 hover:shadow-[inset_0_0_0_1px_rgba(255,106,0,0.22)]"
                         >
                           دخول
                         </Button>
@@ -535,7 +606,7 @@ export function Navbar() {
                           href="/register"
                           size="sm"
                           variant="primary"
-                          className="relative z-10 h-9 overflow-hidden rounded-full px-5 text-[11px] font-extrabold normal-case tracking-[0.10em]"
+                          className="relative z-10 h-8 overflow-hidden rounded-full px-4 text-[10px] font-extrabold normal-case tracking-[0.10em] text-center justify-center"
                         >
                           تسجيل
                         </Button>

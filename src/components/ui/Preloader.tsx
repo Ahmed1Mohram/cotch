@@ -11,7 +11,7 @@ type PreloaderProps = {
   className?: string;
 };
 
-const DEFAULT_ASSETS = ["/111.png", "/kalya.png", "/lava-cracks.svg", "/s.png", "/logo.png"];
+const DEFAULT_ASSETS = ["/111.png", "/kalya.png", "/lava-cracks.svg", "/s.png"];
 
 export function Preloader({ className }: PreloaderProps) {
   const pathname = usePathname();
@@ -61,15 +61,6 @@ export function Preloader({ className }: PreloaderProps) {
     setClosing(false);
     setProgress(0);
     setVisible(true);
-
-    if (!logoCheckedRef.current) {
-      logoCheckedRef.current = true;
-      fetch("/logo.png", { method: "HEAD" })
-        .then((r) => {
-          if (r.ok) setLogoSrc("/logo.png");
-        })
-        .catch(() => {});
-    }
   }, [pathname]);
 
   useEffect(() => {

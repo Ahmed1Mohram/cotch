@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
@@ -73,6 +72,17 @@ function normalizeSlug(input: string | null | undefined) {
     .replace(/\.html$/, "");
 }
 
+function normalizePackageSlug(input: string) {
+  return String(input ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9\-_]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+/, "")
+    .replace(/-+$/, "");
+}
+
 function themeGlow(theme: string | null) {
   if (theme === "green") return "green";
   if (theme === "blue") return "blue";
@@ -82,6 +92,7 @@ function themeGlow(theme: string | null) {
 export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
   const params = useParams<{ slug?: string | string[] }>();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const effectiveSlug = useMemo(() => {
     if (slug) return slug;
@@ -100,6 +111,17 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
   const pkgSlug = useMemo(() => normalizeSlug(searchParams?.get("pkg")), [searchParams]);
   const [pkg, setPkg] = useState<PackageRow | null>(null);
   const [pkgError, setPkgError] = useState<string | null>(null);
+
+  const [coursePackages, setCoursePackages] = useState<PackageRow[]>([]);
+  const [coursePackagesLoading, setCoursePackagesLoading] = useState(false);
+  const [coursePackagesError, setCoursePackagesError] = useState<string | null>(null);
+
+  const [createPackageOpen, setCreatePackageOpen] = useState(false);
+  const [newPackageTitle, setNewPackageTitle] = useState("");
+  const [newPackageSlug, setNewPackageSlug] = useState("");
+  const [newPackageTheme, setNewPackageTheme] = useState<"orange" | "blue" | "vip">("orange");
+  const [creatingPackage, setCreatingPackage] = useState(false);
+
   const [ageGroups, setAgeGroups] = useState<AgeGroupRow[]>([]);
   const [playerCards, setPlayerCards] = useState<PlayerCardRow[]>([]);
   const [selectedAgeGroupId, setSelectedAgeGroupId] = useState<string | null>(null);
@@ -158,6 +180,78 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
   const [confirmDeleteCardId, setConfirmDeleteCardId] = useState<string | null>(null);
   const [confirmDeleteAgeGroup, setConfirmDeleteAgeGroup] = useState(false);
 
+  const [allowedAgeGroupIds, setAllowedAgeGroupIds] = useState<Set<string>>(new Set());
+  const [allowedAgeGroupsLoading, setAllowedAgeGroupsLoading] = useState(false);
+
+  const refreshCoursePackages = async (courseId: string) => {
+    setCoursePackagesLoading(true);
+    setCoursePackagesError(null);
+
+    let supabase: ReturnType<typeof createSupabaseBrowserClient>;
+    try {
+      supabase = createSupabaseBrowserClient();
+    } catch (err) {
+      setCoursePackages([]);
+      setCoursePackagesError(err instanceof Error ? err.message : "فشل الاتصال بقاعدة البيانات");
+      setCoursePackagesLoading(false);
+      return;
+    }
+
+    const directRes = await supabase
+      .from("packages")
+      .select("id,slug,title")
+      .eq("course_id", courseId)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    const directList: PackageRow[] = ((directRes.data as any[]) ?? [])
+      .map((r) => ({ id: String(r.id), slug: String(r.slug ?? ""), title: String(r.title ?? "") }))
+      .filter((p) => Boolean(p.id) && Boolean(p.slug));
+
+    const pcRes = await supabase
+      .from("package_courses")
+      .select("package_id")
+      .eq("course_id", courseId)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (directRes.error && pcRes.error) {
+      setCoursePackages([]);
+      setCoursePackagesError(directRes.error?.message ?? pcRes.error?.message ?? "فشل تحميل الباقات");
+      setCoursePackagesLoading(false);
+      return;
+    }
+
+    const legacyIds = new Set<string>(((pcRes.data as any[]) ?? []).map((r) => String(r.package_id ?? "")).filter(Boolean));
+    const directIds = new Set<string>(directList.map((p) => p.id));
+    const missingLegacyIds = Array.from(legacyIds).filter((id) => !directIds.has(id));
+
+    let legacyList: PackageRow[] = [];
+    if (missingLegacyIds.length) {
+      const legacyRes = await supabase
+        .from("packages")
+        .select("id,slug,title")
+        .in("id", missingLegacyIds)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+
+      if (!legacyRes.error) {
+        legacyList = ((legacyRes.data as any[]) ?? [])
+          .map((r) => ({ id: String(r.id), slug: String(r.slug ?? ""), title: String(r.title ?? "") }))
+          .filter((p) => Boolean(p.id) && Boolean(p.slug));
+      }
+    }
+
+    const seen = new Set<string>();
+    const merged = [...directList, ...legacyList].filter((p) => {
+      if (!p.id || seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+    setCoursePackages(merged);
+    setCoursePackagesLoading(false);
+  };
+
   useEffect(() => {
     setPkg(null);
     setPkgError(null);
@@ -174,7 +268,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
     }
 
     const run = async () => {
-      const pRes = await supabase.from("packages").select("id,slug,title").eq("slug", pkgSlug).maybeSingle();
+      const pRes = await supabase.from("packages").select("id,slug,title,course_id").eq("slug", pkgSlug).maybeSingle();
       if (pRes.error || !pRes.data) {
         setPkg(null);
         setPkgError(pRes.error?.message ?? "الباقة غير موجودة");
@@ -187,6 +281,13 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
         slug: String(row.slug),
         title: String(row.title ?? ""),
       };
+
+      const directCourseId = String((row as any).course_id ?? "");
+      if (directCourseId && directCourseId === course.id) {
+        setPkg(candidate);
+        setPkgError(null);
+        return;
+      }
 
       const pcRes = await supabase
         .from("package_courses")
@@ -210,6 +311,65 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
       setPkgError(err instanceof Error ? err.message : "حدث خطأ غير متوقع");
     });
   }, [course?.id, pkgSlug]);
+
+  useEffect(() => {
+    setCoursePackages([]);
+    setCoursePackagesError(null);
+    if (!course?.id) return;
+    void refreshCoursePackages(course.id);
+  }, [course?.id]);
+
+  useEffect(() => {
+    if (pkgSlug) return;
+    if (coursePackages.length !== 1) return;
+    const only = coursePackages[0];
+    if (!only?.slug) return;
+    const sp = new URLSearchParams(searchParams?.toString() ?? "");
+    sp.set("pkg", only.slug);
+    const qs = sp.toString();
+    const slugForUrl = course?.slug ? String(course.slug) : normalizedSlug;
+    router.push(qs ? `/admin/courses/${encodeURIComponent(slugForUrl)}?${qs}` : `/admin/courses/${encodeURIComponent(slugForUrl)}`);
+  }, [course?.slug, coursePackages, normalizedSlug, pkgSlug, router, searchParams]);
+
+  useEffect(() => {
+    setAllowedAgeGroupIds(new Set());
+    setAllowedAgeGroupsLoading(false);
+
+    if (!pkg?.id) return;
+    if (!course?.id) return;
+
+    let supabase: ReturnType<typeof createSupabaseBrowserClient>;
+    try {
+      supabase = createSupabaseBrowserClient();
+    } catch {
+      setAllowedAgeGroupIds(new Set());
+      return;
+    }
+
+    const run = async () => {
+      setAllowedAgeGroupsLoading(true);
+      const res = await supabase
+        .from("package_course_age_groups")
+        .select("age_group_id")
+        .eq("package_id", pkg.id)
+        .eq("course_id", course.id);
+
+      if (res.error) {
+        setAllowedAgeGroupIds(new Set());
+        setAllowedAgeGroupsLoading(false);
+        return;
+      }
+
+      const set = new Set<string>(((res.data as any[]) ?? []).map((r) => String((r as any).age_group_id ?? "")).filter(Boolean));
+      setAllowedAgeGroupIds(set);
+      setAllowedAgeGroupsLoading(false);
+    };
+
+    void run().catch(() => {
+      setAllowedAgeGroupIds(new Set());
+      setAllowedAgeGroupsLoading(false);
+    });
+  }, [course?.id, pkg?.id, reloadKey]);
 
   useEffect(() => {
     if (!hasValidSlug) {
@@ -275,10 +435,6 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
       setAgeGroups(ages);
 
       const ageIds = ages.map((a) => a.id);
-      setSelectedAgeGroupId((prev) => {
-        if (prev && ageIds.includes(prev)) return prev;
-        return ageIds[0] ?? null;
-      });
 
       if (ageIds.length === 0) {
         setPlayerCards([]);
@@ -314,6 +470,21 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
     return course?.slug ? String(course.slug) : normalizedSlug;
   }, [course?.slug, normalizedSlug]);
 
+  const visibleAgeGroups = useMemo(() => {
+    if (!pkg) return [];
+    if (!ageGroups.length) return [];
+    if (!allowedAgeGroupIds.size) return [];
+    return ageGroups.filter((ag) => allowedAgeGroupIds.has(ag.id));
+  }, [ageGroups, allowedAgeGroupIds, pkg]);
+
+  useEffect(() => {
+    const ids = visibleAgeGroups.map((a) => a.id);
+    setSelectedAgeGroupId((prev) => {
+      if (prev && ids.includes(prev)) return prev;
+      return ids[0] ?? null;
+    });
+  }, [visibleAgeGroups]);
+
   const toggleCoursePublished = async (next: boolean) => {
     if (!course?.id) return;
 
@@ -338,8 +509,8 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
   const selectedAgeGroup = useMemo(() => {
     if (!selectedAgeGroupId) return null;
-    return ageGroups.find((ag) => ag.id === selectedAgeGroupId) ?? null;
-  }, [ageGroups, selectedAgeGroupId]);
+    return visibleAgeGroups.find((ag) => ag.id === selectedAgeGroupId) ?? null;
+  }, [visibleAgeGroups, selectedAgeGroupId]);
 
   useEffect(() => {
     if (!selectedAgeGroup) {
@@ -388,10 +559,10 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
   const ageGroupCardCounts = useMemo(() => {
     const m = new Map<string, number>();
-    for (const ag of ageGroups) m.set(ag.id, 0);
+    for (const ag of visibleAgeGroups) m.set(ag.id, 0);
     for (const pc of playerCards) m.set(pc.age_group_id, (m.get(pc.age_group_id) ?? 0) + 1);
     return m;
-  }, [ageGroups, playerCards]);
+  }, [visibleAgeGroups, playerCards]);
 
   const copyText = async (text: string) => {
     const t = String(text ?? "").trim();
@@ -548,6 +719,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
   const addAgeGroup = async () => {
     if (!course) return;
+    if (!pkg) return;
     const title = newAgeTitle.trim();
     if (!title) return;
 
@@ -562,20 +734,40 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
     const nextSort = Math.max(-1, ...ageGroups.map((a) => a.sort_order ?? 0)) + 1;
 
-    const res = await supabase.from("age_groups").insert({
-      course_id: course.id,
-      title,
-      min_age: min,
-      max_age: max,
-      sort_order: nextSort,
-    });
+    const res = await supabase
+      .from("age_groups")
+      .insert({
+        course_id: course.id,
+        title,
+        min_age: min,
+        max_age: max,
+        sort_order: nextSort,
+      })
+      .select("id")
+      .maybeSingle();
 
-    if (res.error) setError(res.error.message);
-    else {
-      setNewAgeTitle("");
-      setNewAgeMin("");
-      setNewAgeMax("");
-      setReloadKey((k) => k + 1);
+    if (res.error || !res.data) {
+      setError(res.error?.message ?? "فشل إضافة المجموعة");
+    } else {
+      const newId = String((res.data as any).id ?? "");
+      if (!newId) {
+        setError("فشل إضافة المجموعة");
+      } else {
+        const linkRes = await supabase.from("package_course_age_groups").insert({
+          package_id: pkg.id,
+          course_id: course.id,
+          age_group_id: newId,
+        });
+
+        if (linkRes.error) {
+          setError(linkRes.error.message);
+        } else {
+          setNewAgeTitle("");
+          setNewAgeMin("");
+          setNewAgeMax("");
+          setReloadKey((k) => k + 1);
+        }
+      }
     }
 
     setSaving(false);
@@ -790,12 +982,45 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
           <div className="flex flex-col items-end sm:items-end gap-2.5 sm:gap-3 shrink-0">
             <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
+              <label className="inline-flex h-9 sm:h-10 items-center gap-2 rounded-2xl bg-white px-3 sm:px-4 text-[11px] sm:text-xs font-semibold text-slate-700 border border-slate-200">
+                <span className="text-slate-600">الباقة</span>
+                <select
+                  value={pkg?.slug ?? ""}
+                  onChange={(e) => {
+                    const v = normalizeSlug(e.target.value);
+                    const sp = new URLSearchParams(searchParams?.toString() ?? "");
+                    if (v) sp.set("pkg", v);
+                    else sp.delete("pkg");
+                    const qs = sp.toString();
+                    router.push(qs ? `/admin/courses/${encodeURIComponent(courseSlug)}?${qs}` : `/admin/courses/${encodeURIComponent(courseSlug)}`);
+                  }}
+                  disabled={coursePackagesLoading}
+                  className="h-7 sm:h-8 rounded-xl border border-slate-200 bg-white px-2 text-[11px] sm:text-xs text-slate-900 outline-none focus:border-slate-300"
+                >
+                  <option value="">اختر…</option>
+                  {coursePackages.map((p) => (
+                    <option key={p.id} value={p.slug}>
+                      {p.title || p.slug}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <button
+                type="button"
+                onClick={() => setCreatePackageOpen((v) => !v)}
+                disabled={creatingPackage || coursePackagesLoading || !course?.id}
+                className="inline-flex h-9 sm:h-10 items-center justify-center rounded-2xl bg-slate-900 px-3 sm:px-4 text-[11px] sm:text-xs font-semibold text-white shadow-sm transition enabled:hover:bg-slate-800 disabled:opacity-50"
+              >
+                {createPackageOpen ? "إغلاق" : "إضافة باقة"}
+              </button>
+
               {pkg ? (
                 <Link
                   href={`/admin/packages/${encodeURIComponent(pkg.slug)}`}
                   className="inline-flex h-9 sm:h-10 items-center justify-center rounded-2xl bg-white px-3 sm:px-4 text-[11px] sm:text-xs font-semibold text-slate-700 border border-slate-200 transition hover:bg-slate-50"
                 >
-                  {pkg.title}
+                  تفاصيل الباقة
                 </Link>
               ) : null}
               <Link
@@ -836,12 +1061,106 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
         <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div className="min-w-0 flex-1">
-            <Tabs items={tabItems} value={tab} onChange={setTab} />
+            <Tabs
+              items={tabItems}
+              value={tab}
+              onChange={(next) => {
+                if (!pkg) {
+                  setError("اختار باقة أولاً.");
+                  return;
+                }
+                setTab(next);
+              }}
+            />
           </div>
-          {error ? <div className="text-xs text-rose-700 break-words shrink-0">{error}</div> : pkgError ? (
+          {error ? <div className="text-xs text-rose-700 break-words shrink-0">{error}</div> : coursePackagesError ? (
+            <div className="text-xs text-rose-700 break-words shrink-0">{coursePackagesError}</div>
+          ) : pkgError ? (
             <div className="text-xs text-rose-700 break-words shrink-0">{pkgError}</div>
           ) : null}
         </div>
+
+        {createPackageOpen ? (
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+            <div className="text-xs font-semibold text-slate-700">إضافة باقة داخل هذا الكورس</div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <input
+                value={newPackageTitle}
+                onChange={(e) => setNewPackageTitle(e.target.value)}
+                placeholder="اسم الباقة"
+                className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
+              />
+              <input
+                value={newPackageSlug}
+                onChange={(e) => setNewPackageSlug(e.target.value)}
+                placeholder="slug (اختياري)"
+                className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
+              />
+            </div>
+
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <select
+                value={newPackageTheme}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "orange" || v === "blue" || v === "vip") setNewPackageTheme(v);
+                }}
+                className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
+              >
+                <option value="orange">Orange</option>
+                <option value="blue">Blue</option>
+                <option value="vip">VIP</option>
+              </select>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!course?.id) return;
+                  const title = newPackageTitle.trim();
+                  if (!title) return;
+                  const slugValue = normalizePackageSlug(newPackageSlug.trim() || title);
+                  if (!slugValue) return;
+
+                  const supabase = createSupabaseBrowserClient();
+                  setCreatingPackage(true);
+                  setError(null);
+                  const res = await supabase
+                    .from("packages")
+                    .insert({
+                      slug: slugValue,
+                      title,
+                      theme: newPackageTheme,
+                      active: true,
+                      sort_order: 0,
+                      course_id: course.id,
+                    })
+                    .select("id")
+                    .maybeSingle();
+
+                  if (res.error) {
+                    setError(res.error.message);
+                    setCreatingPackage(false);
+                    return;
+                  }
+
+                  setNewPackageTitle("");
+                  setNewPackageSlug("");
+                  setNewPackageTheme("orange");
+                  setCreatePackageOpen(false);
+                  await refreshCoursePackages(course.id);
+                  setCreatingPackage(false);
+                  const sp = new URLSearchParams(searchParams?.toString() ?? "");
+                  sp.set("pkg", slugValue);
+                  const qs = sp.toString();
+                  router.push(qs ? `/admin/courses/${encodeURIComponent(courseSlug)}?${qs}` : `/admin/courses/${encodeURIComponent(courseSlug)}`);
+                }}
+                disabled={creatingPackage || !course?.id}
+                className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 disabled:opacity-50"
+              >
+                {creatingPackage ? "حفظ..." : "حفظ الباقة"}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </AdminCard>
 
       <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-[340px_1fr]">
@@ -849,7 +1168,17 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
           <AdminCard>
             <div className="text-xs font-semibold text-slate-700">مجموعات الأعمار</div>
             <div className="mt-4 space-y-2">
-              {ageGroups.map((ag) => {
+              {!pkg ? (
+                <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
+                  اختر باقة أولاً.
+                </div>
+              ) : allowedAgeGroupsLoading ? (
+                <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
+                  تحميل...
+                </div>
+              ) : null}
+
+              {visibleAgeGroups.map((ag) => {
                 const active = ag.id === selectedAgeGroupId;
                 return (
                   <button
@@ -878,7 +1207,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                 );
               })}
 
-              {ageGroups.length === 0 && !loading ? (
+              {pkg && visibleAgeGroups.length === 0 && !loading && !allowedAgeGroupsLoading ? (
                 <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
                   مفيش مجموعات أعمار لسه.
                 </div>
@@ -905,121 +1234,135 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
         <div className="space-y-4 sm:space-y-6 min-w-0 overflow-x-hidden">
           {tab === "ages" ? (
-          <AdminCard>
-            <div className="text-base sm:text-lg font-semibold text-slate-900">1) مجموعات الأعمار</div>
-            <div className="mt-2 text-sm text-slate-600 break-words">أضف مجموعة عمر للكورس ثم عدّل/احذف المجموعة المحددة.</div>
+            !pkg ? (
+              <AdminCard>
+                <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
+                  اختر باقة أولاً.
+                </div>
+              </AdminCard>
+            ) : (
+              <AdminCard>
+                <div className="text-base sm:text-lg font-semibold text-slate-900">1) مجموعات الأعمار</div>
+                <div className="mt-2 text-sm text-slate-600 break-words">أضف مجموعة عمر للكورس ثم عدّل/احذف المجموعة المحددة.</div>
 
-            <div className="mt-6 grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_110px_110px_120px]">
-              <input
-                value={newAgeTitle}
-                onChange={(e) => setNewAgeTitle(e.target.value)}
-                placeholder="اسم المجموعة"
-                className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
-              />
-              <input
-                value={newAgeMin}
-                onChange={(e) => setNewAgeMin(e.target.value)}
-                placeholder="من"
-                inputMode="numeric"
-                className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
-              />
-              <input
-                value={newAgeMax}
-                onChange={(e) => setNewAgeMax(e.target.value)}
-                placeholder="إلى"
-                inputMode="numeric"
-                className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
-              />
-              <button
-                type="button"
-                onClick={addAgeGroup}
-                disabled={saving || loading || !course}
-                className="inline-flex h-10 w-full sm:w-auto items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
-              >
-                إضافة
-              </button>
-            </div>
-
-            <div className="mt-8 rounded-2xl bg-slate-50 p-5 border border-slate-200">
-              <div className="text-xs font-semibold text-slate-700">تعديل المجموعة المحددة</div>
-              <div className="mt-1 text-xs text-slate-600">اختر مجموعة من القائمة على اليمين ثم عدّل بياناتها.</div>
-
-              <div className="mt-4 grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_120px_120px]">
-                <input
-                  value={editAgeTitle}
-                  onChange={(e) => setEditAgeTitle(e.target.value)}
-                  placeholder="اسم المجموعة"
-                  disabled={!selectedAgeGroupId}
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
-                />
-                <input
-                  value={editAgeMin}
-                  onChange={(e) => setEditAgeMin(e.target.value)}
-                  placeholder="من"
-                  inputMode="numeric"
-                  disabled={!selectedAgeGroupId}
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
-                />
-                <input
-                  value={editAgeMax}
-                  onChange={(e) => setEditAgeMax(e.target.value)}
-                  placeholder="إلى"
-                  inputMode="numeric"
-                  disabled={!selectedAgeGroupId}
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
-                />
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={updateSelectedAgeGroup}
-                  disabled={saving || !selectedAgeGroupId}
-                  className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
-                >
-                  حفظ التعديل
-                </button>
-
-                {confirmDeleteAgeGroup ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => selectedAgeGroupId && deleteAgeGroup(selectedAgeGroupId)}
-                      disabled={saving || !selectedAgeGroupId}
-                      className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-600 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
-                    >
-                      تأكيد الحذف
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDeleteAgeGroup(false)}
-                      disabled={saving}
-                      className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-5 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
-                    >
-                      إلغاء
-                    </button>
-                  </>
-                ) : (
+                <div className="mt-6 grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_110px_110px_120px]">
+                  <input
+                    value={newAgeTitle}
+                    onChange={(e) => setNewAgeTitle(e.target.value)}
+                    placeholder="اسم المجموعة"
+                    className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
+                  />
+                  <input
+                    value={newAgeMin}
+                    onChange={(e) => setNewAgeMin(e.target.value)}
+                    placeholder="من"
+                    inputMode="numeric"
+                    className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
+                  />
+                  <input
+                    value={newAgeMax}
+                    onChange={(e) => setNewAgeMax(e.target.value)}
+                    placeholder="إلى"
+                    inputMode="numeric"
+                    className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
+                  />
                   <button
                     type="button"
-                    onClick={() => setConfirmDeleteAgeGroup(true)}
-                    disabled={saving || !selectedAgeGroupId}
-                    className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-5 text-sm font-medium text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                    onClick={addAgeGroup}
+                    disabled={saving || loading || !course || !pkg}
+                    className="inline-flex h-10 w-full sm:w-auto items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
                   >
-                    حذف المجموعة
+                    إضافة
                   </button>
-                )}
-
-                <div className="text-xs text-slate-500">
-                  {selectedAgeGroupId ? "التعديل يتم حفظه في قاعدة البيانات" : "اختر مجموعة أولاً"}
                 </div>
-              </div>
-            </div>
-          </AdminCard>
 
+                <div className="mt-8 rounded-2xl bg-slate-50 p-5 border border-slate-200">
+                  <div className="text-xs font-semibold text-slate-700">تعديل المجموعة المحددة</div>
+                  <div className="mt-1 text-xs text-slate-600">اختر مجموعة من القائمة على اليمين ثم عدّل بياناتها.</div>
+
+                  <div className="mt-4 grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_120px_120px]">
+                    <input
+                      value={editAgeTitle}
+                      onChange={(e) => setEditAgeTitle(e.target.value)}
+                      placeholder="اسم المجموعة"
+                      disabled={!selectedAgeGroupId}
+                      className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
+                    />
+                    <input
+                      value={editAgeMin}
+                      onChange={(e) => setEditAgeMin(e.target.value)}
+                      placeholder="من"
+                      inputMode="numeric"
+                      disabled={!selectedAgeGroupId}
+                      className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
+                    />
+                    <input
+                      value={editAgeMax}
+                      onChange={(e) => setEditAgeMax(e.target.value)}
+                      placeholder="إلى"
+                      inputMode="numeric"
+                      disabled={!selectedAgeGroupId}
+                      className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
+                    />
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={updateSelectedAgeGroup}
+                      disabled={saving || !selectedAgeGroupId}
+                      className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                    >
+                      حفظ التعديل
+                    </button>
+
+                    {confirmDeleteAgeGroup ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => selectedAgeGroupId && deleteAgeGroup(selectedAgeGroupId)}
+                          disabled={saving || !selectedAgeGroupId}
+                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-600 px-5 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                        >
+                          تأكيد الحذف
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteAgeGroup(false)}
+                          disabled={saving}
+                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-5 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                        >
+                          إلغاء
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteAgeGroup(true)}
+                        disabled={saving || !selectedAgeGroupId}
+                        className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-5 text-sm font-medium text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+                      >
+                        حذف المجموعة
+                      </button>
+                    )}
+
+                    <div className="text-xs text-slate-500">
+                      {selectedAgeGroupId ? "التعديل يتم حفظه في قاعدة البيانات" : "اختر مجموعة أولاً"}
+                    </div>
+                  </div>
+                </div>
+              </AdminCard>
+            )
           ) : null}
 
           {tab === "cards" ? (
+          !pkg ? (
+            <AdminCard>
+              <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
+                اختر باقة أولاً.
+              </div>
+            </AdminCard>
+          ) : (
           <AdminCard>
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4">
               <div className="min-w-0 flex-1">
@@ -1397,12 +1740,15 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
             </div>
           </AdminCard>
 
+          )
           ) : null}
 
           {tab === "months" ? (
             <div id="admin-months-panel" className="scroll-mt-24 space-y-3">
               <div className="rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-600 border border-slate-200">
-                {selectedAgeGroup ? (
+                {!pkg ? (
+                  "اختر باقة أولاً"
+                ) : selectedAgeGroup ? (
                   <>
                     المجموعة الحالية: <span className="font-semibold text-slate-900">{selectedAgeGroup.title ?? "مجموعة عمر"}</span>
                     {selectedMonthNumber ? (
@@ -1415,22 +1761,32 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                   "اختر مجموعة عمر أولاً"
                 )}
               </div>
-              <AdminCourseMonthsVideosPanel
-                ageGroupId={selectedAgeGroupId}
-                packageId={pkg ? pkg.id : null}
-                onMonthNumberChange={setSelectedMonthNumber}
-              />
+              {pkg ? (
+                <AdminCourseMonthsVideosPanel
+                  ageGroupId={selectedAgeGroupId}
+                  packageId={pkg.id}
+                  onMonthNumberChange={setSelectedMonthNumber}
+                />
+              ) : null}
             </div>
           ) : null}
 
           {tab === "codes" ? (
             <div id="admin-months-codes-panel" className="scroll-mt-24">
-              <AdminCourseMonthCodesPanel
-                courseId={course?.id ?? null}
-                courseSlug={courseSlug}
-                monthNumber={selectedMonthNumber}
-                onMonthNumberChange={setSelectedMonthNumber}
-              />
+              {!pkg ? (
+                <AdminCard>
+                  <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
+                    اختر باقة أولاً.
+                  </div>
+                </AdminCard>
+              ) : (
+                <AdminCourseMonthCodesPanel
+                  courseId={course?.id ?? null}
+                  courseSlug={courseSlug}
+                  monthNumber={selectedMonthNumber}
+                  onMonthNumberChange={setSelectedMonthNumber}
+                />
+              )}
             </div>
           ) : null}
         </div>

@@ -1,5 +1,5 @@
-import { AdminPackagesScreen } from "@/features/admin/screens/AdminPackagesScreen";
+import { redirect } from "next/navigation";
 
 export default function AdminPackagesPage() {
-  return <AdminPackagesScreen />;
+  redirect("/admin/courses");
 }

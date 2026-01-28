@@ -164,16 +164,27 @@ type CourseOption = {
   title: string;
 };
 
+function normalizeSlug(v: string) {
+  return String(v ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\/+$/, "")
+    .replace(/\.html$/, "");
+}
+
 export function FinalCTA() {
   const [chatOpen, setChatOpen] = useState(false);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [packages, setPackages] = useState<PackageOption[]>([]);
+  const [packagesError, setPackagesError] = useState<string | null>(null);
+  const [packagesLoading, setPackagesLoading] = useState(false);
   const [packageId, setPackageId] = useState("");
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [coursesError, setCoursesError] = useState<string | null>(null);
   const [courseId, setCourseId] = useState("");
+
   const [ageYears, setAgeYears] = useState("");
   const [heightCm, setHeightCm] = useState("");
   const [weightKg, setWeightKg] = useState("");
@@ -188,11 +199,16 @@ export function FinalCTA() {
 
   const canSend = fullNameOk && phoneOk && Boolean(packageId.trim()) && Boolean(courseId.trim());
 
+  const [prefillCourseSlug, setPrefillCourseSlug] = useState("");
+  const [prefillPkgSlug, setPrefillPkgSlug] = useState("");
+
   useEffect(() => {
     const url = new URL(window.location.href);
     const open = url.searchParams.get("chat");
     if (!(open === "1" || open === "true")) return;
     setChatOpen(true);
+    setPrefillCourseSlug(normalizeSlug(url.searchParams.get("course") ?? ""));
+    setPrefillPkgSlug(normalizeSlug(url.searchParams.get("pkg") ?? ""));
     const t = window.setTimeout(() => {
       document.getElementById("contact")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
@@ -205,94 +221,151 @@ export function FinalCTA() {
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
     const run = async () => {
+      setCoursesLoading(true);
+      setCoursesError(null);
       const res = await supabase
-        .from("packages")
-        .select("id,slug,title")
-        .eq("active", true)
-        .order("sort_order", { ascending: true })
+        .from("courses")
+        .select("id,slug,title_ar,title_en")
+        .eq("is_published", true)
         .order("created_at", { ascending: true });
 
       if (res.error) {
-        setPackages([]);
+        console.error("[FinalCTA] courses query failed", res.error);
+        setCourses([]);
+        setCoursesError("تعذر تحميل الكورسات");
         return;
       }
 
-      const list: PackageOption[] = ((res.data as any[]) ?? []).map((r) => ({
-        id: String(r.id),
-        slug: String(r.slug),
-        title: String(r.title ?? ""),
-      }));
+      const list: CourseOption[] = ((res.data as any[]) ?? [])
+        .map((r) => ({
+          id: String((r as any).id),
+          slug: String((r as any).slug ?? ""),
+          title: String((r as any).title_ar ?? (r as any).title_en ?? (r as any).slug ?? ""),
+        }))
+        .filter((c) => Boolean(c.id) && Boolean(c.slug));
 
-      setPackages(list);
-    };
-
-    void run().catch(() => {
-      setPackages([]);
-    });
-  }, []);
-
-  useEffect(() => {
-    setCourses([]);
-    setCourseId("");
-    setCoursesLoading(false);
-    setCoursesError(null);
-
-    const pid = packageId.trim();
-    if (!pid) return;
-
-    const supabase = createSupabaseBrowserClient();
-    const run = async () => {
-      setCoursesLoading(true);
-      setCoursesError(null);
-      try {
-        const pcRes = await supabase
-          .from("package_courses")
-          .select("course_id,sort_order,created_at")
-          .eq("package_id", pid)
-          .order("sort_order", { ascending: true })
-          .order("created_at", { ascending: true });
-
-        if (pcRes.error) {
-          setCourses([]);
-          setCoursesError("تعذر تحميل الكورسات");
-          return;
-        }
-
-        const ids: string[] = ((pcRes.data as any[]) ?? []).map((r) => String(r.course_id ?? "")).filter(Boolean);
-        if (!ids.length) {
-          setCourses([]);
-          return;
-        }
-
-        const cRes = await supabase.from("courses").select("id,slug,title_ar,title_en").in("id", ids);
-        if (cRes.error) {
-          setCourses([]);
-          setCoursesError("تعذر تحميل الكورسات");
-          return;
-        }
-
-        const byId = new Map(((cRes.data as any[]) ?? []).map((c) => [String(c.id), c] as const));
-        const list: CourseOption[] = ids
-          .map((id) => byId.get(id))
-          .filter(Boolean)
-          .map((c: any) => ({
-            id: String(c.id),
-            slug: String(c.slug),
-            title: String(c.title_ar ?? c.title_en ?? c.slug ?? ""),
-          }));
-
-        setCourses(list);
-      } finally {
-        setCoursesLoading(false);
-      }
+      setCourses(list);
     };
 
     void run().catch(() => {
       setCourses([]);
       setCoursesError("تعذر تحميل الكورسات");
+    }).finally(() => {
       setCoursesLoading(false);
     });
-  }, [packageId]);
+  }, []);
+
+  useEffect(() => {
+    setPackages([]);
+    setPackageId("");
+    setPackagesLoading(false);
+    setPackagesError(null);
+
+    const cid = courseId.trim();
+    if (!cid) return;
+
+    const selected = courses.find((c) => c.id === cid) ?? null;
+    const courseSlug = selected ? normalizeSlug(selected.slug) : "";
+
+    const supabase = createSupabaseBrowserClient();
+    const run = async () => {
+      setPackagesLoading(true);
+      setPackagesError(null);
+      try {
+        const directRes = await supabase
+          .from("packages")
+          .select("id,slug,title")
+          .eq("active", true)
+          .eq("course_id", cid)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true });
+
+        if (!directRes.error && (directRes.data as any[])?.length) {
+          const list: PackageOption[] = ((directRes.data as any[]) ?? [])
+            .map((r) => ({
+              id: String((r as any).id),
+              slug: String((r as any).slug ?? ""),
+              title: String((r as any).title ?? ""),
+            }))
+            .filter((p) => Boolean(p.id) && Boolean(p.slug));
+          setPackages(list);
+          return;
+        }
+
+        const pcRes = await supabase
+          .from("package_courses")
+          .select("package_id,sort_order,created_at")
+          .eq("course_id", cid)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true });
+
+        if (pcRes.error) {
+          setPackages([]);
+          setPackagesError("تعذر تحميل الباقات");
+          return;
+        }
+
+        const ids: string[] = ((pcRes.data as any[]) ?? []).map((r) => String((r as any).package_id ?? "")).filter(Boolean);
+        if (!ids.length) {
+          setPackages([]);
+          return;
+        }
+
+        const pRes = await supabase
+          .from("packages")
+          .select("id,slug,title")
+          .eq("active", true)
+          .in("id", ids)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true });
+
+        if (pRes.error) {
+          setPackages([]);
+          setPackagesError("تعذر تحميل الباقات");
+          return;
+        }
+
+        const byId = new Map(((pRes.data as any[]) ?? []).map((p) => [String((p as any).id), p] as const));
+        const list: PackageOption[] = ids
+          .map((id) => byId.get(id))
+          .filter(Boolean)
+          .map((p: any) => ({
+            id: String(p.id),
+            slug: String(p.slug ?? ""),
+            title: String(p.title ?? ""),
+          }))
+          .filter((p) => Boolean(p.id) && Boolean(p.slug));
+
+        setPackages(list);
+      } finally {
+        setPackagesLoading(false);
+      }
+    };
+
+    void run().catch(() => {
+      setPackages([]);
+      setPackagesError("تعذر تحميل الباقات");
+      setPackagesLoading(false);
+    });
+
+    void courseSlug;
+  }, [courseId, courses]);
+
+  useEffect(() => {
+    if (courseId) return;
+    const s = prefillCourseSlug.trim();
+    if (!s) return;
+    const found = courses.find((c) => normalizeSlug(c.slug) === s);
+    if (found?.id) setCourseId(found.id);
+  }, [prefillCourseSlug, courses, courseId]);
+
+  useEffect(() => {
+    if (!courseId || packageId) return;
+    const s = prefillPkgSlug.trim();
+    if (!s) return;
+    const found = packages.find((p) => normalizeSlug(p.slug) === s);
+    if (found?.id) setPackageId(found.id);
+  }, [prefillPkgSlug, packages, courseId, packageId]);
 
   function onSubmitChat(e: FormEvent) {
     e.preventDefault();
@@ -419,7 +492,8 @@ export function FinalCTA() {
                 <Reveal delay={0.12}>
                   <div className="relative mx-auto max-w-md w-full [perspective:1200px]" dir="rtl">
                     <div className="rounded-3xl p-[1px] bg-gradient-to-r from-white/16 via-white/8 to-transparent w-full">
-                      <div className="group relative overflow-hidden rounded-3xl bg-white/5 p-5 sm:p-7 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_44px_160px_-120px_rgba(0,0,0,0.98)]">
+                      <div className="group relative overflow-hidden rounded-3xl bg-white/5 p-5 sm:p-7 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_44px_160px_-120px_rgba(0,0,0,0.98)] transition duration-300 hover:-translate-y-1 ">
+
                         <div className="pointer-events-none absolute inset-0 opacity-75 bg-[radial-gradient(900px_320px_at_18%_0%,rgba(59,130,246,0.14),transparent_64%),radial-gradient(900px_340px_at_88%_110%,rgba(168,85,247,0.12),transparent_66%)]" />
                         <div className="pointer-events-none absolute -inset-x-16 -top-20 hidden h-40 opacity-60 blur-3xl sm:block bg-[radial-gradient(600px_140px_at_50%_50%,rgba(255,255,255,0.16),transparent_72%)]" />
                         <div className="pointer-events-none absolute inset-0 opacity-80 [mask-image:linear-gradient(to_bottom,black,transparent_62%)] [-webkit-mask-image:linear-gradient(to_bottom,black,transparent_62%)] bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.06)_32%,transparent_62%)]" />
@@ -523,43 +597,51 @@ export function FinalCTA() {
 
                                 <div className="grid gap-3 sm:grid-cols-2">
                                   <label className="flex flex-col gap-2">
-                                    <span className="font-heading text-xs tracking-[0.22em] text-white/70">الباقة</span>
+                                    <span className="font-heading text-xs tracking-[0.22em] text-white/70">الكورس</span>
                                     <select
-                                      value={packageId}
-                                      onChange={(e) => setPackageId(e.target.value)}
+                                      value={courseId}
+                                      onChange={(e) => setCourseId(e.target.value)}
                                       className="w-full rounded-2xl bg-black/35 px-4 py-3 text-sm text-white/90 shadow-[0_0_0_1px_rgba(255,255,255,0.12)] outline-none focus:shadow-[0_0_0_1px_rgba(37,211,102,0.25),0_28px_90px_-70px_rgba(37,211,102,0.35)]"
                                     >
-                                      <option value="">اختر الباقة…</option>
-                                      {packages.map((p) => (
-                                        <option key={p.id} value={p.id}>
-                                          {p.title}
+                                      <option value="">
+                                        {coursesLoading
+                                          ? "جاري تحميل الكورسات…"
+                                          : coursesError
+                                            ? coursesError
+                                            : courses.length === 0
+                                              ? "مفيش كورسات"
+                                              : "اختر الكورس…"}
+                                      </option>
+                                      {courses.map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                          {c.title}
                                         </option>
                                       ))}
                                     </select>
                                   </label>
 
                                   <label className="flex flex-col gap-2">
-                                    <span className="font-heading text-xs tracking-[0.22em] text-white/70">الكورس</span>
+                                    <span className="font-heading text-xs tracking-[0.22em] text-white/70">الباقة</span>
                                     <select
-                                      value={courseId}
-                                      onChange={(e) => setCourseId(e.target.value)}
-                                      disabled={!packageId || coursesLoading || courses.length === 0}
+                                      value={packageId}
+                                      onChange={(e) => setPackageId(e.target.value)}
+                                      disabled={!courseId || packagesLoading || packages.length === 0}
                                       className="w-full rounded-2xl bg-black/35 px-4 py-3 text-sm text-white/90 shadow-[0_0_0_1px_rgba(255,255,255,0.12)] outline-none focus:shadow-[0_0_0_1px_rgba(37,211,102,0.25),0_28px_90px_-70px_rgba(37,211,102,0.35)] disabled:opacity-50"
                                     >
                                       <option value="">
-                                        {!packageId
-                                          ? "اختار الباقة الأول…"
-                                          : coursesLoading
-                                            ? "جاري تحميل الكورسات…"
-                                            : coursesError
-                                              ? coursesError
-                                              : courses.length === 0
-                                                ? "مفيش كورسات للباقه دي"
-                                                : "اختر الكورس…"}
+                                        {!courseId
+                                          ? "اختار الكورس الأول…"
+                                          : packagesLoading
+                                            ? "جاري تحميل الباقات…"
+                                            : packagesError
+                                              ? packagesError
+                                              : packages.length === 0
+                                                ? "مفيش باقات للكورس ده"
+                                                : "اختر الباقة…"}
                                       </option>
-                                      {courses.map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                          {c.title}
+                                      {packages.map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                          {p.title}
                                         </option>
                                       ))}
                                     </select>
