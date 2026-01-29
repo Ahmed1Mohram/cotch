@@ -810,10 +810,15 @@ async function ProgramPageInner({
                           } ${colors.outer} shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_50px_160px_-120px_rgba(0,0,0,0.92)]`}
                         >
                           {isSelected ? (
-                            <div className="pointer-events-none absolute inset-0 rounded-3xl ring-2 ring-white/80 shadow-[0_0_48px_rgba(255,255,255,0.22)]" />
+                            <>
+                              <div className="pointer-events-none absolute -inset-[40%] opacity-80 blur-3xl">
+                                <div className="absolute inset-0 bg-[radial-gradient(720px_520px_at_30%_20%,rgba(255,36,36,0.35),transparent_62%)]" />
+                              </div>
+                              <div className="pointer-events-none absolute inset-0 rounded-3xl ring-2 ring-rose-400/80 shadow-[0_0_0_1px_rgba(255,36,36,0.22),0_0_64px_rgba(255,36,36,0.28)]" />
+                            </>
                           ) : null}
                           {isSelected ? (
-                            <div className="pointer-events-none absolute left-5 top-5 z-10 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/12 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_18px_60px_-35px_rgba(255,255,255,0.35)] backdrop-blur-xl">
+                            <div className="pointer-events-none absolute left-5 top-5 z-10 flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/15 text-white shadow-[0_0_0_1px_rgba(255,36,36,0.35),0_18px_60px_-35px_rgba(255,36,36,0.55)] backdrop-blur-xl">
                               <span className="text-lg font-black leading-none">✓</span>
                             </div>
                           ) : null}
@@ -846,13 +851,13 @@ async function ProgramPageInner({
                                       VIP
                                     </div>
                                   ) : null}
-                                  <div
-                                    className={`rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.22em] ring-1 ring-inset ${
-                                      isSelected ? colors.chipSelected : colors.chip
-                                    }`}
-                                  >
-                                    {isSelected ? "مختارة" : "اختيار"}
-                                  </div>
+                                  {!isSelected ? (
+                                    <div
+                                      className={`rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.22em] ring-1 ring-inset ${colors.chip}`}
+                                    >
+                                      اختيار
+                                    </div>
+                                  ) : null}
                                 </div>
                               </div>
 
