@@ -4170,6 +4170,44 @@ alter table public.age_group_codes enable row level security;
 alter table public.age_group_code_redemptions enable row level security;
 
 
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.tables t
+    where t.table_schema = 'storage'
+      and t.table_name = 'buckets'
+  ) then
+    insert into storage.buckets (id, name, public)
+    values ('video-thumbnails', 'video-thumbnails', true)
+    on conflict (id) do update set public = excluded.public;
+  end if;
+
+  if exists (
+    select 1
+    from information_schema.tables t
+    where t.table_schema = 'storage'
+      and t.table_name = 'objects'
+  ) then
+    begin
+      execute 'drop policy if exists "video_thumbnails_select_public" on storage.objects';
+      execute 'create policy "video_thumbnails_select_public" on storage.objects for select to anon, authenticated using (bucket_id = ''video-thumbnails'')';
+
+      execute 'drop policy if exists "video_thumbnails_admin_insert" on storage.objects';
+      execute 'create policy "video_thumbnails_admin_insert" on storage.objects for insert to authenticated with check (public.is_admin(auth.uid()) and bucket_id = ''video-thumbnails'')';
+
+      execute 'drop policy if exists "video_thumbnails_admin_update" on storage.objects';
+      execute 'create policy "video_thumbnails_admin_update" on storage.objects for update to authenticated using (public.is_admin(auth.uid()) and bucket_id = ''video-thumbnails'') with check (public.is_admin(auth.uid()) and bucket_id = ''video-thumbnails'')';
+
+      execute 'drop policy if exists "video_thumbnails_admin_delete" on storage.objects';
+      execute 'create policy "video_thumbnails_admin_delete" on storage.objects for delete to authenticated using (public.is_admin(auth.uid()) and bucket_id = ''video-thumbnails'')';
+    exception when insufficient_privilege then
+      raise notice 'Skipping storage.objects policies (insufficient_privilege). Create Storage policies in Supabase dashboard for bucket video-thumbnails.';
+    end;
+  end if;
+end $$;
+
+
 
 -- Courses: public read, admin write
 

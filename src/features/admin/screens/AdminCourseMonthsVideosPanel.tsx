@@ -70,9 +70,13 @@ export function AdminCourseMonthsVideosPanel({
   const [error, setError] = useState<string | null>(null);
   const [thumbUploading, setThumbUploading] = useState(false);
 
+  const supabaseRef = useRef<ReturnType<typeof createSupabaseBrowserClient> | null>(null);
+
   const getSupabase = () => {
+    if (supabaseRef.current) return supabaseRef.current;
     try {
-      return createSupabaseBrowserClient();
+      supabaseRef.current = createSupabaseBrowserClient();
+      return supabaseRef.current;
     } catch (err) {
       setError(err instanceof Error ? err.message : "فشل الاتصال بقاعدة البيانات");
       return null;
@@ -229,6 +233,13 @@ export function AdminCourseMonthsVideosPanel({
   const uploadVideoThumbnail = async (file: File, prefix: string) => {
     const supabase = getSupabase();
     if (!supabase) return null;
+
+    const sessionRes = await supabase.auth.getSession();
+    const session = sessionRes.data.session;
+    if (sessionRes.error || !session) {
+      setError("لازم تكون مسجّل دخول قبل رفع الصورة. اعمل تسجيل خروج/دخول وجرب تاني.");
+      return null;
+    }
 
     const ext = safeFileName(file.name).split(".").pop() || "png";
     const path = `${prefix}/${randomId()}.${ext}`;
