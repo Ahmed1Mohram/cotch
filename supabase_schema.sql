@@ -415,6 +415,8 @@ create table if not exists public.subscription_codes (
   course_id uuid not null references public.courses(id) on delete cascade,
   package_id uuid references public.packages(id) on delete set null,
   duration_days int not null default 30,
+  duration_value int,
+  duration_unit text,
   max_redemptions int not null default 1,
   active boolean not null default true,
   note text,
@@ -454,6 +456,8 @@ create table if not exists public.month_codes (
   course_id uuid not null references public.courses(id) on delete cascade,
   month_number int not null,
   duration_days int not null default 40,
+  duration_value int,
+  duration_unit text,
   max_redemptions int not null default 1,
   active boolean not null default true,
   note text,
@@ -493,6 +497,8 @@ create table if not exists public.age_group_codes (
   age_group_id uuid not null references public.age_groups(id) on delete cascade,
   player_card_id uuid references public.player_cards(id) on delete cascade,
   duration_days int not null default 30,
+  duration_value int,
+  duration_unit text,
   max_redemptions int not null default 1,
   active boolean not null default true,
   note text,
@@ -514,6 +520,27 @@ create table if not exists public.age_group_code_redemptions (
 
  alter table public.age_group_codes
    add column if not exists player_card_id uuid references public.player_cards(id) on delete cascade;
+
+alter table public.subscription_codes add column if not exists duration_value int;
+alter table public.subscription_codes add column if not exists duration_unit text;
+alter table public.month_codes add column if not exists duration_value int;
+alter table public.month_codes add column if not exists duration_unit text;
+alter table public.age_group_codes add column if not exists duration_value int;
+alter table public.age_group_codes add column if not exists duration_unit text;
+
+update public.subscription_codes set duration_value = duration_days where duration_value is null;
+update public.subscription_codes set duration_unit = 'day' where duration_unit is null or length(trim(duration_unit)) = 0;
+update public.month_codes set duration_value = duration_days where duration_value is null;
+update public.month_codes set duration_unit = 'day' where duration_unit is null or length(trim(duration_unit)) = 0;
+update public.age_group_codes set duration_value = duration_days where duration_value is null;
+update public.age_group_codes set duration_unit = 'day' where duration_unit is null or length(trim(duration_unit)) = 0;
+
+alter table public.subscription_codes alter column duration_value set default 30;
+alter table public.subscription_codes alter column duration_unit set default 'day';
+alter table public.month_codes alter column duration_value set default 40;
+alter table public.month_codes alter column duration_unit set default 'day';
+alter table public.age_group_codes alter column duration_value set default 30;
+alter table public.age_group_codes alter column duration_unit set default 'day';
 
 -- =========================================================
 -- Timestamps trigger (updated_at)
@@ -578,11 +605,14 @@ drop function if exists public.redeem_subscription_code(text);
 drop function if exists public.generate_subscription_codes(text, int, int, int);
 drop function if exists public.generate_subscription_codes(text, uuid, int, int, int);
 drop function if exists public.generate_subscription_codes(text, int, uuid, int, int);
+drop function if exists public.generate_subscription_codes(text, int, uuid, int, text, int, int);
 drop function if exists public.redeem_month_code(text);
 drop function if exists public.generate_month_codes(text, int, int, int, int);
+drop function if exists public.generate_month_codes(text, int, int, int, text, int, int);
 drop function if exists public.redeem_age_group_code(text);
 drop function if exists public.redeem_any_code(text);
 drop function if exists public.generate_age_group_codes(text, uuid, int, int, int);
+drop function if exists public.generate_age_group_codes(text, uuid, int, int, text, int, int);
 
 create or replace function public.preview_months(p_age_group_id uuid)
 returns table (
@@ -1522,6 +1552,40 @@ as $$
     );
 $$;
 
+create or replace function public.duration_to_interval(
+  p_value int,
+  p_unit text
+)
+returns interval
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_unit text := lower(trim(coalesce(p_unit, 'day')));
+  v_value int := greatest(coalesce(p_value, 0), 0);
+begin
+  if v_unit in ('minutes', 'mins', 'min') then
+    v_unit := 'minute';
+  elsif v_unit in ('hours', 'hrs', 'hr') then
+    v_unit := 'hour';
+  elsif v_unit in ('days') then
+    v_unit := 'day';
+  end if;
+
+  if v_unit = 'minute' then
+    return make_interval(mins => v_value);
+  end if;
+
+  if v_unit = 'hour' then
+    return make_interval(hours => v_value);
+  end if;
+
+  return make_interval(days => v_value);
+end;
+$$;
+
 -- Redeem code: creates/extends enrollment + logs redemption
 create or replace function public.redeem_subscription_code(p_code text)
 returns jsonb
@@ -1587,7 +1651,10 @@ begin
   insert into public.code_redemptions(code_id, user_id)
   values (v_code.id, v_uid);
 
-  v_end := v_now + make_interval(days => v_code.duration_days);
+  v_end := v_now + public.duration_to_interval(
+    coalesce(v_code.duration_value, v_code.duration_days),
+    coalesce(nullif(trim(v_code.duration_unit), ''), 'day')
+  );
 
   insert into public.enrollments as e(user_id, course_id, package_id, status, start_at, end_at, source, created_by)
   values (v_uid, v_code.course_id, v_code.package_id, 'active', v_now, v_end, 'code', v_uid)
@@ -1672,7 +1739,10 @@ begin
   insert into public.month_code_redemptions(code_id, user_id)
   values (v_code.id, v_uid);
 
-  v_end := v_now + make_interval(days => v_code.duration_days);
+  v_end := v_now + public.duration_to_interval(
+    coalesce(v_code.duration_value, v_code.duration_days),
+    coalesce(nullif(trim(v_code.duration_unit), ''), 'day')
+  );
 
   insert into public.course_month_access as a(user_id, course_id, month_number, status, start_at, end_at, source, created_by)
   values (v_uid, v_code.course_id, v_code.month_number, 'active', v_now, v_end, 'code', v_uid)
@@ -1798,7 +1868,10 @@ begin
   insert into public.age_group_code_redemptions(code_id, user_id)
   values (v_code.id, v_uid);
 
-  v_end := v_now + make_interval(days => v_code.duration_days);
+  v_end := v_now + public.duration_to_interval(
+    coalesce(v_code.duration_value, v_code.duration_days),
+    coalesce(nullif(trim(v_code.duration_unit), ''), 'day')
+  );
 
   insert into public.course_age_group_access as a(user_id, course_id, age_group_id, player_card_id, status, start_at, end_at, source, created_by)
   values (v_uid, v_code.course_id, v_ag.id, v_code.player_card_id, 'active', v_now, v_end, 'age_code', v_uid)
@@ -1848,6 +1921,8 @@ create or replace function public.generate_subscription_codes(
   p_course_slug text,
   p_count int,
   p_package_id uuid default null,
+  p_duration_value int default null,
+  p_duration_unit text default null,
   p_duration_days int default 30,
   p_max_redemptions int default 1
 )
@@ -1861,6 +1936,8 @@ declare
   v_pkg_id uuid;
   i int;
   v_code text;
+  v_duration_value int;
+  v_duration_unit text;
 begin
   if not public.is_admin(auth.uid()) then
     raise exception 'Not authorized';
@@ -1873,6 +1950,24 @@ begin
 
   if p_count is null or p_count <= 0 then
     raise exception 'Count must be > 0';
+  end if;
+
+  v_duration_value := coalesce(p_duration_value, p_duration_days);
+  v_duration_unit := lower(trim(coalesce(p_duration_unit, 'day')));
+  if v_duration_unit in ('minutes', 'mins', 'min') then
+    v_duration_unit := 'minute';
+  elsif v_duration_unit in ('hours', 'hrs', 'hr') then
+    v_duration_unit := 'hour';
+  elsif v_duration_unit in ('days') then
+    v_duration_unit := 'day';
+  end if;
+
+  if v_duration_value is null or v_duration_value <= 0 then
+    raise exception 'Duration must be > 0';
+  end if;
+
+  if v_duration_unit not in ('minute', 'hour', 'day') then
+    raise exception 'Invalid duration unit';
   end if;
 
   v_pkg_id := null;
@@ -1897,8 +1992,33 @@ begin
     v_code := upper(encode(gen_random_bytes(6), 'hex'));
 
     begin
-      insert into public.subscription_codes(code, course_id, package_id, duration_days, max_redemptions, active, created_by)
-      values (v_code, v_course_id, v_pkg_id, p_duration_days, p_max_redemptions, true, auth.uid());
+      insert into public.subscription_codes(
+        code,
+        course_id,
+        package_id,
+        duration_days,
+        duration_value,
+        duration_unit,
+        max_redemptions,
+        active,
+        created_by
+      )
+      values (
+        v_code,
+        v_course_id,
+        v_pkg_id,
+        case
+          when v_duration_unit = 'day' then v_duration_value
+          when v_duration_unit = 'hour' then greatest(1, ceil(v_duration_value::numeric / 24))::int
+          when v_duration_unit = 'minute' then greatest(1, ceil(v_duration_value::numeric / 1440))::int
+          else v_duration_value
+        end,
+        v_duration_value,
+        v_duration_unit,
+        p_max_redemptions,
+        true,
+        auth.uid()
+      );
 
       code := v_code;
       return next;
@@ -1915,6 +2035,8 @@ create or replace function public.generate_age_group_codes(
   p_course_slug text,
   p_player_card_id uuid,
   p_count int,
+  p_duration_value int default null,
+  p_duration_unit text default null,
   p_duration_days int default 30,
   p_max_redemptions int default 1
 )
@@ -1929,6 +2051,8 @@ declare
   v_course_from_card uuid;
   i int;
   v_code text;
+  v_duration_value int;
+  v_duration_unit text;
 begin
   if not public.is_admin(auth.uid()) then
     raise exception 'Not authorized';
@@ -1965,13 +2089,58 @@ begin
     raise exception 'Count must be > 0';
   end if;
 
+  v_duration_value := coalesce(p_duration_value, p_duration_days);
+  v_duration_unit := lower(trim(coalesce(p_duration_unit, 'day')));
+  if v_duration_unit in ('minutes', 'mins', 'min') then
+    v_duration_unit := 'minute';
+  elsif v_duration_unit in ('hours', 'hrs', 'hr') then
+    v_duration_unit := 'hour';
+  elsif v_duration_unit in ('days') then
+    v_duration_unit := 'day';
+  end if;
+
+  if v_duration_value is null or v_duration_value <= 0 then
+    raise exception 'Duration must be > 0';
+  end if;
+
+  if v_duration_unit not in ('minute', 'hour', 'day') then
+    raise exception 'Invalid duration unit';
+  end if;
+
   i := 0;
   while i < p_count loop
     v_code := upper(encode(gen_random_bytes(6), 'hex'));
 
     begin
-      insert into public.age_group_codes(code, course_id, age_group_id, player_card_id, duration_days, max_redemptions, active, created_by)
-      values (v_code, v_course_id, v_age_group_id, p_player_card_id, p_duration_days, p_max_redemptions, true, auth.uid());
+      insert into public.age_group_codes(
+        code,
+        course_id,
+        age_group_id,
+        player_card_id,
+        duration_days,
+        duration_value,
+        duration_unit,
+        max_redemptions,
+        active,
+        created_by
+      )
+      values (
+        v_code,
+        v_course_id,
+        v_age_group_id,
+        p_player_card_id,
+        case
+          when v_duration_unit = 'day' then v_duration_value
+          when v_duration_unit = 'hour' then greatest(1, ceil(v_duration_value::numeric / 24))::int
+          when v_duration_unit = 'minute' then greatest(1, ceil(v_duration_value::numeric / 1440))::int
+          else v_duration_value
+        end,
+        v_duration_value,
+        v_duration_unit,
+        p_max_redemptions,
+        true,
+        auth.uid()
+      );
 
       code := v_code;
       return next;
@@ -1987,6 +2156,8 @@ create or replace function public.generate_month_codes(
   p_course_slug text,
   p_month_number int,
   p_count int,
+  p_duration_value int default null,
+  p_duration_unit text default null,
   p_duration_days int default 40,
   p_max_redemptions int default 1
 )
@@ -1999,6 +2170,8 @@ declare
   v_course_id uuid;
   i int;
   v_code text;
+  v_duration_value int;
+  v_duration_unit text;
 begin
   if not public.is_admin(auth.uid()) then
     raise exception 'Not authorized';
@@ -2017,13 +2190,56 @@ begin
     raise exception 'Count must be > 0';
   end if;
 
+  v_duration_value := coalesce(p_duration_value, p_duration_days);
+  v_duration_unit := lower(trim(coalesce(p_duration_unit, 'day')));
+  if v_duration_unit in ('minutes', 'mins', 'min') then
+    v_duration_unit := 'minute';
+  elsif v_duration_unit in ('hours', 'hrs', 'hr') then
+    v_duration_unit := 'hour';
+  elsif v_duration_unit in ('days') then
+    v_duration_unit := 'day';
+  end if;
+
+  if v_duration_value is null or v_duration_value <= 0 then
+    raise exception 'Duration must be > 0';
+  end if;
+
+  if v_duration_unit not in ('minute', 'hour', 'day') then
+    raise exception 'Invalid duration unit';
+  end if;
+
   i := 0;
   while i < p_count loop
     v_code := upper(encode(gen_random_bytes(6), 'hex'));
 
     begin
-      insert into public.month_codes(code, course_id, month_number, duration_days, max_redemptions, active, created_by)
-      values (v_code, v_course_id, p_month_number, p_duration_days, p_max_redemptions, true, auth.uid());
+      insert into public.month_codes(
+        code,
+        course_id,
+        month_number,
+        duration_days,
+        duration_value,
+        duration_unit,
+        max_redemptions,
+        active,
+        created_by
+      )
+      values (
+        v_code,
+        v_course_id,
+        p_month_number,
+        case
+          when v_duration_unit = 'day' then v_duration_value
+          when v_duration_unit = 'hour' then greatest(1, ceil(v_duration_value::numeric / 24))::int
+          when v_duration_unit = 'minute' then greatest(1, ceil(v_duration_value::numeric / 1440))::int
+          else v_duration_value
+        end,
+        v_duration_value,
+        v_duration_unit,
+        p_max_redemptions,
+        true,
+        auth.uid()
+      );
 
       code := v_code;
       return next;
@@ -2719,12 +2935,12 @@ grant execute on function public.has_any_active_month_access(uuid, uuid) to auth
  grant execute on function public.track_device() to authenticated;
 grant execute on function public.admin_create_course_in_package(uuid, text, text, text, text, text, text) to authenticated;
 grant execute on function public.redeem_subscription_code(text) to authenticated;
-grant execute on function public.generate_subscription_codes(text, int, uuid, int, int) to authenticated;
+grant execute on function public.generate_subscription_codes(text, int, uuid, int, text, int, int) to authenticated;
 grant execute on function public.redeem_month_code(text) to authenticated;
-grant execute on function public.generate_month_codes(text, int, int, int, int) to authenticated;
+grant execute on function public.generate_month_codes(text, int, int, int, text, int, int) to authenticated;
  grant execute on function public.redeem_age_group_code(text) to authenticated;
  grant execute on function public.redeem_any_code(text) to authenticated;
- grant execute on function public.generate_age_group_codes(text, uuid, int, int, int) to authenticated;
+ grant execute on function public.generate_age_group_codes(text, uuid, int, int, text, int, int) to authenticated;
 
 -- =========================================================
 -- Helpful indexes

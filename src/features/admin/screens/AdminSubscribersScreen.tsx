@@ -126,6 +126,14 @@ function groupBy<T>(items: T[], getKey: (it: T) => string) {
   return Array.from(map.entries()).sort((a, b) => b[1].length - a[1].length);
 }
 
+function toIntOrNull(v: string) {
+  const s = v.trim();
+  if (!s) return null;
+  const n = Number(s);
+  if (!Number.isFinite(n)) return null;
+  return Math.trunc(n);
+}
+
 export function AdminSubscribersScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<"subs" | "requests" | "grant">("subs");
@@ -153,6 +161,10 @@ export function AdminSubscribersScreen() {
   const [grantCards, setGrantCards] = useState<PlayerCardRow[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string>("");
   const [cardsLoading, setCardsLoading] = useState(false);
+
+  const [grantNoExpiry, setGrantNoExpiry] = useState(false);
+  const [grantDurationValue, setGrantDurationValue] = useState("30");
+  const [grantDurationUnit, setGrantDurationUnit] = useState<"minute" | "hour" | "day">("day");
 
   const pushNotice = (kind: "success" | "error" | "info", text: string) => {
     setNotice({ kind, text });
@@ -382,6 +394,19 @@ export function AdminSubscribersScreen() {
     const nowMs = Date.parse(new Date().toISOString());
     const nowIso = new Date(nowMs).toISOString();
 
+    let requestedEndAt: string | null = null;
+    if (!grantNoExpiry) {
+      const v = toIntOrNull(grantDurationValue);
+      if (!v || v <= 0) {
+        pushNotice("error", "حدد مدة صحيحة.");
+        setActionBusy(false);
+        return;
+      }
+
+      const unitMs = grantDurationUnit === "minute" ? 60_000 : grantDurationUnit === "hour" ? 3_600_000 : 86_400_000;
+      requestedEndAt = new Date(nowMs + v * unitMs).toISOString();
+    }
+
     let adminId: string | null = null;
     try {
       const {
@@ -392,15 +417,37 @@ export function AdminSubscribersScreen() {
       adminId = null;
     }
 
+    const existingRes = await supabase
+      .from("enrollments")
+      .select("id,start_at,end_at")
+      .eq("user_id", selectedUserId)
+      .eq("course_id", selectedCourseId)
+      .maybeSingle();
+
+    const existingStartAt = existingRes.data?.start_at ? String(existingRes.data.start_at) : null;
+    const existingEndAt = existingRes.data?.end_at ? String(existingRes.data.end_at) : null;
+
+    const finalStartAt = existingStartAt
+      ? new Date(Math.min(Date.parse(existingStartAt), nowMs)).toISOString()
+      : nowIso;
+
+    let finalEndAt = requestedEndAt;
+    if (grantNoExpiry) {
+      finalEndAt = null;
+    } else if (existingEndAt && requestedEndAt) {
+      finalEndAt = new Date(Math.max(Date.parse(existingEndAt), Date.parse(requestedEndAt))).toISOString();
+    }
+
     const enrRes = await supabase
       .from("enrollments")
       .upsert(
         {
           user_id: selectedUserId,
           course_id: selectedCourseId,
+          package_id: selectedPackageId,
           status: "active",
-          start_at: nowIso,
-          end_at: null,
+          start_at: finalStartAt,
+          end_at: finalEndAt,
           source: "admin",
           created_by: adminId,
         },
@@ -1027,10 +1074,44 @@ export function AdminSubscribersScreen() {
                     </select>
                   </label>
 
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
+                    <div className="text-sm font-semibold text-slate-900">مدة التفعيل</div>
+                    <label className="mt-2 flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={grantNoExpiry}
+                        onChange={(e) => setGrantNoExpiry(e.target.checked)}
+                        className="h-4 w-4"
+                      />
+                      بدون مدة (مفتوح)
+                    </label>
+
+                    {!grantNoExpiry ? (
+                      <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_140px]">
+                        <input
+                          value={grantDurationValue}
+                          onChange={(e) => setGrantDurationValue(e.target.value)}
+                          placeholder="مثال: 30"
+                          inputMode="numeric"
+                          className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                        />
+                        <select
+                          value={grantDurationUnit}
+                          onChange={(e) => setGrantDurationUnit(e.target.value as any)}
+                          className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                        >
+                          <option value="minute">دقائق</option>
+                          <option value="hour">ساعات</option>
+                          <option value="day">أيام</option>
+                        </select>
+                      </div>
+                    ) : null}
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => void grantAccessNow()}
-                    disabled={actionBusy}
+                    disabled={actionBusy || !selectedUserId || !selectedPackageId || !selectedCourseId}
                     className="mt-1 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-emerald-600 px-5 text-sm font-extrabold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
                   >
                     فتح فوري
