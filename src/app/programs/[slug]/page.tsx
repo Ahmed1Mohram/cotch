@@ -355,8 +355,31 @@ async function ProgramPageInner({
       .eq("active", true)
       .order("sort_order", { ascending: true });
 
-    if (pkgRows && pkgRows.length > 0) {
-      availablePackages = pkgRows.map((p: any) => ({
+    // Fallback to old structure (package_courses)
+    const { data: pcRows } = await supabase
+      .from("package_courses")
+      .select("package_id")
+      .eq("course_id", course.id);
+
+    const packageIds = Array.from(new Set((pcRows ?? []).map((r: any) => String(r.package_id)).filter(Boolean)));
+
+    let pkgRows2: any[] = [];
+    if (packageIds.length > 0) {
+      const { data } = await supabase
+        .from("packages")
+        .select("id,slug,title,theme,sort_order,subtitle,description,features")
+        .eq("active", true)
+        .in("id", packageIds)
+        .order("sort_order", { ascending: true });
+      pkgRows2 = (data as any[]) ?? [];
+    }
+
+    const byId = new Map<string, any>();
+    for (const p of (pkgRows ?? []) as any[]) byId.set(String(p.id), p);
+    for (const p of pkgRows2) byId.set(String(p.id), p);
+
+    availablePackages = Array.from(byId.values())
+      .map((p: any) => ({
         id: String(p.id),
         slug: String(p.slug),
         title: String(p.title ?? ""),
@@ -365,38 +388,12 @@ async function ProgramPageInner({
         subtitle: p.subtitle ?? null,
         description: p.description ?? null,
         features: (p as any).features ?? null,
-      }));
-    } else {
-      // Fallback to old structure (package_courses)
-      const { data: pcRows } = await supabase
-        .from("package_courses")
-        .select("package_id")
-        .eq("course_id", course.id);
-
-      const packageIds = Array.from(new Set((pcRows ?? []).map((r: any) => String(r.package_id)).filter(Boolean)));
-
-      if (packageIds.length > 0) {
-        const { data: pkgRows2 } = await supabase
-          .from("packages")
-          .select("id,slug,title,theme,sort_order,subtitle,description,features")
-          .eq("active", true)
-          .in("id", packageIds)
-          .order("sort_order", { ascending: true });
-
-        if (pkgRows2) {
-          availablePackages = pkgRows2.map((p: any) => ({
-            id: String(p.id),
-            slug: String(p.slug),
-            title: String(p.title ?? ""),
-            theme: String(p.theme ?? "orange"),
-            sort_order: Number(p.sort_order ?? 0),
-            subtitle: p.subtitle ?? null,
-            description: p.description ?? null,
-            features: (p as any).features ?? null,
-          }));
-        }
-      }
-    }
+      }))
+      .sort((a, b) => {
+        const diff = a.sort_order - b.sort_order;
+        if (diff !== 0) return diff;
+        return a.slug.localeCompare(b.slug);
+      });
   } catch (e) {
     console.error("Error fetching packages:", e);
   }
