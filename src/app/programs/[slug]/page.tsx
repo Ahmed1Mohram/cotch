@@ -809,6 +809,14 @@ async function ProgramPageInner({
                             isSelected ? "ring-2 ring-white/60" : ""
                           } ${colors.outer} shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_50px_160px_-120px_rgba(0,0,0,0.92)]`}
                         >
+                          {isSelected ? (
+                            <div className="pointer-events-none absolute inset-0 rounded-3xl ring-2 ring-white/80 shadow-[0_0_48px_rgba(255,255,255,0.22)]" />
+                          ) : null}
+                          {isSelected ? (
+                            <div className="pointer-events-none absolute left-5 top-5 z-10 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/12 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_18px_60px_-35px_rgba(255,255,255,0.35)] backdrop-blur-xl">
+                              <span className="text-lg font-black leading-none">✓</span>
+                            </div>
+                          ) : null}
                           <div className="pointer-events-none absolute -inset-[55%] opacity-70 blur-3xl">
                             <div className={`absolute inset-0 ${colors.glow}`} />
                           </div>
