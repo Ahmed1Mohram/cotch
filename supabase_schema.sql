@@ -3653,6 +3653,122 @@ $$;
 
 
 
+do $$
+
+begin
+
+  if exists (
+
+    select 1
+
+    from information_schema.tables t
+
+    where t.table_schema = 'public'
+
+      and t.table_name = 'enrollments'
+
+  ) then
+
+    if exists (
+
+      select 1
+
+      from information_schema.tables t
+
+      where t.table_schema = 'public'
+
+        and t.table_name = 'code_redemptions'
+
+    ) then
+
+      update public.enrollments e
+
+      set end_at = x.max_end_at
+
+      from (
+
+        select
+
+          cr.user_id,
+
+          sc.course_id,
+
+          max(cr.redeemed_at + make_interval(days => sc.duration_days)) as max_end_at
+
+        from public.code_redemptions cr
+
+        join public.subscription_codes sc on sc.id = cr.code_id
+
+        group by cr.user_id, sc.course_id
+
+      ) x
+
+      where e.user_id = x.user_id
+
+        and e.course_id = x.course_id
+
+        and e.end_at is null
+
+        and e.source = 'code'
+
+        and x.max_end_at is not null;
+
+    end if;
+
+
+
+    if exists (
+
+      select 1
+
+      from information_schema.tables t
+
+      where t.table_schema = 'public'
+
+        and t.table_name = 'month_code_redemptions'
+
+    ) then
+
+      update public.enrollments e
+
+      set end_at = x.max_end_at
+
+      from (
+
+        select
+
+          mcr.user_id,
+
+          mc.course_id,
+
+          max(mcr.redeemed_at + make_interval(days => mc.duration_days)) as max_end_at
+
+        from public.month_code_redemptions mcr
+
+        join public.month_codes mc on mc.id = mcr.code_id
+
+        group by mcr.user_id, mc.course_id
+
+      ) x
+
+      where e.user_id = x.user_id
+
+        and e.course_id = x.course_id
+
+        and e.end_at is null
+
+        and e.source = 'month_code'
+
+        and x.max_end_at is not null;
+
+    end if;
+
+  end if;
+
+end $$;
+
+
+
 -- Admin-only generator
 
 create or replace function public.generate_subscription_codes(

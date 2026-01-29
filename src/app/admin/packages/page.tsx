@@ -1,5 +1,5 @@
-import { notFound } from "next/navigation";
+import { AdminPackagesScreen } from "@/features/admin/screens/AdminPackagesScreen";
 
 export default function AdminPackagesPage() {
-  notFound();
+  return <AdminPackagesScreen />;
 }

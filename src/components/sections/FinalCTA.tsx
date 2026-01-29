@@ -274,23 +274,11 @@ export function FinalCTA() {
       try {
         const directRes = await supabase
           .from("packages")
-          .select("id,slug,title")
+          .select("id,slug,title,sort_order")
           .eq("active", true)
           .eq("course_id", cid)
           .order("sort_order", { ascending: true })
           .order("created_at", { ascending: true });
-
-        if (!directRes.error && (directRes.data as any[])?.length) {
-          const list: PackageOption[] = ((directRes.data as any[]) ?? [])
-            .map((r) => ({
-              id: String((r as any).id),
-              slug: String((r as any).slug ?? ""),
-              title: String((r as any).title ?? ""),
-            }))
-            .filter((p) => Boolean(p.id) && Boolean(p.slug));
-          setPackages(list);
-          return;
-        }
 
         const pcRes = await supabase
           .from("package_courses")
@@ -300,41 +288,77 @@ export function FinalCTA() {
           .order("created_at", { ascending: true });
 
         if (pcRes.error) {
-          setPackages([]);
-          setPackagesError("تعذر تحميل الباقات");
+          const list: PackageOption[] = ((directRes.data as any[]) ?? [])
+            .map((r) => ({
+              id: String((r as any).id),
+              slug: String((r as any).slug ?? ""),
+              title: String((r as any).title ?? ""),
+              sort_order: Number((r as any).sort_order ?? 0),
+            }))
+            .filter((p) => Boolean(p.id) && Boolean(p.slug))
+            .sort((a, b) => {
+              const diff = a.sort_order - b.sort_order;
+              if (diff !== 0) return diff;
+              return a.slug.localeCompare(b.slug);
+            })
+            .map((p) => ({ id: p.id, slug: p.slug, title: p.title }));
+
+          setPackages(list);
+          if (list.length === 0) setPackagesError("تعذر تحميل الباقات");
           return;
         }
 
         const ids: string[] = ((pcRes.data as any[]) ?? []).map((r) => String((r as any).package_id ?? "")).filter(Boolean);
-        if (!ids.length) {
-          setPackages([]);
-          return;
+
+        let pkgRows2: any[] = [];
+        if (ids.length) {
+          const pRes = await supabase
+            .from("packages")
+            .select("id,slug,title,sort_order")
+            .eq("active", true)
+            .in("id", ids)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true });
+
+          if (pRes.error) {
+            setPackages([]);
+            setPackagesError("تعذر تحميل الباقات");
+            return;
+          }
+
+          pkgRows2 = ((pRes.data as any[]) ?? []).filter(Boolean);
         }
 
-        const pRes = await supabase
-          .from("packages")
-          .select("id,slug,title")
-          .eq("active", true)
-          .in("id", ids)
-          .order("sort_order", { ascending: true })
-          .order("created_at", { ascending: true });
-
-        if (pRes.error) {
-          setPackages([]);
-          setPackagesError("تعذر تحميل الباقات");
-          return;
+        const byId = new Map<string, { id: string; slug: string; title: string; sort_order: number }>();
+        for (const p of ((directRes.data as any[]) ?? []).filter(Boolean)) {
+          const id = String((p as any).id ?? "");
+          if (!id) continue;
+          byId.set(id, {
+            id,
+            slug: String((p as any).slug ?? ""),
+            title: String((p as any).title ?? ""),
+            sort_order: Number((p as any).sort_order ?? 0),
+          });
+        }
+        for (const p of pkgRows2) {
+          const id = String((p as any).id ?? "");
+          if (!id) continue;
+          byId.set(id, {
+            id,
+            slug: String((p as any).slug ?? ""),
+            title: String((p as any).title ?? ""),
+            sort_order: Number((p as any).sort_order ?? 0),
+          });
         }
 
-        const byId = new Map(((pRes.data as any[]) ?? []).map((p) => [String((p as any).id), p] as const));
-        const list: PackageOption[] = ids
-          .map((id) => byId.get(id))
-          .filter(Boolean)
-          .map((p: any) => ({
-            id: String(p.id),
-            slug: String(p.slug ?? ""),
-            title: String(p.title ?? ""),
-          }))
-          .filter((p) => Boolean(p.id) && Boolean(p.slug));
+        const list: PackageOption[] = Array.from(byId.values())
+          .filter((p) => Boolean(p.id) && Boolean(p.slug))
+          .sort((a, b) => {
+            const diff = a.sort_order - b.sort_order;
+            if (diff !== 0) return diff;
+            return a.slug.localeCompare(b.slug);
+          })
+          .map((p) => ({ id: p.id, slug: p.slug, title: p.title }));
 
         setPackages(list);
       } finally {
