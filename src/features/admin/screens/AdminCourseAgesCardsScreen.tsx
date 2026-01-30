@@ -676,6 +676,8 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
     if (!course?.id) return;
 
+    setAllowedAgeGroupsLoading(true);
+
 
 
     let supabase: ReturnType<typeof createSupabaseBrowserClient>;
@@ -688,6 +690,8 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
       setAllowedAgeGroupIds(new Set());
 
+      setAllowedAgeGroupsLoading(false);
+
       return;
 
     }
@@ -695,9 +699,6 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
 
     const run = async () => {
-
-      setAllowedAgeGroupsLoading(true);
-
       const res = await supabase
 
         .from("package_course_age_groups")
@@ -948,11 +949,13 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
     if (!ageGroups.length) return [];
 
-    if (!allowedAgeGroupIds.size) return [];
+    if (allowedAgeGroupsLoading) return [];
+
+    if (!allowedAgeGroupIds.size) return ageGroups;
 
     return ageGroups.filter((ag) => allowedAgeGroupIds.has(ag.id));
 
-  }, [ageGroups, allowedAgeGroupIds, pkg]);
+  }, [ageGroups, allowedAgeGroupIds, allowedAgeGroupsLoading, pkg]);
 
 
 

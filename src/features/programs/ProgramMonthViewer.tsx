@@ -281,7 +281,17 @@ export function ProgramMonthViewer({
                     />
                   )
                 ) : (
-                  <div className="grid h-[420px] place-items-center text-white/60">اختر يوم ثم فيديو</div>
+                  <div className="relative h-[420px] w-full">
+                    <img
+                      src="/خلفيه%20ملعب.jpeg"
+                      alt="background"
+                      className="absolute inset-0 h-full w-full object-cover opacity-80"
+                    />
+                    <div className="absolute inset-0 bg-black/55" />
+                    <div className="relative z-10 grid h-full place-items-center px-6 text-white/80" dir="rtl">
+                      <div className="text-right text-sm">لا يوجد فيديو لهذا اليوم، اتبع التعليمات المكتوبة</div>
+                    </div>
+                  </div>
                 )}
 
                 {activeVideo?.video_url && canPlay ? (
