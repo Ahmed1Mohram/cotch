@@ -414,7 +414,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
       <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/90 backdrop-blur">
 
-        <div className="mx-auto w-full max-w-[560px] px-4">
+        <div className="mx-auto w-full max-w-[560px] px-4 lg:max-w-6xl xl:max-w-7xl">
 
           <div className="flex h-14 items-center justify-between">
 
@@ -710,9 +710,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
 
 
-      <div className="mx-auto w-full max-w-[560px] px-3 sm:px-4 pb-8 pt-5">
+      <div className="mx-auto w-full max-w-[560px] px-3 sm:px-4 pb-8 pt-5 lg:max-w-6xl xl:max-w-7xl">
 
-        <main className="min-w-0 overflow-x-hidden">{children}</main>
+        <main className="min-w-0 overflow-x-auto">{children}</main>
 
       </div>
 

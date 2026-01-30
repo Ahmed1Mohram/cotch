@@ -1291,7 +1291,7 @@ function VideoRowItem({
             )}
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm sm:text-base font-semibold text-slate-900">{video.title ?? "فيديو"}</div>
-              <div className="mt-1 truncate text-xs sm:text-sm text-slate-500 break-all" dir="ltr">
+              <div className="mt-1 truncate text-xs sm:text-sm text-slate-500 break-words" dir="ltr">
                 {video.video_url ?? ""}
               </div>
               {video.is_free_preview ? (

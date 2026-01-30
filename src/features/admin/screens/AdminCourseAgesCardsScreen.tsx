@@ -1257,6 +1257,76 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
 
 
+  const generateCodesForCard = async (cardId: string) => {
+
+    if (!course) return;
+
+    const trimmed = String(cardId ?? "").trim();
+
+    if (!trimmed) return;
+
+    const perCard = toIntOrNull(cardCodesPerCard);
+
+    const durationDays = toIntOrNull(cardCodesDurationDays);
+
+    const maxRedemptions = toIntOrNull(cardCodesMaxRedemptions);
+
+    if (!perCard || perCard <= 0) return;
+
+    if (!durationDays || durationDays <= 0) return;
+
+    if (!maxRedemptions || maxRedemptions <= 0) return;
+
+    const supabase = createSupabaseBrowserClient();
+
+    setGeneratingCardCodes(true);
+
+    setError(null);
+
+    try {
+
+      const genRes = await supabase.rpc("generate_age_group_codes", {
+
+        p_course_slug: course.slug,
+
+        p_player_card_id: trimmed,
+
+        p_count: perCard,
+
+        p_duration_days: durationDays,
+
+        p_max_redemptions: maxRedemptions,
+
+      });
+
+      if (genRes.error) {
+
+        throw new Error(genRes.error.message);
+
+      }
+
+      const codes = (((genRes.data as any[]) ?? []) as any[])
+
+        .map((r) => String((r as any)?.code ?? "").trim())
+
+        .filter(Boolean);
+
+      setGeneratedCodesByCardId((prev) => ({ ...prev, [trimmed]: codes }));
+
+    } catch (err) {
+
+      setError(err instanceof Error ? err.message : "حدث خطأ غير متوقع");
+
+    } finally {
+
+      setGeneratingCardCodes(false);
+
+    }
+
+  };
+
+
+
   const copyCodesForCard = async (cardId: string) => {
 
     const list = generatedCodesByCardId[cardId] ?? [];
@@ -2780,6 +2850,218 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+
+                  <div className="w-full sm:w-auto">
+
+                    <select
+
+                      value={selectedCardId ?? ""}
+
+                      onChange={(e) => setSelectedCardId(e.target.value ? e.target.value : null)}
+
+                      disabled={!selectedAgeGroupId || selectedCards.length === 0}
+
+                      className="h-10 w-full sm:w-[360px] rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-100"
+
+                    >
+
+                      {selectedCards.length === 0 ? (
+
+                        <option value="">لا يوجد كروت</option>
+
+                      ) : (
+
+                        <option value="">اختر كارت</option>
+
+                      )}
+
+                      {selectedCards.map((card) => (
+
+                        <option key={card.id} value={card.id}>
+
+                          {`عمر ${card.age ?? "—"} • طول ${card.height_cm ?? "—"} • وزن ${card.weight_kg ?? "—"}${card.note ? ` — ${card.note}` : ""}`}
+
+                        </option>
+
+                      ))}
+
+                    </select>
+
+                  </div>
+
+                  <button
+
+                    type="button"
+
+                    onClick={() => {
+
+                      if (!selectedCardId) return;
+
+                      void generateCodesForCard(selectedCardId);
+
+                    }}
+
+                    disabled={
+
+                      generatingCardCodes ||
+
+                      copyingAllCardCodes ||
+
+                      deletingAllGeneratedCardCodes ||
+
+                      copyingCardCodeId === selectedCardId ||
+
+                      deletingGeneratedCardId === selectedCardId ||
+
+                      !course ||
+
+                      !selectedCardId
+
+                    }
+
+                    className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+
+                  >
+
+                    {generatingCardCodes ? "جاري التوليد..." : "توليد للكارت"}
+
+                  </button>
+
+                  <button
+
+                    type="button"
+
+                    onClick={() => {
+
+                      if (!selectedCardId) return;
+
+                      void copyCodesForCard(selectedCardId);
+
+                    }}
+
+                    disabled={
+
+                      generatingCardCodes ||
+
+                      copyingAllCardCodes ||
+
+                      deletingAllGeneratedCardCodes ||
+
+                      copyingCardCodeId === selectedCardId ||
+
+                      deletingGeneratedCardId === selectedCardId ||
+
+                      !selectedCardId ||
+
+                      (generatedCodesByCardId[selectedCardId] ?? []).length === 0
+
+                    }
+
+                    className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-4 text-sm font-medium text-slate-900 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+
+                  >
+
+                    {copyingCardCodeId === selectedCardId ? "جاري النسخ..." : "نسخ كود الكارت"}
+
+                  </button>
+
+                  {selectedCardId && confirmDeleteGeneratedCardId === selectedCardId ? (
+
+                    <>
+
+                      <button
+
+                        type="button"
+
+                        onClick={() => {
+
+                          void deleteGeneratedCodesForCard(selectedCardId);
+
+                        }}
+
+                        disabled={
+
+                          generatingCardCodes ||
+
+                          copyingAllCardCodes ||
+
+                          deletingAllGeneratedCardCodes ||
+
+                          copyingCardCodeId === selectedCardId ||
+
+                          deletingGeneratedCardId === selectedCardId ||
+
+                          (generatedCodesByCardId[selectedCardId] ?? []).length === 0
+
+                        }
+
+                        className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-600 px-4 text-sm font-medium text-white shadow-sm transition enabled:hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+
+                      >
+
+                        {deletingGeneratedCardId === selectedCardId ? "حذف..." : "تأكيد حذف"}
+
+                      </button>
+
+                      <button
+
+                        type="button"
+
+                        onClick={() => setConfirmDeleteGeneratedCardId(null)}
+
+                        disabled={deletingGeneratedCardId === selectedCardId}
+
+                        className="inline-flex h-10 items-center justify-center rounded-2xl bg-white px-4 text-sm font-medium text-slate-700 border border-slate-200 shadow-sm transition enabled:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+
+                      >
+
+                        إلغاء
+
+                      </button>
+
+                    </>
+
+                  ) : (
+
+                    <button
+
+                      type="button"
+
+                      onClick={() => {
+
+                        if (!selectedCardId) return;
+
+                        setConfirmDeleteGeneratedCardId(selectedCardId);
+
+                      }}
+
+                      disabled={
+
+                        generatingCardCodes ||
+
+                        copyingAllCardCodes ||
+
+                        deletingAllGeneratedCardCodes ||
+
+                        copyingCardCodeId === selectedCardId ||
+
+                        deletingGeneratedCardId === selectedCardId ||
+
+                        !selectedCardId ||
+
+                        (generatedCodesByCardId[selectedCardId] ?? []).length === 0
+
+                      }
+
+                      className="inline-flex h-10 items-center justify-center rounded-2xl bg-rose-50 px-4 text-sm font-medium text-rose-700 border border-rose-200 shadow-sm transition enabled:hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50"
+
+                    >
+
+                      حذف كود الكارت
+
+                    </button>
+
+                  )}
 
                   <button
 
