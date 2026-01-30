@@ -241,29 +241,62 @@ export function AdminCourseMonthsVideosPanel({
       return null;
     }
 
+    const userRes = await supabase.auth.getUser();
+    const userId = userRes.data.user?.id ? String(userRes.data.user.id) : "";
+    if (userRes.error || !userId) {
+      setError("مش قادر أجيب بيانات المستخدم. اعمل تسجيل خروج/دخول وجرب تاني.");
+      return null;
+    }
+
+    let isAdmin = false;
+    try {
+      let rpcRes = await supabase.rpc("is_admin", { uid: userId });
+      if (rpcRes.error) {
+        rpcRes = await supabase.rpc("is_admin");
+      }
+      isAdmin = Boolean(!rpcRes.error && rpcRes.data);
+    } catch {
+      isAdmin = false;
+    }
+
+    if (!isAdmin) {
+      setError("الحساب ده مش Admin، ومش مسموح له يرفع صور. تأكد إن user_id موجود في جدول admin_users.");
+      return null;
+    }
+
     const ext = safeFileName(file.name).split(".").pop() || "png";
     const path = `${prefix}/${randomId()}.${ext}`;
 
     setThumbUploading(true);
     setError(null);
 
-    const up = await supabase.storage.from("video-thumbnails").upload(path, file, {
-      upsert: true,
-      contentType: file.type || undefined,
-    });
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("path", path);
 
-    if (up.error) {
+      const res = await fetch("/api/admin/video-thumbnails", {
+        method: "POST",
+        body: form,
+        credentials: "include",
+      });
+
+      const data = await res.json().catch(() => ({} as any));
+      if (!res.ok) {
+        const msg = typeof data?.error === "string" && data.error.trim() ? data.error : "فشل رفع الصورة";
+        throw new Error(msg);
+      }
+
+      const url = typeof data?.publicUrl === "string" ? data.publicUrl : "";
+      setThumbUploading(false);
+      return url || null;
+    } catch (err) {
       setThumbUploading(false);
       setError(
-        `رفع صورة الفيديو فشل: ${up.error.message} — أنشئ Bucket باسم video-thumbnails (Public) أو فعّل صلاحيات الرفع.`,
+        `رفع صورة الفيديو فشل: ${err instanceof Error ? err.message : "حدث خطأ غير متوقع"} — تأكد إن SUPABASE_SERVICE_ROLE_KEY موجود على السيرفر.`,
       );
       return null;
     }
-
-    const pub = supabase.storage.from("video-thumbnails").getPublicUrl(path);
-    const url = pub.data.publicUrl || "";
-    setThumbUploading(false);
-    return url || null;
   };
 
   useEffect(() => {
