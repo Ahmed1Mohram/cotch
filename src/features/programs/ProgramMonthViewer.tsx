@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { RedeemMonthCodeInline } from "@/features/activation/RedeemMonthCodeInline";
+import { WatermarkOverlay } from "@/features/video/WatermarkOverlay";
+import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 type Video = {
   id: string;
@@ -87,6 +89,9 @@ export function ProgramMonthViewer({
   locked?: boolean;
   subscribeHref?: string;
 }) {
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const [watermark, setWatermark] = useState<{ name: string; phone: string } | null>(null);
+
   const isLocked = Boolean(locked);
   const subscribeTo = typeof subscribeHref === "string" && subscribeHref.trim() ? subscribeHref.trim() : "/?chat=1#contact";
 
@@ -117,6 +122,39 @@ export function ProgramMonthViewer({
   const activeVideoUrl = activeVideo?.video_url ? normalizeVideoUrl(activeVideo.video_url) : "";
   const canPlay = Boolean(activeVideoUrl && isHttpUrl(activeVideoUrl));
   const canPlayPreview = Boolean(isLocked && monthNumber !== 1 && activeVideo?.video_url && activeVideo.is_free_preview);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const run = async () => {
+      try {
+        const { data: userRes } = await supabase.auth.getUser();
+        const user = userRes.user;
+        if (!user) {
+          if (mounted) setWatermark(null);
+          return;
+        }
+
+        const profRes = await supabase
+          .from("user_profiles")
+          .select("full_name,phone")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        const name = String((profRes.data as any)?.full_name ?? "").trim() || String((user as any).email ?? "مستخدم");
+        const phone = String((profRes.data as any)?.phone ?? "").trim() || String((user as any).phone ?? user.id);
+
+        if (mounted) setWatermark({ name, phone });
+      } catch {
+        if (mounted) setWatermark(null);
+      }
+    };
+
+    void run();
+    return () => {
+      mounted = false;
+    };
+  }, [supabase]);
 
   return (
     <div className="min-h-screen bg-[#0B0B0B] px-6 py-16" dir="rtl">
@@ -293,6 +331,10 @@ export function ProgramMonthViewer({
                     </div>
                   </div>
                 )}
+
+                {activeVideo?.video_url && canPlay && watermark && (!isLocked || canPlayPreview) ? (
+                  <WatermarkOverlay name={watermark.name} phone={watermark.phone} />
+                ) : null}
 
                 {activeVideo?.video_url && canPlay ? (
                   <div className="pointer-events-none absolute right-2 top-2" dir="rtl">

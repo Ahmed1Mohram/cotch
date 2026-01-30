@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ChatWidget } from "@/features/chat/ChatWidget";
+import { WatermarkOverlay } from "@/features/video/WatermarkOverlay";
 import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 type Month = {
@@ -151,6 +152,7 @@ export function ProgramCardContentViewer({
 }) {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
+  const [watermark, setWatermark] = useState<{ name: string; phone: string } | null>(null);
 
   const subscribeHref = `/?chat=1&course=${encodeURIComponent(courseSlug)}${pkgSlug ? `&pkg=${encodeURIComponent(pkgSlug)}` : ""}#contact`;
 
@@ -206,6 +208,39 @@ export function ProgramCardContentViewer({
     return () => {
       mounted = false;
       data.subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const run = async () => {
+      try {
+        const { data: userRes } = await supabase.auth.getUser();
+        const user = userRes.user;
+        if (!user) {
+          if (mounted) setWatermark(null);
+          return;
+        }
+
+        const profRes = await supabase
+          .from("user_profiles")
+          .select("full_name,phone")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        const name = String((profRes.data as any)?.full_name ?? "").trim() || String((user as any).email ?? "مستخدم");
+        const phone = String((profRes.data as any)?.phone ?? "").trim() || String((user as any).phone ?? user.id);
+
+        if (mounted) setWatermark({ name, phone });
+      } catch {
+        if (mounted) setWatermark(null);
+      }
+    };
+
+    void run();
+    return () => {
+      mounted = false;
     };
   }, [supabase]);
 
@@ -582,32 +617,32 @@ export function ProgramCardContentViewer({
 
                         if (isLocked && !canPlayPreview) {
                           return (
-                        <div className="grid h-[420px] place-items-center bg-black px-6">
-                          <div className="w-full max-w-md" dir="rtl">
-                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-[#FFB35A] shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
-                              <LockIcon className="h-7 w-7" />
+                            <div className="grid h-[420px] place-items-center bg-black px-6">
+                              <div className="w-full max-w-md" dir="rtl">
+                                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-[#FFB35A] shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
+                                  <LockIcon className="h-7 w-7" />
+                                </div>
+                                <div className="mt-4 text-right font-heading text-lg tracking-[0.10em] text-white">الفيديو مقفول</div>
+                                <div className="mt-2 text-right text-sm text-white/70">
+                                  {isAuthLoading ? (
+                                    "تحميل..."
+                                  ) : (
+                                    <>
+                                      يتم ظهور الجدول التدريبي الخاص بيك بعد الاشتراك.
+                                      <div className="mt-1 text-right text-xs text-white/45">شخلل علشان تعدي 😂</div>
+                                    </>
+                                  )}
+                                </div>
+                                <div className="mt-5 flex flex-wrap justify-end gap-3">
+                                  <Link
+                                    href={subscribeHref}
+                                    className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#25D366]/90 px-6 text-xs font-extrabold tracking-[0.12em] text-white shadow-[0_14px_60px_-36px_rgba(37,211,102,0.55)] transition hover:bg-[#25D366]"
+                                  >
+                                    اشترك
+                                  </Link>
+                                </div>
+                              </div>
                             </div>
-                            <div className="mt-4 text-right font-heading text-lg tracking-[0.10em] text-white">الفيديو مقفول</div>
-                            <div className="mt-2 text-right text-sm text-white/70">
-                              {isAuthLoading ? (
-                                "تحميل..."
-                              ) : (
-                                <>
-                                  يتم ظهور الجدول التدريبي الخاص بيك بعد الاشتراك.
-                                  <div className="mt-1 text-right text-xs text-white/45">شخلل علشان تعدي 😂</div>
-                                </>
-                              )}
-                            </div>
-                            <div className="mt-5 flex flex-wrap justify-end gap-3">
-                              <Link
-                                href={subscribeHref}
-                                className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#25D366]/90 px-6 text-xs font-extrabold tracking-[0.12em] text-white shadow-[0_14px_60px_-36px_rgba(37,211,102,0.55)] transition hover:bg-[#25D366]"
-                              >
-                                اشترك
-                              </Link>
-                            </div>
-                          </div>
-                        </div>
                           );
                         }
 
@@ -678,7 +713,7 @@ export function ProgramCardContentViewer({
                         );
                       })()}
 
-                      {!isLocked && activeDay && activeVideo?.video_url && canPlay ? (
+                      {activeDay && activeVideo?.video_url && canPlay && (!isLocked || activeVideo?.is_free_preview) ? (
                         <div className="pointer-events-none absolute right-2 top-2" dir="rtl">
                           <div className="rounded-2xl bg-black/55 px-3 py-2 backdrop-blur-sm shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
                             <img src="/s.png" alt="logo" className="h-9 w-auto opacity-90" />
@@ -686,16 +721,10 @@ export function ProgramCardContentViewer({
                         </div>
                       ) : null}
 
+                      {activeDay && activeVideo?.video_url && canPlay && watermark && (!isLocked || activeVideo?.is_free_preview) ? (
+                        <WatermarkOverlay name={watermark.name} phone={watermark.phone} />
+                      ) : null}
                     </div>
-
-                    {!isLocked && activeDay && activeVideo?.details?.trim() ? (
-                      <div className="mt-4 rounded-3xl bg-white/5 p-5 text-white/80 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
-                        <div className="text-right font-heading text-xs tracking-[0.22em] text-white/70">تفاصيل الفيديو</div>
-                        <div className="mt-3 whitespace-pre-wrap text-right text-sm leading-7">
-                          {activeVideo.details}
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
                 </div>
               ) : null}
