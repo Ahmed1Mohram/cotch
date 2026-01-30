@@ -712,7 +712,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
       <div className="mx-auto w-full max-w-[560px] px-3 sm:px-4 pb-8 pt-5 lg:max-w-6xl xl:max-w-7xl">
 
-        <main className="min-w-0 overflow-x-auto">{children}</main>
+        <main className="min-w-0 overflow-x-visible md:overflow-x-auto">{children}</main>
 
       </div>
 
