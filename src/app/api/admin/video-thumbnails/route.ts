@@ -5,16 +5,21 @@ import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
 
-export async function POST(req: Request) {
+export async function GET(req: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const serverAnonKey = process.env.SUPABASE_ANON_KEY ?? anonKey;
 
   if (!supabaseUrl || !serviceRoleKey) {
     return NextResponse.json(
       { error: "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" },
       { status: 500 },
     );
+  }
+
+  if (!serverAnonKey) {
+    return NextResponse.json({ error: "Missing SUPABASE_ANON_KEY" }, { status: 500 });
   }
 
   if (anonKey && anonKey === serviceRoleKey) {
@@ -24,7 +29,79 @@ export async function POST(req: Request) {
     );
   }
 
-  const authSupabase = await createSupabaseServerClient();
+  const authHeader = req.headers.get("authorization") ?? "";
+  const authSupabase = authHeader.trim()
+    ? createClient(supabaseUrl, serverAnonKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: {
+          headers: {
+            Authorization: authHeader,
+          },
+        },
+      })
+    : await createSupabaseServerClient();
+
+  const {
+    data: { user },
+  } = await authSupabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let isAdmin = false;
+  try {
+    let rpcRes = await authSupabase.rpc("is_admin", { uid: user.id });
+    if (rpcRes.error) {
+      rpcRes = await authSupabase.rpc("is_admin");
+    }
+    isAdmin = Boolean(!rpcRes.error && rpcRes.data);
+  } catch {
+    isAdmin = false;
+  }
+
+  if (!isAdmin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return NextResponse.json({ ok: true, userId: user.id });
+}
+
+export async function POST(req: Request) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const serverAnonKey = process.env.SUPABASE_ANON_KEY ?? anonKey;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return NextResponse.json(
+      { error: "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" },
+      { status: 500 },
+    );
+  }
+
+  if (!serverAnonKey) {
+    return NextResponse.json({ error: "Missing SUPABASE_ANON_KEY" }, { status: 500 });
+  }
+
+  if (anonKey && anonKey === serviceRoleKey) {
+    return NextResponse.json(
+      { error: "SUPABASE_SERVICE_ROLE_KEY is misconfigured (it matches the anon key)." },
+      { status: 500 },
+    );
+  }
+
+  const authHeader = req.headers.get("authorization") ?? "";
+  const authSupabase = authHeader.trim()
+    ? createClient(supabaseUrl, serverAnonKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: {
+          headers: {
+            Authorization: authHeader,
+          },
+        },
+      })
+    : await createSupabaseServerClient();
   const {
     data: { user },
   } = await authSupabase.auth.getUser();

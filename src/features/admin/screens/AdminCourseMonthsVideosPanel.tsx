@@ -279,6 +279,9 @@ export function AdminCourseMonthsVideosPanel({
         method: "POST",
         body: form,
         credentials: "include",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       const data = await res.json().catch(() => ({} as any));
@@ -1425,15 +1428,36 @@ function VideoRowItem({
 
                   try {
                     const supabase = createSupabaseBrowserClient();
+                    const sessionRes = await supabase.auth.getSession();
+                    const session = sessionRes.data.session;
+                    if (sessionRes.error || !session) {
+                      throw new Error("لازم تكون مسجّل دخول قبل رفع الصورة.");
+                    }
+
                     const ext = safeFileName(file.name).split(".").pop() || "png";
                     const path = `videos/${video.id}/${randomId()}.${ext}`;
-                    const up = await supabase.storage.from("video-thumbnails").upload(path, file, {
-                      upsert: true,
-                      contentType: file.type || undefined,
+
+                    const form = new FormData();
+                    form.append("file", file);
+                    form.append("path", path);
+
+                    const res = await fetch("/api/admin/video-thumbnails", {
+                      method: "POST",
+                      body: form,
+                      credentials: "include",
+                      headers: {
+                        Authorization: `Bearer ${session.access_token}`,
+                      },
                     });
-                    if (up.error) throw new Error(up.error.message);
-                    const pub = supabase.storage.from("video-thumbnails").getPublicUrl(path);
-                    const url = pub.data.publicUrl;
+
+                    const data = await res.json().catch(() => ({} as any));
+                    if (!res.ok) {
+                      const msg =
+                        typeof data?.error === "string" && data.error.trim() ? data.error : "فشل رفع الصورة";
+                      throw new Error(msg);
+                    }
+
+                    const url = typeof data?.publicUrl === "string" ? data.publicUrl : "";
                     setThumbUrl(url || "");
                   } catch (err) {
                     setThumbError(err instanceof Error ? err.message : "فشل رفع الصورة");
