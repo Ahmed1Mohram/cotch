@@ -164,7 +164,7 @@ export function AdminSubscribersScreen() {
 
   const [grantNoExpiry, setGrantNoExpiry] = useState(false);
   const [grantDurationValue, setGrantDurationValue] = useState("30");
-  const [grantDurationUnit, setGrantDurationUnit] = useState<"minute" | "hour" | "day">("day");
+  const [grantDurationUnit, setGrantDurationUnit] = useState<"hour" | "day">("day");
 
   const pushNotice = (kind: "success" | "error" | "info", text: string) => {
     setNotice({ kind, text });
@@ -403,7 +403,7 @@ export function AdminSubscribersScreen() {
         return;
       }
 
-      const unitMs = grantDurationUnit === "minute" ? 60_000 : grantDurationUnit === "hour" ? 3_600_000 : 86_400_000;
+      const unitMs = grantDurationUnit === "hour" ? 3_600_000 : 86_400_000;
       requestedEndAt = new Date(nowMs + v * unitMs).toISOString();
     }
 
@@ -1089,6 +1089,9 @@ export function AdminSubscribersScreen() {
                     {!grantNoExpiry ? (
                       <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_140px]">
                         <input
+                          type="number"
+                          min={1}
+                          step={1}
                           value={grantDurationValue}
                           onChange={(e) => setGrantDurationValue(e.target.value)}
                           placeholder="مثال: 30"
@@ -1100,7 +1103,6 @@ export function AdminSubscribersScreen() {
                           onChange={(e) => setGrantDurationUnit(e.target.value as any)}
                           className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                         >
-                          <option value="minute">دقائق</option>
                           <option value="hour">ساعات</option>
                           <option value="day">أيام</option>
                         </select>
