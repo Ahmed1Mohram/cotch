@@ -1894,24 +1894,37 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
     setError(null);
 
 
+    const trimmed = String(playerCardId ?? "").trim();
 
-    const res = await supabase.from("player_cards").delete().eq("id", playerCardId);
-
-
-
-    if (res.error) setError(res.error.message);
-
-    else {
-
-      setConfirmDeleteCardId(null);
-
-      setReloadKey((k) => k + 1);
-
+    if (!trimmed) {
+      setSaving(false);
+      return;
     }
 
+    try {
+      await supabase.from("course_age_group_access").delete().eq("player_card_id", trimmed);
+      await supabase.from("age_group_codes").delete().eq("player_card_id", trimmed);
 
+      const res = await supabase.from("player_cards").delete().eq("id", trimmed);
 
-    setSaving(false);
+      if (res.error) {
+        setError(res.error.message);
+      } else {
+        setConfirmDeleteCardId(null);
+        setConfirmDeleteGeneratedCardId(null);
+        setDeletingGeneratedCardId(null);
+        setGeneratedCodesByCardId((prev) => {
+          const next = { ...prev };
+          delete (next as any)[trimmed];
+          return next;
+        });
+        setReloadKey((k) => k + 1);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل الحذف");
+    } finally {
+      setSaving(false);
+    }
 
   };
 
@@ -3401,7 +3414,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                               >
 
-                                تأكيد
+                                حذف الكارت وكل بياناته
 
                               </button>
 

@@ -27,9 +27,7 @@ function isImgTagSrc(src: string) {
 
 function normalizeFeatures(features: unknown): string[] {
   if (!features) return [];
-  if (Array.isArray(features)) {
-    return features.map((x) => String(x)).map((s) => s.trim()).filter(Boolean);
-  }
+  if (Array.isArray(features)) return features.map((x) => String(x)).map((s) => s.trim()).filter(Boolean);
   if (typeof features === "string") {
     const s = features.trim();
     return s ? [s] : [];
@@ -41,6 +39,13 @@ function normalizeFeatures(features: unknown): string[] {
     }
   }
   return [];
+}
+
+function normalizeFeatureText(raw: string) {
+  return String(raw)
+    .replace(/^\s*\d+\uFE0F?\u20E3\s*/u, "")
+    .replace(/^\s*[\-–—•]+\s*/u, "")
+    .trim();
 }
 
 function getPackageOverride(meta: { slug?: string | null; title?: string | null; theme?: string | null }) {
@@ -58,7 +63,7 @@ function getPackageOverride(meta: { slug?: string | null; title?: string | null;
       title: "STAR",
       subtitle: "🥉 باقة المبتدئين – STAR",
       features: [
-        "1️⃣ 12 تمرينه في الشهر 🏃🏽",
+        "1️⃣ ١٢ تمرينة في الشهر 🏃🏽",
         "2️⃣ قياسات كل شهر علي تطورك 📑",
         "3️⃣ متابعه اسبوعيه بالفيديوهات علي تكنيك تمرينك 👌🏽",
       ],
@@ -613,6 +618,8 @@ async function ProgramPageInner({
 
   const cardsLocked = !user || (!isAdmin && !hasCourseAccess && !hasAnyCardAccess);
 
+  let courseAgeGroupIds: string[] = [];
+
   let profiles: Profile[] = [];
   if (cardsLocked) {
     try {
@@ -688,6 +695,8 @@ async function ProgramPageInner({
           }
         }
 
+        courseAgeGroupIds = agIds;
+
         if (!isAdmin && !hasCourseAccess && hasAnyCardAccess && allowedCardIds.length > 0) {
           try {
             const { data: pcRows, error: pcError } = await supabase
@@ -753,8 +762,57 @@ async function ProgramPageInner({
     }
   }
 
+  if (!courseAgeGroupIds?.length && profiles.length) {
+    courseAgeGroupIds = Array.from(new Set(profiles.map((p) => p.ageGroupId).filter(Boolean)));
+  }
+
+  if (!courseAgeGroupIds?.length) {
+    try {
+      const { data: agRows } = await supabase
+        .from("age_groups")
+        .select("id")
+        .eq("course_id", course.id)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+
+      let agIds = (agRows ?? []).map((r: any) => String(r.id ?? "")).filter(Boolean);
+
+      if (pkg && agIds.length) {
+        const allowRes = await supabase
+          .from("package_course_age_groups")
+          .select("age_group_id")
+          .eq("package_id", pkg.id)
+          .eq("course_id", course.id);
+
+        const allowed = ((allowRes.data as any[]) ?? [])
+          .map((r) => String(r.age_group_id ?? ""))
+          .filter(Boolean);
+
+        if (allowed.length) {
+          const allowSet = new Set(allowed);
+          agIds = agIds.filter((id) => allowSet.has(id));
+        }
+      }
+
+      courseAgeGroupIds = agIds;
+    } catch (e) {
+      console.error("Error loading age groups for fallback:", e);
+    }
+  }
+
   const requirePackageSelection = availablePackages.length > 0;
   const showCards = !requirePackageSelection || Boolean(pkg);
+
+  const effectivePkgSlugForLinks = pkg ? pkg.slug : pkgSlug;
+  const fallbackAgeGroupId = courseAgeGroupIds?.[0] ?? "";
+  const canOpenMonth1 = Boolean(fallbackAgeGroupId);
+  const month1Href = fallbackAgeGroupId
+    ? `/programs/${course.slug}/month/1?ag=${encodeURIComponent(fallbackAgeGroupId)}${
+        effectivePkgSlugForLinks ? `&pkg=${encodeURIComponent(effectivePkgSlugForLinks)}` : ""
+      }`
+    : effectivePkgSlugForLinks
+      ? `/programs/${course.slug}?pkg=${encodeURIComponent(effectivePkgSlugForLinks)}`
+      : `/programs/${course.slug}`;
 
   return (
     <div className="min-h-screen bg-[#0B0B0B]">
@@ -788,7 +846,7 @@ async function ProgramPageInner({
                   <div className="mb-4">
                     <p className="text-right text-sm font-semibold text-white/90">اختر الباقة:</p>
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {availablePackages.map((p) => {
                       const isSelected = pkg?.slug === p.slug;
                       const isVip = p.theme === "vip" || String(p.slug ?? "").toLowerCase().includes("vip");
@@ -826,7 +884,7 @@ async function ProgramPageInner({
                           chip: "bg-black/40 text-white/80 ring-white/10",
                           chipSelected: "bg-white/14 text-white ring-white/25",
                           featureRing: "ring-white/10",
-                          featureBg: "bg-black/35",
+                          featureBg: "bg-gradient-to-b from-black/42 via-black/30 to-black/55",
                           cta: "bg-white/6 group-hover:bg-white/10",
                         },
                         blue: {
@@ -840,7 +898,7 @@ async function ProgramPageInner({
                           chip: "bg-black/40 text-white/80 ring-white/10",
                           chipSelected: "bg-white/14 text-white ring-white/25",
                           featureRing: "ring-white/10",
-                          featureBg: "bg-black/35",
+                          featureBg: "bg-gradient-to-b from-black/42 via-black/30 to-black/55",
                           cta: "bg-white/6 group-hover:bg-white/10",
                         },
                         vip: {
@@ -854,20 +912,41 @@ async function ProgramPageInner({
                           chip: "bg-[#FFD700]/12 text-[#FFE2B8] ring-[#FFD700]/20",
                           chipSelected: "bg-[#FFD700]/18 text-[#FFF2CC] ring-[#FFD700]/30",
                           featureRing: "ring-[#FFD700]/18",
-                          featureBg: "bg-[#140c00]/55",
-                          cta: "bg-[#FFD700]/10 group-hover:bg-[#FFD700]/14",
+                          featureBg: "bg-gradient-to-b from-[#1a1000]/70 via-black/35 to-black/75 shadow-[0_30px_120px_-80px_rgba(255,215,0,0.22)]",
+                          cta: "bg-gradient-to-l from-[#FFD700]/18 via-[#FFB35A]/12 to-white/8 group-hover:from-[#FFD700]/22 group-hover:via-[#FFB35A]/16 group-hover:to-white/12",
                         },
                       };
                       const colors = themeColors[isVipPlan ? "vip" : p.theme] ?? themeColors.orange;
                       const featsRaw = override?.features ?? normalizeFeatures(p.features);
                       const feats = featsRaw.slice(0, isVipPlan ? 8 : 5);
 
+                      const selectedOuterRing = isVipPlan
+                        ? "ring-2 ring-[#FFD700]/55"
+                        : isMediumPlan
+                          ? "ring-2 ring-[#60A5FA]/55"
+                          : "ring-2 ring-[#FFB35A]/55";
+                      const selectedAccent = isVipPlan
+                        ? "bg-[radial-gradient(720px_520px_at_30%_20%,rgba(255,215,0,0.35),transparent_62%)]"
+                        : isMediumPlan
+                          ? "bg-[radial-gradient(720px_520px_at_30%_20%,rgba(96,165,250,0.30),transparent_62%)]"
+                          : "bg-[radial-gradient(720px_520px_at_30%_20%,rgba(255,179,90,0.30),transparent_62%)]";
+                      const selectedRing = isVipPlan
+                        ? "ring-2 ring-[#FFD700]/70 shadow-[0_0_0_1px_rgba(255,215,0,0.18),0_0_70px_rgba(255,215,0,0.18)]"
+                        : isMediumPlan
+                          ? "ring-2 ring-[#60A5FA]/70 shadow-[0_0_0_1px_rgba(96,165,250,0.18),0_0_70px_rgba(96,165,250,0.14)]"
+                          : "ring-2 ring-[#FFB35A]/70 shadow-[0_0_0_1px_rgba(255,179,90,0.18),0_0_70px_rgba(255,179,90,0.14)]";
+                      const selectedCheck = isVipPlan
+                        ? "bg-[#FFD700]/14 shadow-[0_0_0_1px_rgba(255,215,0,0.30),0_20px_70px_-45px_rgba(255,215,0,0.60)]"
+                        : isMediumPlan
+                          ? "bg-[#60A5FA]/14 shadow-[0_0_0_1px_rgba(96,165,250,0.30),0_20px_70px_-45px_rgba(96,165,250,0.55)]"
+                          : "bg-[#FFB35A]/14 shadow-[0_0_0_1px_rgba(255,179,90,0.30),0_20px_70px_-45px_rgba(255,179,90,0.55)]";
+
                       return (
                         <Link
                           key={p.id}
                           href={`/programs/${course.slug}?pkg=${encodeURIComponent(p.slug)}`}
                           className={`group relative isolate block overflow-hidden rounded-3xl bg-gradient-to-r p-[2px] transition-transform duration-300 hover:-translate-y-1 ${
-                            isSelected ? "ring-2 ring-white/60" : ""
+                            isSelected ? selectedOuterRing : ""
                           } ${colors.outer} ${
                             isVipPlan ? "hover:-translate-y-2 hover:scale-[1.01]" : ""
                           } shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_50px_160px_-120px_rgba(0,0,0,0.92)]`}
@@ -875,13 +954,13 @@ async function ProgramPageInner({
                           {isSelected ? (
                             <>
                               <div className="pointer-events-none absolute -inset-[40%] opacity-80 blur-3xl">
-                                <div className="absolute inset-0 bg-[radial-gradient(720px_520px_at_30%_20%,rgba(255,36,36,0.35),transparent_62%)]" />
+                                <div className={`absolute inset-0 ${selectedAccent}`} />
                               </div>
-                              <div className="pointer-events-none absolute inset-0 rounded-3xl ring-2 ring-rose-400/80 shadow-[0_0_0_1px_rgba(255,36,36,0.22),0_0_64px_rgba(255,36,36,0.28)]" />
+                              <div className={`pointer-events-none absolute inset-0 rounded-3xl ${selectedRing}`} />
                             </>
                           ) : null}
                           {isSelected ? (
-                            <div className="pointer-events-none absolute left-5 top-5 z-10 flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/15 text-white shadow-[0_0_0_1px_rgba(255,36,36,0.35),0_18px_60px_-35px_rgba(255,36,36,0.55)] backdrop-blur-xl">
+                            <div className={`pointer-events-none absolute left-5 top-5 z-10 flex h-10 w-10 items-center justify-center rounded-2xl text-white backdrop-blur-xl ${selectedCheck}`}>
                               <span className="text-lg font-black leading-none">✓</span>
                             </div>
                           ) : null}
@@ -906,18 +985,31 @@ async function ProgramPageInner({
                             </>
                           ) : null}
 
-                          <div className="relative overflow-hidden rounded-[22px] bg-black/65 px-7 py-7 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] backdrop-blur-2xl">
+                          <div className="relative overflow-hidden rounded-[22px] bg-gradient-to-b from-black/70 via-black/55 to-black/75 px-7 py-7 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] backdrop-blur-2xl">
                             <div className={`pointer-events-none absolute inset-0 rounded-[22px] ring-1 ring-inset ${colors.inner}`} />
                             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(860px_460px_at_18%_12%,rgba(255,255,255,0.08),transparent_66%)]" />
                             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/6 via-transparent to-black/50" />
                             <div className="relative">
                               <div className="flex items-start justify-between gap-3" dir="rtl">
                                 <div className="min-w-0">
-                                  <h4 className={`text-right font-heading text-3xl tracking-[0.14em] ${colors.title}`}>
+                                  <h4
+                                    className={`text-right font-heading text-3xl tracking-[0.14em] ${colors.title} ${
+                                      isVipPlan
+                                        ? "drop-shadow-[0_18px_60px_rgba(255,215,0,0.18)]"
+                                        : isMediumPlan
+                                          ? "drop-shadow-[0_18px_60px_rgba(96,165,250,0.12)]"
+                                          : "drop-shadow-[0_18px_60px_rgba(255,179,90,0.12)]"
+                                    }`}
+                                  >
                                     {displayTitle}
                                   </h4>
                                   {displaySubtitle ? (
-                                    <div className="mt-2 text-right text-sm text-white/70">
+                                    <div
+                                      className={
+                                        "mt-2 text-right text-sm " +
+                                        (isVipPlan ? "text-[#FFE2B8]/80" : isMediumPlan ? "text-white/74" : "text-white/72")
+                                      }
+                                    >
                                       {String(displaySubtitle)}
                                     </div>
                                   ) : null}
@@ -925,7 +1017,7 @@ async function ProgramPageInner({
                                 <div className="shrink-0 flex items-center gap-2">
                                   {isVipPlan ? (
                                     <div className="rounded-full bg-[#FFD700]/12 px-3 py-1 text-[11px] font-extrabold tracking-[0.22em] text-[#FFE2B8] shadow-[0_0_0_1px_rgba(255,215,0,0.24),0_18px_60px_-40px_rgba(255,215,0,0.50)] ring-1 ring-inset ring-[#FFD700]/22">
-                                      VIP
+                                      GOLD
                                     </div>
                                   ) : null}
                                   {!isSelected ? (
@@ -938,24 +1030,36 @@ async function ProgramPageInner({
                                 </div>
                               </div>
 
-                              {p.description ? (
-                                <p className="mt-4 text-right text-sm leading-7 text-white/75 line-clamp-3">
-                                  {String(p.description)}
-                                </p>
-                              ) : null}
-
                               <div className={`mt-5 rounded-2xl p-5 ring-1 ring-inset ${colors.featureRing} ${colors.featureBg}`}>
                                 <div className="text-right text-xs font-semibold tracking-[0.22em] text-white/85">
                                   مميزات الباقة
                                 </div>
                                 {feats.length ? (
-                                  <ul className="mt-4 space-y-2 text-right text-sm text-white/85">
-                                    {feats.map((f) => (
-                                      <li key={f} className="flex items-start justify-end gap-2 leading-6">
-                                        <span className="mt-2 h-1.5 w-1.5 rounded-full bg-white/55" />
-                                        <span className="min-w-0">{f}</span>
-                                      </li>
-                                    ))}
+                                  <ul
+                                    className="mt-4 space-y-3 pr-1 text-right text-[15px] leading-8 text-white"
+                                    dir="rtl"
+                                  >
+                                    {feats.map((raw, idx) => {
+                                      const f = normalizeFeatureText(raw);
+                                      return (
+                                        <li key={`${p.id}-feat-${idx}`} className="flex items-start gap-3" dir="rtl">
+                                          <span
+                                            className={
+                                              "mt-2 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ring-1 ring-inset " +
+                                              (isVipPlan
+                                                ? "bg-[#FFD700]/16 ring-[#FFD700]/35 text-[#FFE2B8]"
+                                                : "bg-white/10 ring-white/18 text-white")
+                                            }
+                                            aria-hidden="true"
+                                          >
+                                            <span className="text-[11px] font-black leading-none">✓</span>
+                                          </span>
+                                          <span className="min-w-0 text-right font-semibold tracking-[0.01em] text-white drop-shadow-[0_1px_0_rgba(0,0,0,0.65)]">
+                                            {f}
+                                          </span>
+                                        </li>
+                                      );
+                                    })}
                                   </ul>
                                 ) : (
                                   <div className="mt-3 text-right text-sm text-white/55">
@@ -1040,7 +1144,7 @@ async function ProgramPageInner({
               </div>
 
               <div className="mt-10">
-                <div className="font-heading text-xs tracking-[0.22em] text-white/70">كروت (طول / وزن / عمر)</div>
+                <div className="font-heading text-xs tracking-[0.22em] text-white/70">{profiles.length ? "كروت (طول / وزن / عمر)" : "محتوى الكورس"}</div>
                 <div className="mt-5 grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                   <div className="col-span-2 md:col-span-3 lg:col-span-5">
                     <RedeemCourseCodeInline
@@ -1056,6 +1160,39 @@ async function ProgramPageInner({
                       </div>
                       <div className="text-xs text-white/60">
                         علشان تظهر كروت الأعمار، اختار الباقة من فوق.
+                      </div>
+                    </div>
+                  ) : profiles.length === 0 ? (
+                    <div className="col-span-2 md:col-span-3 lg:col-span-5 rounded-3xl bg-white/5 px-6 py-8 text-right border border-white/10">
+                      <div className="text-sm font-heading tracking-[0.12em] text-white/90 mb-2">
+                        الكورس ده بيشتغل بنظام الشهور
+                      </div>
+                      <div className="text-xs text-white/65 leading-6">
+                        مفيش كروت متاحة للكورس ده حالياً.
+                        <br />
+                        {canOpenMonth1 ? (
+                          <>افتح الشهر الأول علشان تبدأ (هتظهر المعاينة لو مش مشترك).</>
+                        ) : (
+                          <>الكورس لسه مش متجهّز (مفيش مجموعات أعمار). لازم الأدمن يضيف مجموعة عمر وبعدها الشهور.</>
+                        )}
+                      </div>
+                      <div className="mt-5 flex flex-wrap justify-end gap-3">
+                        {canOpenMonth1 ? (
+                          <Link
+                            href={month1Href}
+                            className="inline-flex h-11 items-center justify-center rounded-2xl bg-white/10 px-6 text-xs font-extrabold tracking-[0.12em] text-white shadow-[0_0_0_1px_rgba(255,255,255,0.14)] transition hover:bg-white/15"
+                          >
+                            افتح الشهر الأول
+                          </Link>
+                        ) : null}
+                        {pkg ? (
+                          <Link
+                            href={`/packages/${encodeURIComponent(pkg.slug)}`}
+                            className="inline-flex h-11 items-center justify-center rounded-2xl bg-white/5 px-6 text-xs font-semibold tracking-[0.12em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10"
+                          >
+                            تفاصيل الباقة
+                          </Link>
+                        ) : null}
                       </div>
                     </div>
                   ) : cardsLocked ? (
