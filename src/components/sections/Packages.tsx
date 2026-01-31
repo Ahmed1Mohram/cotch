@@ -17,6 +17,59 @@ type PackageRow = {
   sort_order: number;
 };
 
+function getPackageOverride(meta: { slug?: string | null; title?: string | null; theme?: string | null }) {
+  const slug = String(meta.slug ?? "").trim().toLowerCase();
+  const title = String(meta.title ?? "").trim().toLowerCase();
+  const theme = String(meta.theme ?? "").trim().toLowerCase();
+  const hay = `${slug} ${title} ${theme}`.trim();
+
+  const isVip = theme === "vip" || hay.includes("vip") || hay.includes("gold");
+  const isMedium = theme === "blue" || hay.includes("medium") || hay.includes("pro");
+  const isSmall = theme === "orange" || hay.includes("small") || hay.includes("star");
+
+  if (isSmall && !isMedium && !isVip) {
+    return {
+      title: "STAR",
+      subtitle: "🥉 باقة المبتدئين – STAR",
+      features: [
+        "1️⃣ 12 تمرينه في الشهر 🏃🏽",
+        "2️⃣ قياسات كل شهر علي تطورك 📑",
+        "3️⃣ متابعه اسبوعيه بالفيديوهات علي تكنيك تمرينك 👌🏽",
+      ],
+    };
+  }
+  if (isMedium && !isVip) {
+    return {
+      title: "PRO",
+      subtitle: "🥈 باقة المحترفين – PRO",
+      features: [
+        "1️⃣ جدول تدريبي مخصص ومتغير علي حسب التطورات 📑",
+        "2️⃣ نظام غذائي 🍛",
+        "3️⃣ متابعه واتساب علي تكنيك التدريبات لتصحيح الخطأ 👏🏽",
+        "4️⃣ قياسات كل أسبوعين 📑",
+        "5️⃣ متابعه مرتين علي الواتساب تقدر تسألني علي اي حاجه؟ + تقدر تبعتلي التمارين اللي بتتمرنها 🏃🏽 + تقدر تسألني علي أي سؤال في التغذيه 🍛",
+      ],
+    };
+  }
+  if (isVip) {
+    return {
+      title: "VIP",
+      subtitle: "🥇 الباقة الذهبية 👑 (Gold)",
+      features: [
+        "1️⃣ جدول تدريبي مخصص ومتغير علي حسب التطورات 📑",
+        "2️⃣ نظام غذائي 🍛",
+        "3️⃣ متابعه واتساب علي تكنيك التدريبات لتصحيح الخطأ 👏🏽",
+        "4️⃣ قياسات كل أسبوع 📑",
+        "5️⃣ متابعه يوميا علي الواتساب تقدر تسألني علي اي حاجه؟ + تقدر تبعتلي التمارين الي بتتمرنها 🏃🏽 + تقدر تسألني علي أي سؤال في التغذيه 🍛",
+        "6️⃣ ليك انك تكلم كابتن مصطفي فيديو في أيام القياسات علشان القياسات تكون بالظبط عليك 📑👌🏽",
+        "7️⃣ اول مبتوصل للمستوي اللي كابتن مصطفي محددهولك ليك تمرينه مجانا مع كابتن مصطفي بنفسه 💯👏🏽",
+        "8️⃣ بتكلم كابتن مصطفي فون براحتك لحل اي مشكله خارج الاعداد البدني زي/ضغط الماتشات/قله الثقه في الماتشات/ الدعم النفسي /ومشاكل تانيه كتير تقدر تحلها مع كابتن مصطفي بإذن الله ♥️💯",
+      ],
+    };
+  }
+  return null;
+}
+
 function themeStyles(theme: string) {
   if (theme === "vip") {
     return {
@@ -53,7 +106,17 @@ function themeStyles(theme: string) {
 
 function normalizeFeatures(features: unknown): string[] {
   if (!features) return [];
-  if (Array.isArray(features)) return features.map((x) => String(x)).filter(Boolean);
+  if (Array.isArray(features)) return features.map((x) => String(x)).map((s) => s.trim()).filter(Boolean);
+  if (typeof features === "string") {
+    const s = features.trim();
+    return s ? [s] : [];
+  }
+  if (typeof features === "object") {
+    const obj = features as any;
+    if (Array.isArray(obj?.items)) {
+      return obj.items.map((x: any) => String(x)).map((s: string) => s.trim()).filter(Boolean);
+    }
+  }
   return [];
 }
 
@@ -128,10 +191,16 @@ export async function Packages() {
               <div className="flex gap-7 snap-x snap-mandatory scroll-px-5 sm:grid sm:gap-7 sm:grid-cols-2 lg:grid-cols-3">
               {items.map((p, idx) => {
                 const st = themeStyles(p.theme);
-                const feats = normalizeFeatures(p.features);
                 const isVip = p.theme === "vip" || p.slug === "vip";
                 const isMedium = p.slug === "medium";
                 const isSmall = p.slug === "small";
+                const override = getPackageOverride({ slug: p.slug, title: p.title, theme: p.theme });
+                const isVipPlan = override?.title === "VIP" || isVip;
+                const isMediumPlan = override?.title === "PRO" || isMedium;
+                const isSmallPlan = override?.title === "STAR" || isSmall;
+                const displayTitle = override?.title ?? p.title;
+                const displaySubtitle = override?.subtitle ?? p.subtitle;
+                const feats = (override?.features ?? normalizeFeatures(p.features)).slice(0, isVipPlan ? 8 : 5);
 
                 return (
                   <Reveal key={p.id} delay={0.06 * idx}>
@@ -140,20 +209,20 @@ export async function Packages() {
                       className={
                         "group relative isolate block w-[86vw] max-w-[360px] flex-none snap-start overflow-hidden rounded-3xl bg-gradient-to-r p-[2px] transition-transform duration-300 hover:-translate-y-1 sm:w-auto sm:max-w-none " +
                         st.outer +
-                        (isVip ? " hover:-translate-y-2 hover:scale-[1.02]" : "")
+                        (isVipPlan ? " hover:-translate-y-2 hover:scale-[1.02]" : "")
                       }
                       dir="rtl"
                     >
                       <div className="relative overflow-hidden rounded-[22px] bg-black/60 px-6 py-7 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] backdrop-blur-2xl">
                         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(740px_380px_at_20%_24%,rgba(255,255,255,0.08),transparent_64%)]" />
                         <div className={"pointer-events-none absolute inset-0 rounded-[22px] ring-1 ring-inset " + st.inner} />
-                        {isSmall ? (
+                        {isSmallPlan ? (
                           <div className="pointer-events-none absolute inset-0 opacity-[0.14] bg-[url('/ss.png')] bg-cover bg-center bg-no-repeat mix-blend-screen [mask-image:radial-gradient(70%_60%_at_50%_40%,black,transparent_80%)]" />
                         ) : null}
-                        {isMedium ? (
+                        {isMediumPlan ? (
                           <div className="pointer-events-none absolute inset-0 opacity-[0.16] bg-[url('/M.png')] bg-cover bg-center bg-no-repeat mix-blend-screen [mask-image:radial-gradient(70%_60%_at_50%_40%,black,transparent_78%)]" />
                         ) : null}
-                        {isVip ? (
+                        {isVipPlan ? (
                           <>
                             <div className="pointer-events-none absolute inset-0 opacity-[0.18] bg-[url('/v.png')] bg-cover bg-center bg-no-repeat mix-blend-screen" />
                             <div className="pointer-events-none absolute -inset-10 opacity-70 blur-3xl bg-[radial-gradient(circle,rgba(255,242,204,0.28)_0%,transparent_60%)]" />
@@ -169,20 +238,25 @@ export async function Packages() {
                               className={
                                 "font-heading tracking-[0.10em] text-transparent bg-clip-text bg-gradient-to-l " +
                                 st.title +
-                                (isVip
+                                (isVipPlan
                                   ? " text-3xl drop-shadow-[0_18px_60px_rgba(255,179,90,0.18)]"
                                   : " text-2xl")
                               }
                             >
-                              {isVip ? <span className="me-2">👑</span> : null}
-                              {p.title}
+                              {isVipPlan ? <span className="me-2">👑</span> : null}
+                              {displayTitle}
                             </div>
-                            {p.subtitle ? (
-                              <div className={"mt-1 text-sm " + (isVip ? "text-[#FFF2CC]/80" : "text-white/75")}>
-                                {p.subtitle}
+                            {displaySubtitle ? (
+                              <div className={"mt-1 text-sm " + (isVipPlan ? "text-[#FFF2CC]/80" : "text-white/75")}>
+                                {displaySubtitle}
                               </div>
                             ) : null}
                           </div>
+                          {isVipPlan ? (
+                            <div className={"shrink-0 rounded-full px-3 py-1 text-[11px] font-extrabold tracking-[0.22em] ring-1 ring-inset " + st.badge}>
+                              GOLD
+                            </div>
+                          ) : null}
                         </div>
 
                         {p.description ? (
@@ -191,7 +265,7 @@ export async function Packages() {
 
                         {feats.length ? (
                           <div className="mt-6 space-y-2">
-                            {feats.slice(0, 5).map((f, i) => (
+                            {feats.map((f, i) => (
                               <div
                                 key={i}
                                 className={

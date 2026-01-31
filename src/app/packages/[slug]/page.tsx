@@ -24,6 +24,7 @@ type PackageRow = {
   subtitle: string | null;
   description: string | null;
   theme: string;
+  course_id: string | null;
 };
 
 function normalizeSlug(input: string) {
@@ -53,7 +54,7 @@ export default async function PackageDetailsPage({
   const { data: pkgRow } = await supabase
     .from("packages")
     .select(
-      "id,slug,title,subtitle,description,theme",
+      "id,slug,title,subtitle,description,theme,course_id",
     )
     .eq("slug", pkgSlug)
     .maybeSingle();
@@ -67,6 +68,7 @@ export default async function PackageDetailsPage({
           subtitle: (pkgRow as any).subtitle ?? null,
           description: (pkgRow as any).description ?? null,
           theme: String((pkgRow as any).theme ?? "orange"),
+          course_id: (pkgRow as any).course_id ? String((pkgRow as any).course_id) : null,
         }
       : null;
 
@@ -107,9 +109,13 @@ export default async function PackageDetailsPage({
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
-  const courseIds: string[] = ((pcRes.data as any[]) ?? [])
-    .map((r) => String(r.course_id ?? ""))
+  const legacyCourseIds: string[] = ((pcRes.data as any[]) ?? [])
+    .map((r) => String(r.course_id ?? "").trim())
     .filter(Boolean);
+
+  const courseIdSet = new Set<string>(legacyCourseIds);
+  if (pkg.course_id) courseIdSet.add(String(pkg.course_id).trim());
+  const courseIds: string[] = Array.from(courseIdSet).filter(Boolean);
 
   let courses: CourseRow[] = [];
   if (courseIds.length) {

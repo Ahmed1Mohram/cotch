@@ -43,6 +43,59 @@ function normalizeFeatures(features: unknown): string[] {
   return [];
 }
 
+function getPackageOverride(meta: { slug?: string | null; title?: string | null; theme?: string | null }) {
+  const slug = String(meta.slug ?? "").trim().toLowerCase();
+  const title = String(meta.title ?? "").trim().toLowerCase();
+  const theme = String(meta.theme ?? "").trim().toLowerCase();
+  const hay = `${slug} ${title} ${theme}`.trim();
+
+  const isVip = theme === "vip" || hay.includes("vip") || hay.includes("gold");
+  const isMedium = theme === "blue" || hay.includes("medium") || hay.includes("pro");
+  const isSmall = theme === "orange" || hay.includes("small") || hay.includes("star");
+
+  if (isSmall && !isMedium && !isVip) {
+    return {
+      title: "STAR",
+      subtitle: "🥉 باقة المبتدئين – STAR",
+      features: [
+        "1️⃣ 12 تمرينه في الشهر 🏃🏽",
+        "2️⃣ قياسات كل شهر علي تطورك 📑",
+        "3️⃣ متابعه اسبوعيه بالفيديوهات علي تكنيك تمرينك 👌🏽",
+      ],
+    };
+  }
+  if (isMedium && !isVip) {
+    return {
+      title: "PRO",
+      subtitle: "🥈 باقة المحترفين – PRO",
+      features: [
+        "1️⃣ جدول تدريبي مخصص ومتغير علي حسب التطورات 📑",
+        "2️⃣ نظام غذائي 🍛",
+        "3️⃣ متابعه واتساب علي تكنيك التدريبات لتصحيح الخطأ 👏🏽",
+        "4️⃣ قياسات كل أسبوعين 📑",
+        "5️⃣ متابعه مرتين علي الواتساب تقدر تسألني علي اي حاجه؟ + تقدر تبعتلي التمارين اللي بتتمرنها 🏃🏽 + تقدر تسألني علي أي سؤال في التغذيه 🍛",
+      ],
+    };
+  }
+  if (isVip) {
+    return {
+      title: "VIP",
+      subtitle: "🥇 الباقة الذهبية 👑 (Gold)",
+      features: [
+        "1️⃣ جدول تدريبي مخصص ومتغير علي حسب التطورات 📑",
+        "2️⃣ نظام غذائي 🍛",
+        "3️⃣ متابعه واتساب علي تكنيك التدريبات لتصحيح الخطأ 👏🏽",
+        "4️⃣ قياسات كل أسبوع 📑",
+        "5️⃣ متابعه يوميا علي الواتساب تقدر تسألني علي اي حاجه؟ + تقدر تبعتلي التمارين الي بتتمرنها 🏃🏽 + تقدر تسألني علي أي سؤال في التغذيه 🍛",
+        "6️⃣ ليك انك تكلم كابتن مصطفي فيديو في أيام القياسات علشان القياسات تكون بالظبط عليك 📑👌🏽",
+        "7️⃣ اول مبتوصل للمستوي اللي كابتن مصطفي محددهولك ليك تمرينه مجانا مع كابتن مصطفي بنفسه 💯👏🏽",
+        "8️⃣ بتكلم كابتن مصطفي فون براحتك لحل اي مشكله خارج الاعداد البدني زي/ضغط الماتشات/قله الثقه في الماتشات/ الدعم النفسي /ومشاكل تانيه كتير تقدر تحلها مع كابتن مصطفي بإذن الله ♥️💯",
+      ],
+    };
+  }
+  return null;
+}
+
 export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
 
@@ -739,6 +792,14 @@ async function ProgramPageInner({
                     {availablePackages.map((p) => {
                       const isSelected = pkg?.slug === p.slug;
                       const isVip = p.theme === "vip" || String(p.slug ?? "").toLowerCase().includes("vip");
+                      const isMedium = p.theme === "blue" || String(p.slug ?? "").toLowerCase().includes("medium");
+                      const isSmall = p.theme === "orange" || String(p.slug ?? "").toLowerCase().includes("small");
+                      const override = getPackageOverride({ slug: p.slug, title: p.title, theme: p.theme });
+                      const isVipPlan = override?.title === "VIP" || isVip;
+                      const isMediumPlan = override?.title === "PRO" || isMedium;
+                      const isSmallPlan = override?.title === "STAR" || isSmall;
+                      const displayTitle = override?.title ?? p.title;
+                      const displaySubtitle = override?.subtitle ?? p.subtitle;
                       const themeColors: Record<
                         string,
                         {
@@ -760,7 +821,8 @@ async function ProgramPageInner({
                           glow: "bg-[radial-gradient(680px_420px_at_20%_18%,rgba(255,106,0,0.18),transparent_64%)]",
                           dots:
                             "bg-[radial-gradient(circle,rgba(255,179,90,0.55)_1px,transparent_1.7px)] [background-size:28px_28px] [mask-image:radial-gradient(80%_70%_at_50%_50%,transparent_44%,black_76%)]",
-                          title: "text-white",
+                          title:
+                            "text-transparent bg-clip-text bg-gradient-to-l from-[#FF6A00] via-[#FFB35A] to-white",
                           chip: "bg-black/40 text-white/80 ring-white/10",
                           chipSelected: "bg-white/14 text-white ring-white/25",
                           featureRing: "ring-white/10",
@@ -773,7 +835,8 @@ async function ProgramPageInner({
                           glow: "bg-[radial-gradient(680px_420px_at_20%_18%,rgba(59,130,246,0.18),transparent_64%)]",
                           dots:
                             "bg-[radial-gradient(circle,rgba(59,130,246,0.55)_1px,transparent_1.7px)] [background-size:28px_28px] [mask-image:radial-gradient(80%_70%_at_50%_50%,transparent_44%,black_76%)]",
-                          title: "text-white",
+                          title:
+                            "text-transparent bg-clip-text bg-gradient-to-l from-[#60A5FA] via-[#A78BFA] to-white",
                           chip: "bg-black/40 text-white/80 ring-white/10",
                           chipSelected: "bg-white/14 text-white ring-white/25",
                           featureRing: "ring-white/10",
@@ -795,8 +858,9 @@ async function ProgramPageInner({
                           cta: "bg-[#FFD700]/10 group-hover:bg-[#FFD700]/14",
                         },
                       };
-                      const colors = themeColors[isVip ? "vip" : p.theme] ?? themeColors.orange;
-                      const feats = normalizeFeatures(p.features).slice(0, 5);
+                      const colors = themeColors[isVipPlan ? "vip" : p.theme] ?? themeColors.orange;
+                      const featsRaw = override?.features ?? normalizeFeatures(p.features);
+                      const feats = featsRaw.slice(0, isVipPlan ? 8 : 5);
 
                       return (
                         <Link
@@ -804,7 +868,9 @@ async function ProgramPageInner({
                           href={`/programs/${course.slug}?pkg=${encodeURIComponent(p.slug)}`}
                           className={`group relative isolate block overflow-hidden rounded-3xl bg-gradient-to-r p-[2px] transition-transform duration-300 hover:-translate-y-1 ${
                             isSelected ? "ring-2 ring-white/60" : ""
-                          } ${colors.outer} shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_50px_160px_-120px_rgba(0,0,0,0.92)]`}
+                          } ${colors.outer} ${
+                            isVipPlan ? "hover:-translate-y-2 hover:scale-[1.01]" : ""
+                          } shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_50px_160px_-120px_rgba(0,0,0,0.92)]`}
                         >
                           {isSelected ? (
                             <>
@@ -826,6 +892,20 @@ async function ProgramPageInner({
                             <div className={`absolute inset-0 ${colors.dots}`} />
                           </div>
 
+                          {isSmallPlan ? (
+                            <div className="pointer-events-none absolute inset-0 opacity-[0.14] bg-[url('/ss.png')] bg-cover bg-center bg-no-repeat mix-blend-screen [mask-image:radial-gradient(70%_60%_at_50%_40%,black,transparent_80%)]" />
+                          ) : null}
+                          {isMediumPlan ? (
+                            <div className="pointer-events-none absolute inset-0 opacity-[0.16] bg-[url('/M.png')] bg-cover bg-center bg-no-repeat mix-blend-screen [mask-image:radial-gradient(70%_60%_at_50%_40%,black,transparent_78%)]" />
+                          ) : null}
+                          {isVipPlan ? (
+                            <>
+                              <div className="pointer-events-none absolute inset-0 opacity-[0.18] bg-[url('/v.png')] bg-cover bg-center bg-no-repeat mix-blend-screen" />
+                              <div className="pointer-events-none absolute -inset-10 opacity-70 blur-3xl bg-[radial-gradient(circle,rgba(255,242,204,0.26)_0%,transparent_60%)]" />
+                              <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#FFF2CC]/10 via-transparent to-black/70" />
+                            </>
+                          ) : null}
+
                           <div className="relative overflow-hidden rounded-[22px] bg-black/65 px-7 py-7 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] backdrop-blur-2xl">
                             <div className={`pointer-events-none absolute inset-0 rounded-[22px] ring-1 ring-inset ${colors.inner}`} />
                             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(860px_460px_at_18%_12%,rgba(255,255,255,0.08),transparent_66%)]" />
@@ -834,16 +914,16 @@ async function ProgramPageInner({
                               <div className="flex items-start justify-between gap-3" dir="rtl">
                                 <div className="min-w-0">
                                   <h4 className={`text-right font-heading text-3xl tracking-[0.14em] ${colors.title}`}>
-                                    {p.title}
+                                    {displayTitle}
                                   </h4>
-                                  {p.subtitle ? (
+                                  {displaySubtitle ? (
                                     <div className="mt-2 text-right text-sm text-white/70">
-                                      {String(p.subtitle)}
+                                      {String(displaySubtitle)}
                                     </div>
                                   ) : null}
                                 </div>
                                 <div className="shrink-0 flex items-center gap-2">
-                                  {isVip ? (
+                                  {isVipPlan ? (
                                     <div className="rounded-full bg-[#FFD700]/12 px-3 py-1 text-[11px] font-extrabold tracking-[0.22em] text-[#FFE2B8] shadow-[0_0_0_1px_rgba(255,215,0,0.24),0_18px_60px_-40px_rgba(255,215,0,0.50)] ring-1 ring-inset ring-[#FFD700]/22">
                                       VIP
                                     </div>
@@ -886,7 +966,7 @@ async function ProgramPageInner({
 
                               <div className="mt-6 flex justify-end">
                                 <div className={`inline-flex h-12 items-center justify-center rounded-2xl px-7 text-xs font-extrabold tracking-[0.18em] text-white/90 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition ${colors.cta}`}>
-                                  اختر الباقة
+                                  اقرأ الباقة
                                 </div>
                               </div>
                             </div>
