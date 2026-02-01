@@ -566,9 +566,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
           />
 
-          <div className="absolute inset-y-0 right-0 w-[300px] max-w-[85vw] bg-white shadow-2xl">
+          <div className="absolute inset-y-0 right-0 flex h-full w-[300px] max-w-[85vw] flex-col bg-white shadow-2xl">
 
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-4">
 
               <div>
 
@@ -598,7 +598,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
 
 
-            <nav className="px-3 py-3" aria-label="Admin navigation" dir="rtl">
+            <nav
+              className="min-h-0 flex-1 overflow-y-auto px-3 py-3 touch-pan-y"
+              aria-label="Admin navigation"
+              dir="rtl"
+            >
 
               {navGroups.map((group) => (
 
