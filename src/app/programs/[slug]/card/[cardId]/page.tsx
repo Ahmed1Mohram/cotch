@@ -116,6 +116,8 @@ export default async function ProgramCardPage({
 
   const courseTitle = course.title_ar ?? course.title_en ?? course.slug;
 
+  const isInjuriesCourse = course.slug === "injuries";
+
   const pkg: { id: string; slug: string; title: string } | null = pkgSlug
     ? await (async () => {
         const pRes = await supabase
@@ -208,7 +210,7 @@ export default async function ProgramCardPage({
       return (
         <div className="min-h-screen bg-[#0B0B0B] flex items-center justify-center px-6" dir="rtl">
           <div className="w-full max-w-xl rounded-3xl bg-black/45 p-7 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_60px_190px_-140px_rgba(0,0,0,0.95)]">
-            <div className="text-right font-heading text-3xl tracking-[0.10em] text-white">الكارت غير موجود</div>
+            <div className="text-right font-heading text-3xl tracking-[0.10em] text-white">{isInjuriesCourse ? "الإصابة غير موجودة" : "الكارت غير موجود"}</div>
             <div className="mt-5">
               <Link
                 href={pkg ? `/programs/${course.slug}?pkg=${encodeURIComponent(pkg.slug)}` : `/programs/${course.slug}`}
@@ -237,7 +239,7 @@ export default async function ProgramCardPage({
         return (
           <div className="min-h-screen bg-[#0B0B0B] flex items-center justify-center px-6" dir="rtl">
             <div className="w-full max-w-xl rounded-3xl bg-black/45 p-7 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_60px_190px_-140px_rgba(0,0,0,0.95)]">
-              <div className="text-right font-heading text-3xl tracking-[0.10em] text-white">الكارت غير متاح في الباقة</div>
+              <div className="text-right font-heading text-3xl tracking-[0.10em] text-white">{isInjuriesCourse ? "الإصابة غير متاحة في الباقة" : "الكارت غير متاح في الباقة"}</div>
               <div className="mt-4 text-right text-sm text-white/70">
                 الباقة: <span className="text-white/85">{pkg.title}</span>
               </div>
@@ -282,9 +284,9 @@ export default async function ProgramCardPage({
                 <div className="text-right font-heading text-3xl tracking-[0.10em] text-white">
                   {course.title_ar ?? course.title_en ?? course.slug}
                 </div>
-                <div className="mt-2 text-right text-sm text-white/70">فيديوهات الكارت</div>
+                <div className="mt-2 text-right text-sm text-white/70">{isInjuriesCourse ? "فيديوهات الإصابة" : "فيديوهات الكارت"}</div>
                 <div className="mt-1 text-right text-xs text-white/55">
-                  {previewCard.age_group_title ? previewCard.age_group_title : "مجموعة عمر"}
+                  {previewCard.age_group_title ? previewCard.age_group_title : isInjuriesCourse ? "نوع إصابة" : "مجموعة عمر"}
                 </div>
               </div>
               <Link
@@ -296,21 +298,33 @@ export default async function ProgramCardPage({
             </div>
 
             <div className="mt-6 rounded-3xl bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
-              <div className="text-right font-heading text-xs tracking-[0.22em] text-white/70">بيانات الكارت</div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl bg-black/35 px-4 py-4 text-sm text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
-                  <span className="text-white/60">الطول:</span> {previewCard.height_cm ?? "—"}
-                </div>
-                <div className="rounded-2xl bg-black/35 px-4 py-4 text-sm text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
-                  <span className="text-white/60">الوزن:</span> {previewCard.weight_kg ?? "—"}
-                </div>
-                <div className="rounded-2xl bg-black/35 px-4 py-4 text-sm text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
-                  <span className="text-white/60">العمر:</span> {previewCard.age ?? "—"}
-                </div>
+              <div className="text-right font-heading text-xs tracking-[0.22em] text-white/70">
+                {isInjuriesCourse ? "بيانات الإصابة" : "بيانات الكارت"}
               </div>
-              {previewCard.note ? (
-                <div className="mt-4 text-right text-sm text-white/70">{previewCard.note}</div>
-              ) : null}
+              {isInjuriesCourse ? (
+                <div className="mt-4 grid gap-3">
+                  <div className="rounded-2xl bg-black/35 px-4 py-4 text-sm text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
+                    <span className="text-white/60">الإصابة:</span> {previewCard.note ?? "—"}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl bg-black/35 px-4 py-4 text-sm text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
+                      <span className="text-white/60">الطول:</span> {previewCard.height_cm ?? "—"}
+                    </div>
+                    <div className="rounded-2xl bg-black/35 px-4 py-4 text-sm text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
+                      <span className="text-white/60">الوزن:</span> {previewCard.weight_kg ?? "—"}
+                    </div>
+                    <div className="rounded-2xl bg-black/35 px-4 py-4 text-sm text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
+                      <span className="text-white/60">العمر:</span> {previewCard.age ?? "—"}
+                    </div>
+                  </div>
+                  {previewCard.note ? (
+                    <div className="mt-4 text-right text-sm text-white/70">{previewCard.note}</div>
+                  ) : null}
+                </>
+              )}
             </div>
 
             <div className="mt-10">
@@ -357,7 +371,7 @@ export default async function ProgramCardPage({
     return (
       <div className="min-h-screen bg-[#0B0B0B] flex items-center justify-center px-6" dir="rtl">
         <div className="w-full max-w-xl rounded-3xl bg-black/45 p-7 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_60px_190px_-140px_rgba(0,0,0,0.95)]">
-          <div className="text-right font-heading text-3xl tracking-[0.10em] text-white">الكارت غير موجود</div>
+          <div className="text-right font-heading text-3xl tracking-[0.10em] text-white">{isInjuriesCourse ? "الإصابة غير موجودة" : "الكارت غير موجود"}</div>
           <div className="mt-5">
             <Link
               href={pkg ? `/programs/${course.slug}?pkg=${encodeURIComponent(pkg.slug)}` : `/programs/${course.slug}`}
@@ -390,7 +404,7 @@ export default async function ProgramCardPage({
     return (
       <div className="min-h-screen bg-[#0B0B0B] flex items-center justify-center px-6" dir="rtl">
         <div className="w-full max-w-xl rounded-3xl bg-black/45 p-7 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_60px_190px_-140px_rgba(0,0,0,0.95)]">
-          <div className="text-right font-heading text-3xl tracking-[0.10em] text-white">الكارت غير مرتبط بالكورس</div>
+          <div className="text-right font-heading text-3xl tracking-[0.10em] text-white">{isInjuriesCourse ? "الإصابة غير مرتبطة بالكورس" : "الكارت غير مرتبط بالكورس"}</div>
           <div className="mt-5">
             <Link
               href={pkg ? `/programs/${course.slug}?pkg=${encodeURIComponent(pkg.slug)}` : `/programs/${course.slug}`}
@@ -419,7 +433,7 @@ export default async function ProgramCardPage({
       return (
         <div className="min-h-screen bg-[#0B0B0B] flex items-center justify-center px-6" dir="rtl">
           <div className="w-full max-w-xl rounded-3xl bg-black/45 p-7 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_60px_190px_-140px_rgba(0,0,0,0.95)]">
-            <div className="text-right font-heading text-3xl tracking-[0.10em] text-white">الكارت غير متاح في الباقة</div>
+            <div className="text-right font-heading text-3xl tracking-[0.10em] text-white">{isInjuriesCourse ? "الإصابة غير متاحة في الباقة" : "الكارت غير متاح في الباقة"}</div>
             <div className="mt-4 text-right text-sm text-white/70">
               الباقة: <span className="text-white/85">{pkg.title}</span>
             </div>
@@ -499,9 +513,9 @@ export default async function ProgramCardPage({
                 {course.title_ar ?? course.title_en ?? course.slug}
               </div>
               <div className="mt-2 text-right text-sm text-white/70">
-                فيديوهات الكارت
+                {isInjuriesCourse ? "فيديوهات الإصابة" : "فيديوهات الكارت"}
                 <span className="mx-2 text-white/35">•</span>
-                {ageGroup.title ? ageGroup.title : "مجموعة عمر"}
+                {ageGroup.title ? ageGroup.title : isInjuriesCourse ? "نوع إصابة" : "مجموعة عمر"}
               </div>
             </div>
             <Link
@@ -513,21 +527,31 @@ export default async function ProgramCardPage({
           </div>
 
           <div className="mt-6 rounded-3xl bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
-            <div className="text-right font-heading text-xs tracking-[0.22em] text-white/70">بيانات الكارت</div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl bg-black/35 px-4 py-4 text-sm text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
-                <span className="text-white/60">الطول:</span> {card.height_cm ?? "—"}
-              </div>
-              <div className="rounded-2xl bg-black/35 px-4 py-4 text-sm text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
-                <span className="text-white/60">الوزن:</span> {card.weight_kg ?? "—"}
-              </div>
-              <div className="rounded-2xl bg-black/35 px-4 py-4 text-sm text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
-                <span className="text-white/60">العمر:</span> {card.age ?? "—"}
-              </div>
+            <div className="text-right font-heading text-xs tracking-[0.22em] text-white/70">
+              {isInjuriesCourse ? "بيانات الإصابة" : "بيانات الكارت"}
             </div>
-            {card.note ? (
-              <div className="mt-4 text-right text-sm text-white/70">{card.note}</div>
-            ) : null}
+            {isInjuriesCourse ? (
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-2xl bg-black/35 px-4 py-4 text-sm text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
+                  <span className="text-white/60">الإصابة:</span> {card.note ?? "—"}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl bg-black/35 px-4 py-4 text-sm text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
+                    <span className="text-white/60">الطول:</span> {card.height_cm ?? "—"}
+                  </div>
+                  <div className="rounded-2xl bg-black/35 px-4 py-4 text-sm text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
+                    <span className="text-white/60">الوزن:</span> {card.weight_kg ?? "—"}
+                  </div>
+                  <div className="rounded-2xl bg-black/35 px-4 py-4 text-sm text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
+                    <span className="text-white/60">العمر:</span> {card.age ?? "—"}
+                  </div>
+                </div>
+                {card.note ? <div className="mt-4 text-right text-sm text-white/70">{card.note}</div> : null}
+              </>
+            )}
           </div>
 
           <ProgramCardContentViewer

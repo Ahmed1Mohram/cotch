@@ -257,6 +257,10 @@ export function AdminCardCodesScreen() {
       p_course_slug: selectedCourse.slug,
       p_player_card_id: selectedCardId,
       p_count: c,
+
+      p_duration_value: d,
+
+      p_duration_unit: "days",
       p_duration_days: d,
       p_max_redemptions: m,
     });

@@ -17,6 +17,7 @@ type Profile = {
   age: number | null;
   heightCm: number | null;
   weightKg: number | null;
+  note?: string | null;
 };
 
 function isImgTagSrc(src: string) {
@@ -393,6 +394,8 @@ async function ProgramPageInner({
     );
   }
 
+  const isInjuriesCourse = course.slug === "injuries";
+
   // Fetch all packages for this course
   let availablePackages: Array<{
     id: string;
@@ -652,6 +655,7 @@ async function ProgramPageInner({
               age: r.age === null || r.age === undefined ? null : Number(r.age),
               heightCm: r.height_cm === null || r.height_cm === undefined ? null : Number(r.height_cm),
               weightKg: r.weight_kg === null || r.weight_kg === undefined ? null : Number(r.weight_kg),
+              note: r.note ?? null,
             }));
         }
       }
@@ -701,7 +705,7 @@ async function ProgramPageInner({
           try {
             const { data: pcRows, error: pcError } = await supabase
               .from("player_cards")
-              .select("id,age_group_id,age,height_cm,weight_kg")
+              .select("id,age_group_id,age,height_cm,weight_kg,note")
               .in("id", allowedCardIds)
               .order("sort_order", { ascending: true })
               .order("created_at", { ascending: true })
@@ -721,6 +725,7 @@ async function ProgramPageInner({
                     age: r.age === null || r.age === undefined ? null : Number(r.age),
                     heightCm: r.height_cm === null || r.height_cm === undefined ? null : Number(r.height_cm),
                     weightKg: r.weight_kg === null || r.weight_kg === undefined ? null : Number(r.weight_kg),
+                    note: (r as any).note ?? null,
                   })) ?? [];
             }
           } catch (e) {
@@ -731,7 +736,7 @@ async function ProgramPageInner({
           try {
             const { data: pcRows, error: pcError } = await supabase
               .from("player_cards")
-              .select("id,age_group_id,age,height_cm,weight_kg")
+              .select("id,age_group_id,age,height_cm,weight_kg,note")
               .in("age_group_id", agIds)
               .order("sort_order", { ascending: true })
               .order("created_at", { ascending: true })
@@ -748,6 +753,7 @@ async function ProgramPageInner({
                   age: r.age === null || r.age === undefined ? null : Number(r.age),
                   heightCm: (r as any).height_cm === null || (r as any).height_cm === undefined ? null : Number((r as any).height_cm),
                   weightKg: (r as any).weight_kg === null || (r as any).weight_kg === undefined ? null : Number((r as any).weight_kg),
+                  note: (r as any).note ?? null,
                 })) ?? [];
             }
           } catch (e) {
@@ -1144,7 +1150,9 @@ async function ProgramPageInner({
               </div>
 
               <div className="mt-10">
-                <div className="font-heading text-xs tracking-[0.22em] text-white/70">{profiles.length ? "كروت (طول / وزن / عمر)" : "محتوى الكورس"}</div>
+                <div className="font-heading text-xs tracking-[0.22em] text-white/70">
+                  {profiles.length ? (isInjuriesCourse ? "إصابات" : "كروت (طول / وزن / عمر)") : "محتوى الكورس"}
+                </div>
                 <div className="mt-5 grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                   <div className="col-span-2 md:col-span-3 lg:col-span-5">
                     <RedeemCourseCodeInline
@@ -1159,7 +1167,9 @@ async function ProgramPageInner({
                         اختر باقة أولاً
                       </div>
                       <div className="text-xs text-white/60">
-                        علشان تظهر كروت الأعمار، اختار الباقة من فوق.
+                        {isInjuriesCourse
+                          ? "علشان تظهر الإصابات، اختار الباقة من فوق."
+                          : "علشان تظهر كروت الأعمار، اختار الباقة من فوق."}
                       </div>
                     </div>
                   ) : profiles.length === 0 ? (
@@ -1168,12 +1178,16 @@ async function ProgramPageInner({
                         الكورس ده بيشتغل بنظام الشهور
                       </div>
                       <div className="text-xs text-white/65 leading-6">
-                        مفيش كروت متاحة للكورس ده حالياً.
+                        {isInjuriesCourse ? "مفيش إصابات متاحة للكورس ده حالياً." : "مفيش كروت متاحة للكورس ده حالياً."}
                         <br />
                         {canOpenMonth1 ? (
                           <>افتح الشهر الأول علشان تبدأ (هتظهر المعاينة لو مش مشترك).</>
                         ) : (
-                          <>الكورس لسه مش متجهّز (مفيش مجموعات أعمار). لازم الأدمن يضيف مجموعة عمر وبعدها الشهور.</>
+                          <>
+                            {isInjuriesCourse
+                              ? "الكورس لسه مش متجهّز (مفيش أنواع إصابات). لازم الأدمن يضيف نوع إصابة وبعدها الشهور."
+                              : "الكورس لسه مش متجهّز (مفيش مجموعات أعمار). لازم الأدمن يضيف مجموعة عمر وبعدها الشهور."}
+                          </>
                         )}
                       </div>
                       <div className="mt-5 flex flex-wrap justify-end gap-3">
@@ -1201,7 +1215,7 @@ async function ProgramPageInner({
                         <div
                           key={p.id}
                           className="group relative isolate block aspect-[4/5] overflow-hidden rounded-3xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_46px_150px_-120px_rgba(0,0,0,0.95)]"
-                          aria-label={`الكارت رقم ${i + 1} (مقفول)`}
+                          aria-label={isInjuriesCourse ? `إصابة رقم ${i + 1} (مقفول)` : `الكارت رقم ${i + 1} (مقفول)`}
                         >
                           {isImgTagSrc(course.image) ? (
                             <img
@@ -1229,16 +1243,26 @@ async function ProgramPageInner({
                           <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />
 
                           <div className="absolute inset-0 flex flex-col justify-end p-5" dir="rtl">
-                            <div className="font-heading text-[11px] tracking-[0.22em] text-white/70">كارت رقم {i + 1}</div>
-                            <div className="mt-2 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
-                              طول {p.heightCm ?? "—"}
-                              <span className="ms-1 text-sm text-white/70">سم</span>
+                            <div className="font-heading text-[11px] tracking-[0.22em] text-white/70">
+                              {isInjuriesCourse ? "إصابة" : "كارت"} رقم {i + 1}
                             </div>
-                            <div className="mt-1 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
-                              وزن {p.weightKg ?? "—"}
-                              <span className="ms-1 text-sm text-white/70">كجم</span>
-                            </div>
-                            <div className="mt-2 text-sm text-white/75">عمر {p.age ?? "—"} سنة</div>
+                            {isInjuriesCourse ? (
+                              <div className="mt-2 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
+                                {p.note ?? "—"}
+                              </div>
+                            ) : (
+                              <>
+                                <div className="mt-2 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
+                                  طول {p.heightCm ?? "—"}
+                                  <span className="ms-1 text-sm text-white/70">سم</span>
+                                </div>
+                                <div className="mt-1 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
+                                  وزن {p.weightKg ?? "—"}
+                                  <span className="ms-1 text-sm text-white/70">كجم</span>
+                                </div>
+                                <div className="mt-2 text-sm text-white/75">عمر {p.age ?? "—"} سنة</div>
+                              </>
+                            )}
                             <div className="mt-4 flex flex-wrap justify-end gap-3">
                               {user ? (
                                 <Link
@@ -1276,7 +1300,7 @@ async function ProgramPageInner({
                     ) : (
                       <div className="col-span-2 md:col-span-3 lg:col-span-5 rounded-3xl bg-white/5 px-6 py-8 text-right border border-white/10">
                         <div className="text-sm font-heading tracking-[0.12em] text-white/90 mb-2">
-                          مفيش كروت متاحة دلوقتي
+                          {isInjuriesCourse ? "مفيش إصابات متاحة دلوقتي" : "مفيش كروت متاحة دلوقتي"}
                         </div>
                         <div className="text-xs text-white/60 mb-4">
                           استخدم الكود في الأعلى لتفعيل الكورس أو اشترك في الباقة.
@@ -1300,7 +1324,7 @@ async function ProgramPageInner({
                             ? `/programs/${course.slug}/card/${p.id}?pkg=${encodeURIComponent(pkg.slug)}`
                             : `/programs/${course.slug}/card/${p.id}`
                         }
-                        aria-label={`فتح فيديوهات الكارت رقم ${i + 1}`}
+                        aria-label={isInjuriesCourse ? `فتح فيديوهات إصابة رقم ${i + 1}` : `فتح فيديوهات الكارت رقم ${i + 1}`}
                         className="group relative isolate block aspect-[4/5] overflow-hidden rounded-3xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_46px_150px_-120px_rgba(0,0,0,0.95)] transition-transform duration-300 hover:-translate-y-0.5"
                       >
                         {isImgTagSrc(course.image) ? (
@@ -1329,16 +1353,26 @@ async function ProgramPageInner({
                         <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10 transition group-hover:ring-white/25" />
 
                         <div className="absolute inset-0 flex flex-col justify-end p-5" dir="rtl">
-                          <div className="font-heading text-[11px] tracking-[0.22em] text-white/70">كارت رقم {i + 1}</div>
-                          <div className="mt-2 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
-                            طول {p.heightCm ?? "—"}
-                            <span className="ms-1 text-sm text-white/70">سم</span>
+                          <div className="font-heading text-[11px] tracking-[0.22em] text-white/70">
+                            {isInjuriesCourse ? "إصابة" : "كارت"} رقم {i + 1}
                           </div>
-                          <div className="mt-1 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
-                            وزن {p.weightKg ?? "—"}
-                            <span className="ms-1 text-sm text-white/70">كجم</span>
-                          </div>
-                          <div className="mt-2 text-sm text-white/75">عمر {p.age ?? "—"} سنة</div>
+                          {isInjuriesCourse ? (
+                            <div className="mt-2 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
+                              {p.note ?? "—"}
+                            </div>
+                          ) : (
+                            <>
+                              <div className="mt-2 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
+                                طول {p.heightCm ?? "—"}
+                                <span className="ms-1 text-sm text-white/70">سم</span>
+                              </div>
+                              <div className="mt-1 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
+                                وزن {p.weightKg ?? "—"}
+                                <span className="ms-1 text-sm text-white/70">كجم</span>
+                              </div>
+                              <div className="mt-2 text-sm text-white/75">عمر {p.age ?? "—"} سنة</div>
+                            </>
+                          )}
                           <div className="mt-4 inline-flex items-center justify-end text-xs font-semibold tracking-[0.18em] text-[#FFB35A]">
                             افتح الفيديوهات
                           </div>
