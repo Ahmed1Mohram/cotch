@@ -217,6 +217,10 @@ export function AdminCourseMonthCodesPanel({
       p_course_slug: courseSlug,
       p_month_number: mn,
       p_count: c,
+
+      p_duration_value: d,
+
+      p_duration_unit: "days",
       p_duration_days: d,
       p_max_redemptions: max,
     });
