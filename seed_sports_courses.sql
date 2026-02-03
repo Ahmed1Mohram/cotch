@@ -28,7 +28,8 @@ begin
     ('volleyball', 'كورس كرة الطائرة', 'Volleyball', 'قوة، قفز، وتحمل للاعبين الكرة الطائرة.', '/kalya.png', 'blue', true, true, 2),
     ('basketball', 'كورس كرة السلة', 'Basketball', 'سرعة، رشاقة، وتحكم للجسم للاعبين السلة.', '/kalya.png', 'orange', true, true, 3),
     ('handball', 'كورس كرة اليد', 'Handball', 'قوة ومرونة وتحمّل للاعبين كرة اليد.', '/kalya.png', 'orange', true, true, 4),
-    ('injuries', 'كورس الوقاية من الإصابات', 'Injuries', 'تقوية، مرونة، وتجهيز بدني لتقليل الإصابات.', '/kalya.png', 'orange', true, true, 5)
+    ('injuries', 'كورس الوقاية من الإصابات', 'Injuries', 'تقوية، مرونة، وتجهيز بدني لتقليل الإصابات.', '/kalya.png', 'orange', true, true, 5),
+    ('measurements', 'القياسات', 'Measurements', 'فيديوهات القياسات والمتابعة بالأيام.', '/kalya.png', 'orange', true, false, null)
   on conflict (slug)
   do update set
     title_ar = excluded.title_ar,

@@ -24,6 +24,7 @@ const uiFallback: Record<string, { emoji: string; imageClassName: string }> = {
   basketball: { emoji: "🏀", imageClassName: "object-[82%_52%]" },
   handball: { emoji: "🤾‍♂️", imageClassName: "object-[72%_52%]" },
   injuries: { emoji: "🩹", imageClassName: "object-[78%_60%]" },
+  measurements: { emoji: "📏", imageClassName: "object-center" },
 };
 
 export async function FeaturedCourses() {

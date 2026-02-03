@@ -161,6 +161,20 @@ export async function middleware(request: NextRequest) {
           .eq("admin_user_id", user?.id ?? "")
           .maybeSingle();
 
+        if (lockErr) {
+          if (process.env.NODE_ENV !== "production") {
+            console.error("admin_device_locks select failed:", lockErr);
+          }
+          if (isAdminApi) {
+            return NextResponse.json({ error: "ADMIN_DEVICE_LOCK_ERROR" }, { status: 500 });
+          }
+          const redirect = NextResponse.redirect(new URL("/admin-device-blocked", request.url), 307);
+          if (!existingDeviceCookie && deviceId) {
+            redirect.cookies.set(cookieName, deviceId, deviceCookieOptions);
+          }
+          return redirect;
+        }
+
         if (!lockErr && lockRow?.allowed_device_id) {
           if (lockRow.allowed_device_id !== deviceId) {
             if (isAdminApi) {
@@ -180,13 +194,72 @@ export async function middleware(request: NextRequest) {
         }
 
         if (!lockErr && user?.id && deviceId) {
-          await supabase.from("admin_device_locks").insert({
+          const ins = await supabase.from("admin_device_locks").insert({
             admin_user_id: user.id,
             allowed_device_id: deviceId,
           });
+
+          if (ins.error) {
+            const code = String((ins.error as any)?.code ?? "");
+            const msg = String(ins.error.message ?? "");
+            const msgLc = msg.toLowerCase();
+            const isDup = code === "23505" || msgLc.includes("duplicate") || msgLc.includes("already exists");
+
+            if (!isDup) {
+              if (process.env.NODE_ENV !== "production") {
+                console.error("admin_device_locks insert failed:", ins.error);
+              }
+              if (isAdminApi) {
+                return NextResponse.json({ error: "ADMIN_DEVICE_LOCK_ERROR" }, { status: 500 });
+              }
+              const redirect = NextResponse.redirect(new URL("/admin-device-blocked", request.url), 307);
+              if (!existingDeviceCookie && deviceId) {
+                redirect.cookies.set(cookieName, deviceId, deviceCookieOptions);
+              }
+              return redirect;
+            }
+
+            const { data: lockRow2, error: lockErr2 } = await supabase
+              .from("admin_device_locks")
+              .select("allowed_device_id")
+              .eq("admin_user_id", user?.id ?? "")
+              .maybeSingle();
+
+            if (lockErr2) {
+              if (process.env.NODE_ENV !== "production") {
+                console.error("admin_device_locks reselect failed:", lockErr2);
+              }
+              if (isAdminApi) {
+                return NextResponse.json({ error: "ADMIN_DEVICE_LOCK_ERROR" }, { status: 500 });
+              }
+              const redirect = NextResponse.redirect(new URL("/admin-device-blocked", request.url), 307);
+              if (!existingDeviceCookie && deviceId) {
+                redirect.cookies.set(cookieName, deviceId, deviceCookieOptions);
+              }
+              return redirect;
+            }
+
+            if (lockRow2?.allowed_device_id && lockRow2.allowed_device_id !== deviceId) {
+              if (isAdminApi) {
+                return NextResponse.json({ error: "ADMIN_DEVICE_BLOCKED" }, { status: 403 });
+              }
+              const redirect = NextResponse.redirect(new URL("/admin-device-blocked", request.url), 307);
+              if (!existingDeviceCookie && deviceId) {
+                redirect.cookies.set(cookieName, deviceId, deviceCookieOptions);
+              }
+              return redirect;
+            }
+          }
         }
       } catch {
-        return response;
+        if (isAdminApi) {
+          return NextResponse.json({ error: "ADMIN_DEVICE_LOCK_ERROR" }, { status: 500 });
+        }
+        const redirect = NextResponse.redirect(new URL("/admin-device-blocked", request.url), 307);
+        if (!existingDeviceCookie && deviceId) {
+          redirect.cookies.set(cookieName, deviceId, deviceCookieOptions);
+        }
+        return redirect;
       }
 
       return response;

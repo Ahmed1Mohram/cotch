@@ -174,6 +174,7 @@ export default async function ProgramPage({
     basketball: "object-[82%_52%]",
     handball: "object-[72%_52%]",
     injuries: "object-[78%_60%]",
+    measurements: "object-center",
   };
 
   const sp = await Promise.resolve((searchParams ?? {}) as any);
