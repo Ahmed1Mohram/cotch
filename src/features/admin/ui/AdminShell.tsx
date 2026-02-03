@@ -176,9 +176,16 @@ export function AdminShell({ children }: { children: ReactNode }) {
           .select("id", { count: "exact", head: true })
           .eq("status", "pending");
 
+        if (res.error) {
+          throw res.error;
+        }
+
         if (!mounted) return;
         setPendingAdminRequests(res.count ?? 0);
-      } catch {
+      } catch (e) {
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Failed to load pending admin requests count", e);
+        }
         if (!mounted) return;
         setPendingAdminRequests(0);
       }
@@ -189,9 +196,25 @@ export function AdminShell({ children }: { children: ReactNode }) {
       void loadPending();
     }, 15000);
 
+    const ch = supabase
+      .channel("fitcoach-admin-access-requests")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "admin_access_requests" },
+        () => {
+          void loadPending();
+        },
+      )
+      .subscribe();
+
     return () => {
       mounted = false;
       window.clearInterval(t);
+      try {
+        void supabase.removeChannel(ch);
+      } catch {
+        // ignore
+      }
     };
   }, []);
 

@@ -236,13 +236,6 @@ function LoginPageInner() {
 
     const supabase = createSupabaseBrowserClient();
 
-    const deviceBanRes = await supabase.rpc("is_device_banned");
-    if (!deviceBanRes.error && Boolean(deviceBanRes.data)) {
-      router.replace("/blocked");
-      router.refresh();
-      return;
-    }
-
     const emailForAuth = phoneToEmail(phoneDigits);
     let { data, error } = await supabase.auth.signInWithPassword({
       email: emailForAuth,
@@ -305,6 +298,33 @@ function LoginPageInner() {
       setSuccess("تم تسجيل الدخول بنجاح.");
       const targetNext = nextFromQuery ?? "/admin";
       router.replace(`/welcome?next=${encodeURIComponent(targetNext)}`);
+      router.refresh();
+      return;
+    }
+
+    const deviceBanRes = await supabase.rpc("is_device_banned");
+    if (!deviceBanRes.error && Boolean(deviceBanRes.data)) {
+      if (wantsAdmin) {
+        try {
+          await supabase.from("admin_access_requests").upsert(
+            {
+              requester_user_id: userId,
+              status: "pending",
+              reviewed_by: null,
+              reviewed_at: null,
+            },
+            {
+              onConflict: "requester_user_id",
+            },
+          );
+        } catch {}
+
+        router.replace("/admin-request");
+        router.refresh();
+        return;
+      }
+
+      router.replace("/blocked");
       router.refresh();
       return;
     }
