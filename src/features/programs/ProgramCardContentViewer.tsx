@@ -562,6 +562,7 @@ export function ProgramCardContentViewer({
                       ) : (
                         activeDay.videos.map((v) => {
                           const active = v.id === (activeVideo?.id ?? null);
+                          const details = v.details?.trim() ?? "";
                           return (
                             <button
                               key={v.id}
@@ -586,7 +587,13 @@ export function ProgramCardContentViewer({
 
                                 <div className="min-w-0 text-right">
                                   <div className="text-sm">{v.title ?? "فيديو"}</div>
-                                {isLocked ? <div className="mt-1 text-xs text-[#FFB35A]">مقفول</div> : null}
+                                {isLocked ? (
+                                  <div className="mt-1 text-xs text-[#FFB35A]">مقفول</div>
+                                ) : details ? (
+                                  <div className="mt-1 max-h-10 overflow-hidden text-xs leading-5 text-white/65">
+                                    {details}
+                                  </div>
+                                ) : null}
                                 </div>
                               </div>
                             </button>
@@ -720,8 +727,23 @@ export function ProgramCardContentViewer({
                     </div>
 
                     {activeVideo?.details?.trim() ? (
-                      <div className="mt-4 rounded-2xl bg-white/5 px-4 py-3 text-white/80 border border-white/10">
-                        <div className="whitespace-pre-wrap text-right text-sm leading-7">{activeVideo.details}</div>
+                      <div className="mt-4 rounded-2xl border border-white/10 bg-gradient-to-b from-white/8 via-white/5 to-white/0 px-4 py-4 text-white/85 shadow-[0_18px_70px_-54px_rgba(0,0,0,0.95)]">
+                        <div className="flex items-center justify-end gap-3" dir="rtl">
+                          <div className="h-px flex-1 bg-gradient-to-l from-transparent via-white/12 to-transparent" />
+                          <div className="text-right font-heading text-xs tracking-[0.22em] text-white/70">تفاصيل الفيديو</div>
+                        </div>
+                        <div className="mt-3 space-y-2 text-right text-sm leading-6">
+                          {String(activeVideo.details ?? "")
+                            .split(/\r?\n/)
+                            .map((s) => s.trim())
+                            .filter(Boolean)
+                            .map((line, idx) => (
+                              <div key={idx} className="flex flex-row-reverse items-start gap-2">
+                                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#FFB35A]/80" />
+                                <span className="whitespace-pre-wrap">{line}</span>
+                              </div>
+                            ))}
+                        </div>
                       </div>
                     ) : null}
                   </div>
