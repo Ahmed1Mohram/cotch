@@ -392,7 +392,7 @@ function LoginPageInner() {
         } catch {}
 
         setSuccess("تم إرسال طلب دخول الأدمن للإدارة.");
-        router.replace(`/welcome?next=${encodeURIComponent("/admin-request")}`);
+        router.replace("/admin-request");
         router.refresh();
         return;
       }
@@ -428,7 +428,7 @@ function LoginPageInner() {
       } catch {}
 
       setSuccess("تم إرسال طلب دخول الأدمن للإدارة.");
-      router.replace(`/welcome?next=${encodeURIComponent("/admin-request")}`);
+      router.replace("/admin-request");
       router.refresh();
       return;
     }

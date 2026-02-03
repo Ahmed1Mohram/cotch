@@ -34,30 +34,6 @@ export default function AdminRequestPage() {
 
   const status = String(row?.status ?? "pending").toLowerCase();
 
-  const meta = useMemo(() => {
-    if (status === "approved") {
-      return {
-        title: "تم قبول الطلب",
-        desc: "تم منحك صلاحية الأدمن. اضغط دخول لوحة الأدمن.",
-        cls: "bg-emerald-500/15 text-emerald-50 border-emerald-500/25",
-      };
-    }
-
-    if (status === "rejected") {
-      return {
-        title: "تم رفض الطلب",
-        desc: "تم رفض طلب دخول الأدمن. لو شايف إن ده خطأ تواصل مع الإدارة.",
-        cls: "bg-rose-500/15 text-rose-50 border-rose-500/25",
-      };
-    }
-
-    return {
-      title: "طلب دخول الأدمن",
-      desc: "تم إرسال طلبك للإدارة. سيتم المراجعة قريبًا.",
-      cls: "bg-amber-500/15 text-amber-50 border-amber-500/25",
-    };
-  }, [status]);
-
   const load = async () => {
     const supabase = createSupabaseBrowserClient();
 
@@ -143,29 +119,19 @@ export default function AdminRequestPage() {
   return (
     <div className="min-h-screen bg-[#050506] text-white" dir="rtl">
       <div className="mx-auto flex min-h-screen w-full max-w-xl flex-col items-center justify-center px-6 py-16 text-center">
-        <div className={"w-full rounded-2xl border px-5 py-6 " + meta.cls}>
-          <div className="text-2xl font-extrabold tracking-wide">{meta.title}</div>
-          <div className="mt-2 text-sm opacity-90">{meta.desc}</div>
+        <div className="w-full rounded-2xl border border-white/10 bg-white/5 px-6 py-8">
+          <div className="text-2xl font-extrabold tracking-wide">الصفحة دي للأدمن بس</div>
+          <div className="mt-3 text-sm text-white/80">غير مصرح لك بالدخول. من فضلك اقفل الصفحة دي.</div>
 
-          {row?.created_at ? (
-            <div className="mt-3 text-xs opacity-80">تاريخ الطلب: {fmtDate(row.created_at)}</div>
-          ) : null}
-          {row?.reviewed_at ? (
-            <div className="mt-1 text-xs opacity-80">آخر مراجعة: {fmtDate(row.reviewed_at)}</div>
+          {status === "rejected" ? (
+            <div className="mt-4 rounded-2xl bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-50">
+              تم رفض الطلب.
+            </div>
           ) : null}
 
           {error ? <div className="mt-4 rounded-2xl bg-black/25 px-4 py-3 text-sm font-semibold">{error}</div> : null}
 
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => void load()}
-              disabled={loading}
-              className="inline-flex h-11 items-center justify-center rounded-2xl bg-white/15 px-6 text-sm font-semibold text-white transition hover:bg-white/20 disabled:opacity-60"
-            >
-              {loading ? "جاري التحديث..." : "تحديث الحالة"}
-            </button>
-
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={() => {
@@ -174,22 +140,22 @@ export default function AdminRequestPage() {
               }}
               className="inline-flex h-11 items-center justify-center rounded-2xl bg-white/10 px-6 text-sm font-semibold text-white/90 transition hover:bg-white/15"
             >
-              الرئيسية
+              إقفل وارجع للرئيسية
             </button>
 
-            {status === "approved" ? (
-              <button
-                type="button"
-                onClick={() => {
-                  router.replace("/admin");
-                  router.refresh();
-                }}
-                className="inline-flex h-11 items-center justify-center rounded-2xl bg-emerald-600 px-6 text-sm font-semibold text-white transition hover:bg-emerald-700"
-              >
-                دخول الأدمن
-              </button>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => void load()}
+              disabled={loading}
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-white/15 px-6 text-sm font-semibold text-white transition hover:bg-white/20 disabled:opacity-60"
+            >
+              {loading ? "جاري التحديث..." : "تحديث"}
+            </button>
           </div>
+
+          {row?.created_at ? (
+            <div className="mt-5 text-xs text-white/55">تاريخ الطلب: {fmtDate(row.created_at)}</div>
+          ) : null}
         </div>
       </div>
     </div>

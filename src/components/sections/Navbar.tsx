@@ -19,6 +19,17 @@ const links = [
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
+
+  if (
+    pathname === "/admin-request" ||
+    pathname === "/blocked" ||
+    pathname === "/admin-device-blocked" ||
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/")
+  ) {
+    return null;
+  }
+
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
