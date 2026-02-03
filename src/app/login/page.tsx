@@ -238,11 +238,6 @@ function LoginPageInner() {
 
     const deviceBanRes = await supabase.rpc("is_device_banned");
     if (!deviceBanRes.error && Boolean(deviceBanRes.data)) {
-      try {
-        await supabase.auth.signOut();
-      } catch {
-        // ignore
-      }
       router.replace("/blocked");
       router.refresh();
       return;
@@ -287,41 +282,53 @@ function LoginPageInner() {
       return;
     }
 
-    const userBanRes = await supabase.rpc("is_user_banned", { uid: userId });
-    if (!userBanRes.error && Boolean(userBanRes.data)) {
-      await supabase.auth.signOut();
-      router.replace("/blocked");
+    const wantsAdmin =
+      typeof nextFromQuery === "string" &&
+      (nextFromQuery === "/admin" || nextFromQuery.startsWith("/admin/")) &&
+      nextFromQuery !== "/admin-request" &&
+      !nextFromQuery.startsWith("/admin-request/") &&
+      nextFromQuery !== "/admin-device-blocked" &&
+      !nextFromQuery.startsWith("/admin-device-blocked/");
+
+    let isAdmin = false;
+    try {
+      let rpcRes = await supabase.rpc("is_admin", { uid: userId });
+      if (rpcRes.error) {
+        rpcRes = await supabase.rpc("is_admin");
+      }
+      isAdmin = Boolean(!rpcRes.error && rpcRes.data);
+    } catch {
+      isAdmin = false;
+    }
+
+    if (isAdmin) {
+      setSuccess("تم تسجيل الدخول بنجاح.");
+      const targetNext = nextFromQuery ?? "/admin";
+      router.replace(`/welcome?next=${encodeURIComponent(targetNext)}`);
       router.refresh();
       return;
     }
 
-    const trackRes = await supabase.rpc("track_device");
-    if (trackRes.error) {
-      await supabase.auth.signOut();
-      const msg = String(trackRes.error.message ?? "");
-      if (msg.toLowerCase().includes("multiple devices")) {
-        setError("الحساب مفتوح على جهاز تاني. اقفل الجهاز التاني أو استنى شوية وجرب تاني.");
-      } else {
-        if (msg.toLowerCase().includes("banned")) {
-          router.replace("/blocked");
-          router.refresh();
-        } else {
-          setError(msg);
-        }
+    const userBanRes = await supabase.rpc("is_user_banned", { uid: userId });
+    if (!userBanRes.error && Boolean(userBanRes.data)) {
+      if (wantsAdmin) {
+        try {
+          await supabase.from("admin_access_requests").upsert(
+            {
+              requester_user_id: userId,
+              status: "pending",
+              reviewed_by: null,
+              reviewed_at: null,
+            },
+            {
+              onConflict: "requester_user_id",
+            },
+          );
+        } catch {}
       }
+      router.replace("/blocked");
+      router.refresh();
       return;
-    }
-
-    let isAdmin = false;
-    try {
-      const adminRes = await supabase
-        .from("admin_users")
-        .select("user_id")
-        .eq("user_id", userId)
-        .maybeSingle();
-      isAdmin = !adminRes.error && Boolean(adminRes.data);
-    } catch {
-      isAdmin = false;
     }
 
     try {
@@ -362,6 +369,69 @@ function LoginPageInner() {
         await supabase.from("user_profiles").upsert(payload, { onConflict: "user_id" });
       }
     } catch {}
+
+    const trackRes = await supabase.rpc("track_device");
+    if (trackRes.error) {
+      const msg = String(trackRes.error.message ?? "");
+      const msgLc = msg.toLowerCase();
+      const isMultipleDevices = msgLc.includes("multiple devices");
+
+      if (wantsAdmin) {
+        try {
+          await supabase.from("admin_access_requests").upsert(
+            {
+              requester_user_id: userId,
+              status: "pending",
+              reviewed_by: null,
+              reviewed_at: null,
+            },
+            {
+              onConflict: "requester_user_id",
+            },
+          );
+        } catch {}
+
+        setSuccess("تم إرسال طلب دخول الأدمن للإدارة.");
+        router.replace(`/welcome?next=${encodeURIComponent("/admin-request")}`);
+        router.refresh();
+        return;
+      }
+
+      if (isMultipleDevices) {
+        setError("الحساب مفتوح على جهاز تاني. اقفل الجهاز التاني أو استنى شوية وجرب تاني.");
+        return;
+      }
+
+      if (msgLc.includes("banned")) {
+        router.replace("/blocked");
+        router.refresh();
+        return;
+      }
+
+      setError(msg);
+      return;
+    }
+
+    if (wantsAdmin && !isAdmin) {
+      try {
+        await supabase.from("admin_access_requests").upsert(
+          {
+            requester_user_id: userId,
+            status: "pending",
+            reviewed_by: null,
+            reviewed_at: null,
+          },
+          {
+            onConflict: "requester_user_id",
+          },
+        );
+      } catch {}
+
+      setSuccess("تم إرسال طلب دخول الأدمن للإدارة.");
+      router.replace(`/welcome?next=${encodeURIComponent("/admin-request")}`);
+      router.refresh();
+      return;
+    }
 
     setSuccess("تم تسجيل الدخول بنجاح.");
     const targetNext = nextFromQuery ?? (isAdmin ? "/admin" : "/");

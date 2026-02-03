@@ -94,6 +94,8 @@ export function Preloader({ className }: PreloaderProps) {
   useEffect(() => {
     if (!pathname) return;
 
+    if (pathname.startsWith("/blocked")) return;
+
     let cancelled = false;
     const run = async () => {
       try {
@@ -148,9 +150,8 @@ export function Preloader({ className }: PreloaderProps) {
 
         if (!isDeviceBanned && !isUserBanned) return;
 
-        await supabase.auth.signOut();
         if (cancelled) return;
-        router.replace("/login");
+        router.replace("/blocked");
         router.refresh();
       } catch {}
     };
@@ -169,6 +170,9 @@ export function Preloader({ className }: PreloaderProps) {
 
     const tick = async () => {
       try {
+        const currentPath = String(window.location?.pathname ?? "");
+        if (currentPath.startsWith("/blocked")) return;
+
         const {
           data: { user },
         } = await supabase.auth.getUser();
@@ -236,9 +240,8 @@ export function Preloader({ className }: PreloaderProps) {
           );
         } catch {}
 
-        await supabase.auth.signOut();
         if (cancelled) return;
-        router.replace("/login");
+        router.replace("/blocked");
         router.refresh();
       } catch {}
     };

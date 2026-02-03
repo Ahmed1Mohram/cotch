@@ -54,8 +54,6 @@ export default function BlockedPage() {
             return;
           }
         }
-        
-        await supabase.auth.signOut();
       } catch {
         // ignore
       } finally {

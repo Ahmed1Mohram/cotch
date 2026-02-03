@@ -19,6 +19,9 @@ type ProfileRow = {
   user_id: string;
   full_name: string | null;
   phone: string | null;
+  age_years: number | null;
+  height_cm: number | null;
+  weight_kg: string | number | null;
 };
 
 function fmtDate(v: string | null | undefined) {
@@ -101,7 +104,10 @@ export function AdminAccessRequestsScreen() {
       return;
     }
 
-    const profRes = await supabase.from("user_profiles").select("user_id,full_name,phone").in("user_id", ids);
+    const profRes = await supabase
+      .from("user_profiles")
+      .select("user_id,full_name,phone,age_years,height_cm,weight_kg")
+      .in("user_id", ids);
     if (profRes.error) {
       setProfiles(new Map());
       setLoading(false);
@@ -116,6 +122,9 @@ export function AdminAccessRequestsScreen() {
         user_id,
         full_name: p.full_name ? String(p.full_name) : null,
         phone: p.phone ? String(p.phone) : null,
+        age_years: typeof p.age_years === "number" ? p.age_years : p.age_years ? Number(p.age_years) : null,
+        height_cm: typeof p.height_cm === "number" ? p.height_cm : p.height_cm ? Number(p.height_cm) : null,
+        weight_kg: (p as any).weight_kg ?? null,
       });
     }
 
@@ -238,6 +247,9 @@ export function AdminAccessRequestsScreen() {
               const prof = profiles.get(r.requester_user_id) ?? null;
               const name = String(prof?.full_name ?? "").trim();
               const phone = String(prof?.phone ?? "").trim();
+              const ageYears = prof?.age_years ?? null;
+              const heightCm = prof?.height_cm ?? null;
+              const weightKg = prof?.weight_kg ?? null;
               const statusLower = String(r.status ?? "").toLowerCase();
               const isPending = statusLower === "pending";
 
@@ -252,6 +264,13 @@ export function AdminAccessRequestsScreen() {
                           </div>
                           <div className="mt-1 text-xs text-slate-600" dir="rtl">
                             {phone ? `رقم: ${phone}` : ""}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-600" dir="rtl">
+                            {ageYears ? `سن: ${ageYears}` : ""}
+                            {ageYears && heightCm ? " • " : ""}
+                            {heightCm ? `طول: ${heightCm}` : ""}
+                            {(ageYears || heightCm) && weightKg ? " • " : ""}
+                            {weightKg ? `وزن: ${weightKg}` : ""}
                           </div>
                         </div>
                         <StatusPill status={r.status} />
