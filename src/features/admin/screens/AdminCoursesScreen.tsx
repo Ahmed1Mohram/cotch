@@ -534,7 +534,11 @@ export function AdminCoursesScreen() {
                 </div>
                 <div className="rounded-2xl bg-slate-50 px-3 py-3 border border-slate-200">
                   المشتركين
-                  <div className="mt-1 text-sm font-semibold text-slate-900">{subsCountByCourseId[course.id] ?? 0}</div>
+                  <div className="mt-1">
+                    <div className="text-base leading-none">🧿✋</div>
+                    <div className="mt-1 text-[11px] font-semibold text-slate-700">بسم الله مشاء الله</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-900">{subsCountByCourseId[course.id] ?? 0}</div>
+                  </div>
                 </div>
                 <div className="rounded-2xl bg-slate-50 px-3 py-3 border border-slate-200">
                   الكروت
