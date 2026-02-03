@@ -122,8 +122,8 @@ export default async function ProgramMonthPage({
         <div className="w-full max-w-xl rounded-3xl bg-black/45 p-7 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_60px_190px_-140px_rgba(0,0,0,0.95)]">
           <div className="text-right font-heading text-3xl tracking-[0.10em] text-white">الكورس غير موجود</div>
           <div className="mt-5">
-            <Link href="/packages" className="text-xs text-white/70 hover:text-white transition">
-              رجوع للباقات
+            <Link href="/#programs" className="text-xs text-white/70 hover:text-white transition">
+              رجوع للكورسات
             </Link>
           </div>
         </div>

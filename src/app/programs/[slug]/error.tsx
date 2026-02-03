@@ -35,10 +35,10 @@ export default function ProgramPageError({
                   إعادة المحاولة
                 </button>
                 <Link
-                  href="/packages"
+                  href="/#programs"
                   className="inline-flex h-11 items-center justify-center rounded-full bg-white/5 px-5 text-xs font-semibold tracking-[0.18em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10 hover:text-white"
                 >
-                  الباقات
+                  الكورسات
                 </Link>
               </div>
             </div>

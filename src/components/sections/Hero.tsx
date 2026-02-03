@@ -105,7 +105,7 @@ export function Hero() {
                 START YOUR TRANSFORMATION
               </Button>
               <a
-                href="#packages"
+                href="#programs"
                 className="font-heading text-xs tracking-[0.22em] text-white/85 hover:text-[#FFB35A] transition drop-shadow-[0_10px_26px_rgba(0,0,0,0.9)]"
               >
                 VIEW PROGRAMS
@@ -122,7 +122,7 @@ export function Hero() {
                 START YOUR TRANSFORMATION
               </Button>
               <a
-                href="#packages"
+                href="#programs"
                 className="font-heading text-xs tracking-[0.22em] text-white/85 hover:text-[#FFB35A] transition drop-shadow-[0_10px_26px_rgba(0,0,0,0.9)]"
               >
                 VIEW PROGRAMS

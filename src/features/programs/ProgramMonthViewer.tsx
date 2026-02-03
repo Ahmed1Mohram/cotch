@@ -233,7 +233,6 @@ export function ProgramMonthViewer({
               <div className="mt-4 space-y-2">
                 {(activeDay?.videos ?? []).map((v) => {
                   const active = v.id === (activeVideo?.id ?? null);
-                  const details = v.details?.trim() ?? "";
                   return (
                     <button
                       key={v.id}
@@ -257,13 +256,7 @@ export function ProgramMonthViewer({
 
                         <div className="min-w-0 text-right">
                           <div className="text-sm">{v.title ?? "فيديو"}</div>
-                        {isLocked ? (
-                          <div className="mt-1 text-xs text-[#FFB35A]">مقفول</div>
-                        ) : details ? (
-                          <div className="mt-1 max-h-10 overflow-hidden text-xs leading-5 text-white/65">
-                            {details}
-                          </div>
-                        ) : null}
+                        {isLocked ? <div className="mt-1 text-xs text-[#FFB35A]">مقفول</div> : null}
                         </div>
                       </div>
                     </button>
@@ -346,11 +339,8 @@ export function ProgramMonthViewer({
               </div>
 
               {activeVideo?.details?.trim() ? (
-                <div className="mt-4 rounded-3xl bg-white/5 p-5 text-white/80 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
-                  <div className="text-right font-heading text-xs tracking-[0.22em] text-white/70">تفاصيل الفيديو</div>
-                  <div className="mt-3 whitespace-pre-wrap text-right text-sm leading-7">
-                    {activeVideo.details}
-                  </div>
+                <div className="mt-4 rounded-2xl bg-white/5 px-4 py-3 text-white/80 border border-white/10">
+                  <div className="whitespace-pre-wrap text-right text-sm leading-7">{activeVideo.details}</div>
                 </div>
               ) : null}
             </div>

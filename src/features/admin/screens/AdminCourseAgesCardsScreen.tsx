@@ -50,9 +50,9 @@ const tabItems: Array<TabItem<TabKey>> = [
 
   { key: "codes", label: "أكواد الشهور" },
 
-  { key: "ages", label: "أنواع الإصابات" },
+  { key: "ages", label: "المجموعات" },
 
-  { key: "cards", label: "الإصابات" },
+  { key: "cards", label: "الكروت" },
 
  ];
 
@@ -2463,7 +2463,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
           <AdminCard>
 
-            <div className="text-xs font-semibold text-slate-700">{isInjuriesCourse ? "أنواع الإصابات" : "مجموعات الأعمار"}</div>
+            <div className="text-xs font-semibold text-slate-700">{isInjuriesCourse ? "المجموعات" : "مجموعات الأعمار"}</div>
 
             <div className="mt-4 space-y-2">
 
@@ -2519,7 +2519,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                       <div className="min-w-0">
 
-                        <div className="text-sm font-semibold text-slate-900">{ag.title ?? (isInjuriesCourse ? "إصابة" : "مجموعة عمر")}</div>
+                        <div className="text-sm font-semibold text-slate-900">{ag.title ?? (isInjuriesCourse ? "مجموعة" : "مجموعة عمر")}</div>
 
                         {!isInjuriesCourse ? (
                           <div className="mt-1 text-xs text-slate-500">
@@ -2533,7 +2533,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                       <div className="rounded-full bg-white px-3 py-1 text-[11px] font-medium text-slate-700 border border-slate-200">
 
-                        {(ageGroupCardCounts.get(ag.id) ?? 0).toString()} {isInjuriesCourse ? "إصابة" : "كارت"}
+                        {(ageGroupCardCounts.get(ag.id) ?? 0).toString()} كارت
 
                       </div>
 
@@ -2551,7 +2551,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                 <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
 
-                  {isInjuriesCourse ? "مفيش أنواع إصابات لسه." : "مفيش مجموعات أعمار لسه."}
+                  {isInjuriesCourse ? "مفيش مجموعات لسه." : "مفيش مجموعات أعمار لسه."}
 
                 </div>
 
@@ -2573,7 +2573,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                 <div className="rounded-2xl bg-slate-50 px-2.5 sm:px-3 py-2.5 sm:py-3 border border-slate-200">
 
-                  {isInjuriesCourse ? "إصابات" : "كروت"}
+                  كروت
 
                   <div className="mt-1 text-xs sm:text-sm font-semibold text-slate-900">{selectedCards.length}</div>
 
@@ -2581,7 +2581,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                 <div className="rounded-2xl bg-slate-50 px-2.5 sm:px-3 py-2.5 sm:py-3 border border-slate-200">
 
-                  {isInjuriesCourse ? "نوع الإصابة" : "مجموعة عمر"}
+                  {isInjuriesCourse ? "المجموعة" : "مجموعة عمر"}
 
                   <div className="mt-1 text-xs sm:text-sm font-semibold text-slate-900">1</div>
 
@@ -2603,10 +2603,10 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
           <AdminCard>
 
-            <div className="text-base sm:text-lg font-semibold text-slate-900">1) {isInjuriesCourse ? "أنواع الإصابات" : "مجموعات الأعمار"}</div>
+            <div className="text-base sm:text-lg font-semibold text-slate-900">1) {isInjuriesCourse ? "المجموعات" : "مجموعات الأعمار"}</div>
 
             <div className="mt-2 text-sm text-slate-600 break-words">
-              {isInjuriesCourse ? "أضف نوع الإصابة للكورس ثم عدّل/احذف النوع المحدد." : "أضف مجموعة عمر للكورس ثم عدّل/احذف المجموعة المحددة."}
+              {isInjuriesCourse ? "أضف مجموعة للكورس ثم عدّل/احذف المجموعة المحددة." : "أضف مجموعة عمر للكورس ثم عدّل/احذف المجموعة المحددة."}
             </div>
 
 
@@ -2625,7 +2625,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                 onChange={(e) => setNewAgeTitle(e.target.value)}
 
-                placeholder={isInjuriesCourse ? "اسم الإصابة" : "اسم المجموعة"}
+                placeholder={isInjuriesCourse ? "اسم المجموعة" : "اسم المجموعة"}
 
                 className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
 
@@ -2707,7 +2707,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                   onChange={(e) => setEditAgeTitle(e.target.value)}
 
-                  placeholder={isInjuriesCourse ? "اسم الإصابة" : "اسم المجموعة"}
+                  placeholder={isInjuriesCourse ? "اسم المجموعة" : "اسم المجموعة"}
 
                   disabled={!selectedAgeGroupId}
 
@@ -2861,7 +2861,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
               <div className="min-w-0 flex-1">
 
-                <div className="text-sm sm:text-base md:text-lg font-semibold text-slate-900">2) {isInjuriesCourse ? "الإصابات" : "الكروت"}</div>
+                <div className="text-sm sm:text-base md:text-lg font-semibold text-slate-900">2) الكروت</div>
 
                 <div className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-slate-600 break-words">
 
@@ -2869,13 +2869,13 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                     <>
 
-                      {isInjuriesCourse ? "نوع الإصابة" : "المجموعة"}: <span className="font-semibold text-slate-900">{selectedAgeGroup.title ?? (isInjuriesCourse ? "إصابة" : "مجموعة عمر")}</span>
+                      {isInjuriesCourse ? "المجموعة" : "المجموعة"}: <span className="font-semibold text-slate-900">{selectedAgeGroup.title ?? (isInjuriesCourse ? "مجموعة" : "مجموعة عمر")}</span>
 
                     </>
 
                   ) : (
 
-                    isInjuriesCourse ? "اختر نوع إصابة أولاً" : "اختر مجموعة عمر أولاً"
+                    isInjuriesCourse ? "اختر مجموعة أولاً" : "اختر مجموعة عمر أولاً"
 
                   )}
 
@@ -2925,12 +2925,10 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                 <div className="min-w-0 flex-1">
 
-                  <div className="text-xs sm:text-sm font-semibold text-slate-900">{isInjuriesCourse ? "أكواد اشتراك للإصابات" : "أكواد اشتراك للكروت"}</div>
+                  <div className="text-xs sm:text-sm font-semibold text-slate-900">أكواد اشتراك للكروت</div>
 
                   <div className="mt-1 text-[11px] sm:text-xs text-slate-600 break-words">
-                    {isInjuriesCourse
-                      ? "هيتم توليد كود تفعيل لكل إصابة (كود إصابة) علشان يفتح نفس الإصابة للمستخدم."
-                      : "هيتم توليد كود تفعيل لكل كارت (كود كارت) علشان يفتح نفس الكارت للمستخدم."}
+                    هيتم توليد كود تفعيل لكل كارت (كود كارت) علشان يفتح نفس الكارت للمستخدم.
                   </div>
 
                 </div>
@@ -2953,11 +2951,11 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                       {selectedCards.length === 0 ? (
 
-                        <option value="">{isInjuriesCourse ? "لا يوجد إصابات" : "لا يوجد كروت"}</option>
+                        <option value="">لا يوجد كروت</option>
 
                       ) : (
 
-                        <option value="">{isInjuriesCourse ? "اختر إصابة" : "اختر كارت"}</option>
+                        <option value="">اختر كارت</option>
 
                       )}
 
@@ -2966,7 +2964,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
                         <option key={card.id} value={card.id}>
 
                           {isInjuriesCourse
-                            ? String(card.note ?? "إصابة")
+                            ? String(card.note ?? "كارت")
                             : `عمر ${card.age ?? "—"} • طول ${card.height_cm ?? "—"} • وزن ${card.weight_kg ?? "—"}${card.note ? ` — ${card.note}` : ""}`}
 
                         </option>
@@ -3011,7 +3009,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                   >
 
-                    {generatingCardCodes ? "جاري التوليد..." : isInjuriesCourse ? "توليد للإصابة" : "توليد للكارت"}
+                    {generatingCardCodes ? "جاري التوليد..." : "توليد للكارت"}
 
                   </button>
 
@@ -3049,7 +3047,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                   >
 
-                    {copyingCardCodeId === selectedCardId ? "جاري النسخ..." : isInjuriesCourse ? "نسخ كود الإصابة" : "نسخ كود الكارت"}
+                    {copyingCardCodeId === selectedCardId ? "جاري النسخ..." : "نسخ كود الكارت"}
 
                   </button>
 
@@ -3145,7 +3143,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                     >
 
-                      {isInjuriesCourse ? "حذف كود الإصابة" : "حذف كود الكارت"}
+                      حذف كود الكارت
 
                     </button>
 
@@ -3283,7 +3281,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                   >
 
-                    {generatingCardCodes ? "جاري التوليد..." : isInjuriesCourse ? "توليد كود لكل الإصابات" : "توليد كود لكل الكروت"}
+                    {generatingCardCodes ? "جاري التوليد..." : "توليد كود لكل الكروت"}
 
                   </button>
 
@@ -3301,7 +3299,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                   onChange={(e) => setCardCodesPerCard(e.target.value)}
 
-                  placeholder={isInjuriesCourse ? "عدد الأكواد لكل إصابة" : "عدد الأكواد لكل كارت"}
+                  placeholder="عدد الأكواد لكل كارت"
 
                   inputMode="numeric"
 
@@ -3409,7 +3407,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                 onChange={(e) => setNewCardNote(e.target.value)}
 
-                placeholder={isInjuriesCourse ? "اسم الإصابة" : "عنوان/تفاصيل"}
+                placeholder={isInjuriesCourse ? "اسم الكارت" : "عنوان/تفاصيل"}
 
                 disabled={!selectedAgeGroupId}
 
@@ -3429,7 +3427,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
               >
 
-                {isInjuriesCourse ? "إضافة إصابة" : "إضافة كارت"}
+                إضافة كارت
 
               </button>
 
@@ -3471,7 +3469,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                           {isInjuriesCourse ? (
                             <>
-                              <span className="font-semibold text-slate-900">الإصابة:</span> {card.note ?? "—"}
+                              <span className="font-semibold text-slate-900">اسم الكارت:</span> {card.note ?? "—"}
                             </>
                           ) : (
                             <>
@@ -3507,7 +3505,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                               >
 
-                                {isInjuriesCourse ? "حذف الإصابة وكل بياناتها" : "حذف الكارت وكل بياناته"}
+                                {isInjuriesCourse ? "حذف الكارت وكل بياناته" : "حذف الكارت وكل بياناته"}
 
                               </button>
 
@@ -3673,7 +3671,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                             onChange={(e) => setEditCardNote(e.target.value)}
 
-                            placeholder={isInjuriesCourse ? "اسم الإصابة" : "عنوان/تفاصيل"}
+                            placeholder={isInjuriesCourse ? "اسم الكارت" : "عنوان/تفاصيل"}
 
                             className="h-9 sm:h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 sm:px-4 text-xs sm:text-sm text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
 
@@ -3731,7 +3729,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                         <div className="flex flex-wrap items-center justify-between gap-3">
 
-                          <div className="text-xs font-semibold text-slate-900">{isInjuriesCourse ? "أكواد هذه الإصابة" : "أكواد هذا الكارت"}</div>
+                          <div className="text-xs font-semibold text-slate-900">أكواد هذا الكارت</div>
 
                           <div className="flex flex-wrap items-center gap-2">
 
@@ -3843,7 +3841,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                 <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600 border border-slate-200">
 
-                  {isInjuriesCourse ? "مفيش إصابات في النوع ده لسه." : "مفيش كروت في المجموعة دي لسه."}
+                  {isInjuriesCourse ? "مفيش كروت في المجموعة دي لسه." : "مفيش كروت في المجموعة دي لسه."}
 
                 </div>
 
@@ -3873,7 +3871,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                   <>
 
-                    {isInjuriesCourse ? "النوع الحالي" : "المجموعة الحالية"}: <span className="font-semibold text-slate-900">{selectedAgeGroup.title ?? (isInjuriesCourse ? "إصابة" : "مجموعة عمر")}</span>
+                    {isInjuriesCourse ? "المجموعة الحالية" : "المجموعة الحالية"}: <span className="font-semibold text-slate-900">{selectedAgeGroup.title ?? (isInjuriesCourse ? "مجموعة" : "مجموعة عمر")}</span>
 
                     {selectedMonthNumber ? (
 
@@ -3889,7 +3887,7 @@ export function AdminCourseAgesCardsScreen({ slug }: { slug: string }) {
 
                 ) : (
 
-                  isInjuriesCourse ? "اختر نوع إصابة أولاً" : "اختر مجموعة عمر أولاً"
+                  isInjuriesCourse ? "اختر مجموعة أولاً" : "اختر مجموعة عمر أولاً"
 
                 )}
 

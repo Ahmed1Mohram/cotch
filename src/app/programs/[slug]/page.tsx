@@ -146,14 +146,14 @@ export default async function ProgramPage({
                   الرابط اللي فتحته: <span className="text-white/90">{rawSlug || "(فارغ)"}</span>
                 </p>
                 <p className="mt-3 text-right text-sm text-white/65">
-                  افتح الباقات واختر الكورس من داخل الباقة.
+                  افتح الكورسات من الصفحة الرئيسية.
                 </p>
                 <div className="mt-6 flex flex-wrap justify-end gap-3">
                   <Link
-                    href="/packages"
+                    href="/#programs"
                     className="inline-flex h-11 items-center justify-center rounded-full bg-white/5 px-5 text-xs font-semibold tracking-[0.18em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10 hover:text-white"
                   >
-                    الباقات
+                    الكورسات
                   </Link>
                 </div>
               </div>
@@ -217,10 +217,10 @@ export default async function ProgramPage({
                 </p>
                 <div className="mt-6 flex flex-wrap justify-end gap-3">
                   <Link
-                    href={pkgSlug ? `/packages/${encodeURIComponent(pkgSlug)}` : "/packages"}
+                    href="/#programs"
                     className="inline-flex h-11 items-center justify-center rounded-full bg-white/5 px-5 text-xs font-semibold tracking-[0.18em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10 hover:text-white"
                   >
-                    الباقات
+                    الكورسات
                   </Link>
                 </div>
               </div>
@@ -261,14 +261,14 @@ async function ProgramPageInner({
                   الرابط اللي فتحته: <span className="text-white/90">{rawSlug || "(فارغ)"}</span>
                 </p>
                 <p className="mt-3 text-right text-sm text-white/65">
-                  افتح الباقات واختر الكورس من داخل الباقة.
+                  افتح الكورسات من الصفحة الرئيسية.
                 </p>
                 <div className="mt-6 flex flex-wrap justify-end gap-3">
                   <Link
-                    href="/packages"
+                    href="/#programs"
                     className="inline-flex h-11 items-center justify-center rounded-full bg-white/5 px-5 text-xs font-semibold tracking-[0.18em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10 hover:text-white"
                   >
-                    الباقات
+                    الكورسات
                   </Link>
                 </div>
               </div>
@@ -323,10 +323,10 @@ async function ProgramPageInner({
                 </p>
                 <div className="mt-6 flex flex-wrap justify-end gap-3">
                   <Link
-                    href="/packages"
+                    href="/#programs"
                     className="inline-flex h-11 items-center justify-center rounded-full bg-white/5 px-5 text-xs font-semibold tracking-[0.18em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10 hover:text-white"
                   >
-                    الباقات
+                    الكورسات
                   </Link>
                 </div>
               </div>
@@ -375,14 +375,14 @@ async function ProgramPageInner({
                   الرابط اللي فتحته: <span className="text-white/90">{rawSlug || "(فارغ)"}</span>
                 </p>
                 <p className="mt-3 text-right text-sm text-white/65">
-                  افتح الباقات واختر الكورس من داخل الباقة.
+                  افتح الكورسات من الصفحة الرئيسية.
                 </p>
                 <div className="mt-6 flex flex-wrap justify-end gap-3">
                   <Link
-                    href="/packages"
+                    href="/#programs"
                     className="inline-flex h-11 items-center justify-center rounded-full bg-white/5 px-5 text-xs font-semibold tracking-[0.18em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10 hover:text-white"
                   >
-                    الباقات
+                    الكورسات
                   </Link>
                 </div>
               </div>
@@ -1151,7 +1151,7 @@ async function ProgramPageInner({
 
               <div className="mt-10">
                 <div className="font-heading text-xs tracking-[0.22em] text-white/70">
-                  {profiles.length ? (isInjuriesCourse ? "إصابات" : "كروت (طول / وزن / عمر)") : "محتوى الكورس"}
+                  {profiles.length ? (isInjuriesCourse ? "كروت (اسم الكارت)" : "كروت (طول / وزن / عمر)") : "محتوى الكورس"}
                 </div>
                 <div className="mt-5 grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                   <div className="col-span-2 md:col-span-3 lg:col-span-5">
@@ -1167,9 +1167,7 @@ async function ProgramPageInner({
                         اختر باقة أولاً
                       </div>
                       <div className="text-xs text-white/60">
-                        {isInjuriesCourse
-                          ? "علشان تظهر الإصابات، اختار الباقة من فوق."
-                          : "علشان تظهر كروت الأعمار، اختار الباقة من فوق."}
+                        علشان تظهر الكروت، اختار الباقة من فوق.
                       </div>
                     </div>
                   ) : profiles.length === 0 ? (
@@ -1178,15 +1176,13 @@ async function ProgramPageInner({
                         الكورس ده بيشتغل بنظام الشهور
                       </div>
                       <div className="text-xs text-white/65 leading-6">
-                        {isInjuriesCourse ? "مفيش إصابات متاحة للكورس ده حالياً." : "مفيش كروت متاحة للكورس ده حالياً."}
+                        مفيش كروت متاحة للكورس ده حالياً.
                         <br />
                         {canOpenMonth1 ? (
                           <>افتح الشهر الأول علشان تبدأ (هتظهر المعاينة لو مش مشترك).</>
                         ) : (
                           <>
-                            {isInjuriesCourse
-                              ? "الكورس لسه مش متجهّز (مفيش أنواع إصابات). لازم الأدمن يضيف نوع إصابة وبعدها الشهور."
-                              : "الكورس لسه مش متجهّز (مفيش مجموعات أعمار). لازم الأدمن يضيف مجموعة عمر وبعدها الشهور."}
+                            الكورس لسه مش متجهّز (مفيش مجموعات). لازم الأدمن يضيف مجموعة وبعدها الشهور.
                           </>
                         )}
                       </div>
@@ -1201,10 +1197,10 @@ async function ProgramPageInner({
                         ) : null}
                         {pkg ? (
                           <Link
-                            href={`/packages/${encodeURIComponent(pkg.slug)}`}
+                            href={`/?chat=1&pkg=${encodeURIComponent(pkg.slug)}&course=${encodeURIComponent(course.slug)}#contact`}
                             className="inline-flex h-11 items-center justify-center rounded-2xl bg-white/5 px-6 text-xs font-semibold tracking-[0.12em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10"
                           >
-                            تفاصيل الباقة
+                            اشترك في الباقة
                           </Link>
                         ) : null}
                       </div>
@@ -1215,7 +1211,7 @@ async function ProgramPageInner({
                         <div
                           key={p.id}
                           className="group relative isolate block aspect-[4/5] overflow-hidden rounded-3xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_46px_150px_-120px_rgba(0,0,0,0.95)]"
-                          aria-label={isInjuriesCourse ? `إصابة رقم ${i + 1} (مقفول)` : `الكارت رقم ${i + 1} (مقفول)`}
+                          aria-label={`الكارت رقم ${i + 1} (مقفول)`}
                         >
                           {isImgTagSrc(course.image) ? (
                             <img
@@ -1244,25 +1240,21 @@ async function ProgramPageInner({
 
                           <div className="absolute inset-0 flex flex-col justify-end p-5" dir="rtl">
                             <div className="font-heading text-[11px] tracking-[0.22em] text-white/70">
-                              {isInjuriesCourse ? "إصابة" : "كارت"} رقم {i + 1}
+                              كارت رقم {i + 1}
                             </div>
-                            {isInjuriesCourse ? (
-                              <div className="mt-2 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
-                                {p.note ?? "—"}
-                              </div>
-                            ) : (
+                            <div className="mt-2 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
+                              {isInjuriesCourse ? (p.note ?? "—") : `طول ${p.heightCm ?? "—"}`}
+                              {!isInjuriesCourse ? <span className="ms-1 text-sm text-white/70">سم</span> : null}
+                            </div>
+                            {!isInjuriesCourse ? (
                               <>
-                                <div className="mt-2 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
-                                  طول {p.heightCm ?? "—"}
-                                  <span className="ms-1 text-sm text-white/70">سم</span>
-                                </div>
                                 <div className="mt-1 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
                                   وزن {p.weightKg ?? "—"}
                                   <span className="ms-1 text-sm text-white/70">كجم</span>
                                 </div>
                                 <div className="mt-2 text-sm text-white/75">عمر {p.age ?? "—"} سنة</div>
                               </>
-                            )}
+                            ) : null}
                             <div className="mt-4 flex flex-wrap justify-end gap-3">
                               {user ? (
                                 <Link
@@ -1300,17 +1292,17 @@ async function ProgramPageInner({
                     ) : (
                       <div className="col-span-2 md:col-span-3 lg:col-span-5 rounded-3xl bg-white/5 px-6 py-8 text-right border border-white/10">
                         <div className="text-sm font-heading tracking-[0.12em] text-white/90 mb-2">
-                          {isInjuriesCourse ? "مفيش إصابات متاحة دلوقتي" : "مفيش كروت متاحة دلوقتي"}
+                          مفيش كروت متاحة دلوقتي
                         </div>
                         <div className="text-xs text-white/60 mb-4">
                           استخدم الكود في الأعلى لتفعيل الكورس أو اشترك في الباقة.
                         </div>
                         {pkg ? (
                           <Link
-                            href={`/packages/${encodeURIComponent(pkg.slug)}`}
+                            href={`/?chat=1&pkg=${encodeURIComponent(pkg.slug)}&course=${encodeURIComponent(course.slug)}#contact`}
                             className="inline-flex h-10 items-center justify-center rounded-full bg-white/5 px-5 text-xs font-semibold tracking-[0.18em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10 hover:text-white"
                           >
-                            رجوع للباقة
+                            اشترك في الباقة
                           </Link>
                         ) : null}
                       </div>
@@ -1324,7 +1316,7 @@ async function ProgramPageInner({
                             ? `/programs/${course.slug}/card/${p.id}?pkg=${encodeURIComponent(pkg.slug)}`
                             : `/programs/${course.slug}/card/${p.id}`
                         }
-                        aria-label={isInjuriesCourse ? `فتح فيديوهات إصابة رقم ${i + 1}` : `فتح فيديوهات الكارت رقم ${i + 1}`}
+                        aria-label={`فتح فيديوهات الكارت رقم ${i + 1}`}
                         className="group relative isolate block aspect-[4/5] overflow-hidden rounded-3xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_46px_150px_-120px_rgba(0,0,0,0.95)] transition-transform duration-300 hover:-translate-y-0.5"
                       >
                         {isImgTagSrc(course.image) ? (
@@ -1354,25 +1346,21 @@ async function ProgramPageInner({
 
                         <div className="absolute inset-0 flex flex-col justify-end p-5" dir="rtl">
                           <div className="font-heading text-[11px] tracking-[0.22em] text-white/70">
-                            {isInjuriesCourse ? "إصابة" : "كارت"} رقم {i + 1}
+                            كارت رقم {i + 1}
                           </div>
-                          {isInjuriesCourse ? (
-                            <div className="mt-2 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
-                              {p.note ?? "—"}
-                            </div>
-                          ) : (
+                          <div className="mt-2 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
+                            {isInjuriesCourse ? (p.note ?? "—") : `طول ${p.heightCm ?? "—"}`}
+                            {!isInjuriesCourse ? <span className="ms-1 text-sm text-white/70">سم</span> : null}
+                          </div>
+                          {!isInjuriesCourse ? (
                             <>
-                              <div className="mt-2 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
-                                طول {p.heightCm ?? "—"}
-                                <span className="ms-1 text-sm text-white/70">سم</span>
-                              </div>
                               <div className="mt-1 font-heading text-2xl tracking-[0.10em] text-white drop-shadow-[0_14px_34px_rgba(0,0,0,0.95)]">
                                 وزن {p.weightKg ?? "—"}
                                 <span className="ms-1 text-sm text-white/70">كجم</span>
                               </div>
                               <div className="mt-2 text-sm text-white/75">عمر {p.age ?? "—"} سنة</div>
                             </>
-                          )}
+                          ) : null}
                           <div className="mt-4 inline-flex items-center justify-end text-xs font-semibold tracking-[0.18em] text-[#FFB35A]">
                             افتح الفيديوهات
                           </div>

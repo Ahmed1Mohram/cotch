@@ -205,7 +205,7 @@ export async function Packages() {
                 return (
                   <Reveal key={p.id} delay={0.06 * idx}>
                     <Link
-                      href={`/packages/${encodeURIComponent(p.slug)}`}
+                      href={`/?chat=1&pkg=${encodeURIComponent(p.slug)}#contact`}
                       className={
                         "group relative isolate block w-[86vw] max-w-[360px] flex-none snap-start overflow-hidden rounded-3xl bg-gradient-to-r p-[2px] transition-transform duration-300 hover:-translate-y-1 sm:w-auto sm:max-w-none " +
                         st.outer +

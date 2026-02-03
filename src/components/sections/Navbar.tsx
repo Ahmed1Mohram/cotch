@@ -12,7 +12,7 @@ import { Container } from "@/components/ui/Container";
 
 const links = [
   { label: "الرئيسية", href: "/", hash: "" },
-  { label: "الباقات", href: "/packages", hash: "#packages" },
+  { label: "الكورسات", href: "/", hash: "#programs" },
   { label: "التواصل", href: "/", hash: "#contact" },
 ];
 
@@ -26,7 +26,14 @@ export function Navbar() {
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [logoSrc, setLogoSrc] = useState("/s.png");
   const [logoChecked, setLogoChecked] = useState(false);
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const supabase = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return createSupabaseBrowserClient();
+    } catch {
+      return null;
+    }
+  }, []);
   const [authReady, setAuthReady] = useState(false);
   const [isAuthed, setIsAuthed] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -61,6 +68,7 @@ export function Navbar() {
   };
 
   useEffect(() => {
+    if (!supabase) return;
     let mounted = true;
 
     const load = async () => {
@@ -150,11 +158,19 @@ export function Navbar() {
     };
   }, [supabase]);
 
+  useEffect(() => {
+    if (supabase) return;
+    setIsAuthed(false);
+    setIsAdmin(false);
+    setUserLabel("حسابي");
+    setAuthReady(true);
+  }, [supabase]);
+
   const logout = async () => {
     if (signingOut) return;
     setSigningOut(true);
     try {
-      await supabase.auth.signOut();
+      await supabase?.auth.signOut();
     } catch {
       // ignore
     }

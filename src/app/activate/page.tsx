@@ -205,8 +205,8 @@ export default function ActivateCoursePage() {
           <Link href="/login" className="text-white/70 hover:text-white transition">
             تسجيل الدخول
           </Link>
-          <Link href="/packages" className="text-white/70 hover:text-white transition">
-            الباقات
+          <Link href="/#programs" className="text-white/70 hover:text-white transition">
+            الكورسات
           </Link>
         </div>
       </div>
