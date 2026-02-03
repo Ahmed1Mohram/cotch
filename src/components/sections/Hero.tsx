@@ -195,7 +195,7 @@ export function Hero() {
               <div className="rounded-2xl bg-[#0E0F12]/55 px-5 py-4 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_18px_70px_-60px_rgba(0,0,0,0.92)] backdrop-blur-md">
                 <div className="text-base leading-none text-white"></div>
                 <div className="mt-1 text-xs text-white/70" dir="rtl">
-                عضه اسد ولا نظره حسد🧿✋
+               
                 </div>
                 <div className="mt-2 font-heading text-2xl tracking-[0.12em] text-white">{subscribers}</div>
                 <div className="mt-1 text-sm text-white/55" dir="rtl">
