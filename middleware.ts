@@ -61,6 +61,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (pathname === "/admin-request" || pathname.startsWith("/admin-request/")) {
+    return NextResponse.next();
+  }
+
+  if (pathname === "/admin-device-blocked" || pathname.startsWith("/admin-device-blocked/")) {
+    return NextResponse.next();
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -182,6 +190,31 @@ export async function middleware(request: NextRequest) {
       }
 
       return response;
+    }
+
+    if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+      if (!user?.id) return response;
+
+      try {
+        await supabase.from("admin_access_requests").upsert(
+          {
+            requester_user_id: user.id,
+            status: "pending",
+            reviewed_by: null,
+            reviewed_at: null,
+          },
+          {
+            onConflict: "requester_user_id",
+          },
+        );
+      } catch {
+      }
+
+      const redirect = NextResponse.redirect(new URL("/admin-request", request.url), 307);
+      if (!existingDeviceCookie && deviceId) {
+        redirect.cookies.set(cookieName, deviceId, deviceCookieOptions);
+      }
+      return redirect;
     }
 
     // Only check bans for non-admin users

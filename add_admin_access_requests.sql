@@ -33,22 +33,18 @@ with check (
   and status = 'pending'
   and reviewed_by is null
   and reviewed_at is null
-  and public.is_device_banned() = false
-  and public.is_user_banned(auth.uid()) = false
 );
 
 drop policy if exists "admin_access_requests_update_self" on public.admin_access_requests;
 create policy "admin_access_requests_update_self" on public.admin_access_requests
 for update
 to authenticated
-using (requester_user_id = auth.uid() and status <> 'approved' and public.is_device_banned() = false and public.is_user_banned(auth.uid()) = false)
+using (requester_user_id = auth.uid() and status <> 'approved')
 with check (
   requester_user_id = auth.uid()
   and status = 'pending'
   and reviewed_by is null
   and reviewed_at is null
-  and public.is_device_banned() = false
-  and public.is_user_banned(auth.uid()) = false
 );
 
 drop policy if exists "admin_access_requests_admin_all" on public.admin_access_requests;
