@@ -121,7 +121,7 @@ export default function AdminRequestPage() {
       <div className="mx-auto flex min-h-screen w-full max-w-xl flex-col items-center justify-center px-6 py-16 text-center">
         <div className="w-full rounded-2xl border border-white/10 bg-white/5 px-6 py-8">
           <div className="text-2xl font-extrabold tracking-wide">الصفحة دي للأدمن بس</div>
-          <div className="mt-3 text-sm text-white/80">دي صفحة خاصة بالإدارة فقط. اقفل الصفحة دي.</div>
+          <div className="mt-3 text-sm text-white/80">انت ياد جاي تتنصح علينا اقفل الصفحه دي ياد دي</div>
 
           {status === "rejected" ? (
             <div className="mt-4 rounded-2xl bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-50">
