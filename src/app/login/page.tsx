@@ -300,8 +300,7 @@ function LoginPageInner() {
       await supabase.auth.signOut();
       const msg = String(trackRes.error.message ?? "");
       if (msg.toLowerCase().includes("multiple devices")) {
-        router.replace("/blocked");
-        router.refresh();
+        setError("الحساب مفتوح على جهاز تاني. اقفل الجهاز التاني أو استنى شوية وجرب تاني.");
       } else {
         if (msg.toLowerCase().includes("banned")) {
           router.replace("/blocked");

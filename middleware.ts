@@ -43,6 +43,14 @@ function randomId() {
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
+  const isAdminArea =
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname === "/api/admin" ||
+    pathname.startsWith("/api/admin/");
+
+  const isAdminApi = pathname === "/api/admin" || pathname.startsWith("/api/admin/");
+
   if (pathname === "/Admin" || pathname.startsWith("/Admin/")) {
     const rest = pathname.slice("/Admin".length);
     const destination = `/admin${rest}`;
@@ -136,6 +144,43 @@ export async function middleware(request: NextRequest) {
 
     // Skip ALL ban checks for admins - they should have full access
     if (isAdmin) {
+      if (!isAdminArea) return response;
+
+      try {
+        const { data: lockRow, error: lockErr } = await supabase
+          .from("admin_device_locks")
+          .select("allowed_device_id")
+          .eq("admin_user_id", user?.id ?? "")
+          .maybeSingle();
+
+        if (!lockErr && lockRow?.allowed_device_id) {
+          if (lockRow.allowed_device_id !== deviceId) {
+            if (isAdminApi) {
+              return NextResponse.json(
+                { error: "ADMIN_DEVICE_BLOCKED" },
+                { status: 403 },
+              );
+            }
+
+            const redirect = NextResponse.redirect(new URL("/admin-device-blocked", request.url), 307);
+            if (!existingDeviceCookie && deviceId) {
+              redirect.cookies.set(cookieName, deviceId, deviceCookieOptions);
+            }
+            return redirect;
+          }
+          return response;
+        }
+
+        if (!lockErr && user?.id && deviceId) {
+          await supabase.from("admin_device_locks").insert({
+            admin_user_id: user.id,
+            allowed_device_id: deviceId,
+          });
+        }
+      } catch {
+        return response;
+      }
+
       return response;
     }
 

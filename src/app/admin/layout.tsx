@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
 import { AdminShell } from "@/features/admin/ui/AdminShell";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
@@ -91,6 +92,30 @@ export default async function AdminLayout({
 
     redirect("/admin-request");
   }
+
+  try {
+    const cookieStore = await cookies();
+    const deviceId = cookieStore.get("fitcoach_device_id")?.value ?? "";
+
+    if (deviceId) {
+      const { data: lockRow, error: lockErr } = await supabase
+        .from("admin_device_locks")
+        .select("allowed_device_id")
+        .eq("admin_user_id", user.id)
+        .maybeSingle();
+
+      if (!lockErr && lockRow?.allowed_device_id) {
+        if (lockRow.allowed_device_id !== deviceId) {
+          redirect("/admin-device-blocked");
+        }
+      } else if (!lockErr) {
+        await supabase.from("admin_device_locks").insert({
+          admin_user_id: user.id,
+          allowed_device_id: deviceId,
+        });
+      }
+    }
+  } catch {}
 
   return <AdminShell>{children}</AdminShell>;
 }
