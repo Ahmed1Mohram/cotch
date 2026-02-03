@@ -64,7 +64,10 @@ const navGroups: NavGroup[] = [
 
     label: "التواصل",
 
-    items: [{ label: "الشات", href: "/admin/chat", icon: IconChat }],
+    items: [
+      { label: "الشات", href: "/admin/chat", icon: IconChat },
+      { label: "طلبات الأدمن", href: "/admin/access-requests", icon: IconBell },
+    ],
 
   },
 
@@ -118,6 +121,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   const [isLightTheme, setIsLightTheme] = useState(false);
 
+  const [pendingAdminRequests, setPendingAdminRequests] = useState<number>(0);
+
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
 
@@ -158,6 +163,36 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
     };
 
+  }, []);
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    let mounted = true;
+
+    const loadPending = async () => {
+      try {
+        const res = await supabase
+          .from("admin_access_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending");
+
+        if (!mounted) return;
+        setPendingAdminRequests(res.count ?? 0);
+      } catch {
+        if (!mounted) return;
+        setPendingAdminRequests(0);
+      }
+    };
+
+    void loadPending();
+    const t = window.setInterval(() => {
+      void loadPending();
+    }, 15000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(t);
+    };
   }, []);
 
 
@@ -514,13 +549,23 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
                 type="button"
 
-                className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-slate-700 transition hover:bg-slate-200"
+                onClick={() => {
+                  router.push("/admin/access-requests");
+                }}
 
-                aria-label="الإشعارات"
+                className="relative grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-slate-700 transition hover:bg-slate-200"
+
+                aria-label="طلبات الأدمن"
 
               >
 
                 <IconBell className="h-6 w-6" />
+
+                {pendingAdminRequests > 0 ? (
+                  <span className="absolute -left-1 -top-1 grid h-5 min-w-[20px] place-items-center rounded-full bg-rose-600 px-1 text-[11px] font-extrabold leading-none text-white shadow">
+                    {pendingAdminRequests > 99 ? "99+" : pendingAdminRequests}
+                  </span>
+                ) : null}
 
               </button>
 

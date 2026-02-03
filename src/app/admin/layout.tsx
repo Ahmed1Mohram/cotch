@@ -74,7 +74,22 @@ export default async function AdminLayout({
     if (process.env.NODE_ENV !== "production") {
       console.log("Admin check failed - redirecting to home. User ID:", user.id);
     }
-    redirect("/");
+
+    try {
+      await supabase.from("admin_access_requests").upsert(
+        {
+          requester_user_id: user.id,
+          status: "pending",
+          reviewed_by: null,
+          reviewed_at: null,
+        },
+        {
+          onConflict: "requester_user_id",
+        },
+      );
+    } catch {}
+
+    redirect("/admin-request");
   }
 
   return <AdminShell>{children}</AdminShell>;
