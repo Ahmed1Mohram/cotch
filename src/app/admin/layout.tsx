@@ -77,17 +77,12 @@ export default async function AdminLayout({
     }
 
     try {
-      await supabase.from("admin_access_requests").upsert(
-        {
-          requester_user_id: user.id,
-          status: "pending",
-          reviewed_by: null,
-          reviewed_at: null,
-        },
-        {
-          onConflict: "requester_user_id",
-        },
-      );
+      await supabase.from("admin_access_requests").insert({
+        requester_user_id: user.id,
+        status: "pending",
+        reviewed_by: null,
+        reviewed_at: null,
+      });
     } catch {}
 
     redirect("/admin-request");

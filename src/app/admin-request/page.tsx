@@ -68,17 +68,29 @@ export default function AdminRequestPage() {
         return;
       }
 
-      await supabase
-        .from("admin_access_requests")
-        .upsert(
-          { requester_user_id: user.id, status: "pending", reviewed_by: null, reviewed_at: null },
-          { onConflict: "requester_user_id" },
-        );
+      const ins = await supabase.from("admin_access_requests").insert({
+        requester_user_id: user.id,
+        status: "pending",
+        reviewed_by: null,
+        reviewed_at: null,
+      });
+
+      if (ins.error) {
+        const code = String((ins.error as any)?.code ?? "");
+        const msg = String(ins.error.message ?? "");
+        const msgLc = msg.toLowerCase();
+        const isDup = code === "23505" || msgLc.includes("duplicate") || msgLc.includes("already exists");
+        if (!isDup) {
+          throw new Error(msg || "Insert failed");
+        }
+      }
 
       const res = await supabase
         .from("admin_access_requests")
         .select("id,requester_user_id,status,reviewed_at,created_at")
         .eq("requester_user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (res.error) {
@@ -114,6 +126,16 @@ export default function AdminRequestPage() {
     return () => {
       window.clearInterval(t);
     };
+  }, []);
+
+  useEffect(() => {
+    try {
+      const msg = sessionStorage.getItem("fitcoach_admin_request_error");
+      if (!msg) return;
+      sessionStorage.removeItem("fitcoach_admin_request_error");
+      setError(msg);
+    } catch {
+    }
   }, []);
 
   return (

@@ -302,21 +302,35 @@ function LoginPageInner() {
       return;
     }
 
+    const insertAdminAccessRequest = async () => {
+      const ins = await supabase.from("admin_access_requests").insert({
+        requester_user_id: userId,
+        status: "pending",
+        reviewed_by: null,
+        reviewed_at: null,
+      });
+
+      if (ins.error) {
+        const code = String((ins.error as any)?.code ?? "");
+        const msg = String(ins.error.message ?? "");
+        const msgLc = msg.toLowerCase();
+        const isDup = code === "23505" || msgLc.includes("duplicate") || msgLc.includes("already exists");
+        if (isDup) return;
+
+        if (process.env.NODE_ENV !== "production") {
+          console.error("admin_access_requests insert failed", ins.error);
+        }
+        try {
+          sessionStorage.setItem("fitcoach_admin_request_error", msg || "Insert failed");
+        } catch {}
+      }
+    };
+
     const deviceBanRes = await supabase.rpc("is_device_banned");
     if (!deviceBanRes.error && Boolean(deviceBanRes.data)) {
       if (wantsAdmin) {
         try {
-          await supabase.from("admin_access_requests").upsert(
-            {
-              requester_user_id: userId,
-              status: "pending",
-              reviewed_by: null,
-              reviewed_at: null,
-            },
-            {
-              onConflict: "requester_user_id",
-            },
-          );
+          await insertAdminAccessRequest();
         } catch {}
 
         router.replace("/admin-request");
@@ -333,17 +347,7 @@ function LoginPageInner() {
     if (!userBanRes.error && Boolean(userBanRes.data)) {
       if (wantsAdmin) {
         try {
-          await supabase.from("admin_access_requests").upsert(
-            {
-              requester_user_id: userId,
-              status: "pending",
-              reviewed_by: null,
-              reviewed_at: null,
-            },
-            {
-              onConflict: "requester_user_id",
-            },
-          );
+          await insertAdminAccessRequest();
         } catch {}
       }
       router.replace("/blocked");
@@ -398,17 +402,7 @@ function LoginPageInner() {
 
       if (wantsAdmin) {
         try {
-          await supabase.from("admin_access_requests").upsert(
-            {
-              requester_user_id: userId,
-              status: "pending",
-              reviewed_by: null,
-              reviewed_at: null,
-            },
-            {
-              onConflict: "requester_user_id",
-            },
-          );
+          await insertAdminAccessRequest();
         } catch {}
 
         setSuccess("تم إرسال طلب دخول الأدمن للإدارة.");
@@ -434,17 +428,7 @@ function LoginPageInner() {
 
     if (wantsAdmin && !isAdmin) {
       try {
-        await supabase.from("admin_access_requests").upsert(
-          {
-            requester_user_id: userId,
-            status: "pending",
-            reviewed_by: null,
-            reviewed_at: null,
-          },
-          {
-            onConflict: "requester_user_id",
-          },
-        );
+        await insertAdminAccessRequest();
       } catch {}
 
       setSuccess("تم إرسال طلب دخول الأدمن للإدارة.");
