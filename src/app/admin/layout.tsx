@@ -22,14 +22,14 @@ export default async function AdminLayout({
   // Use RPC function first (uses security definer, bypasses RLS)
   let isAdmin = false;
   try {
-    // Try RPC function with parameter
+    // Try RPdC function with parameter
     let rpcRes = await supabase.rpc("is_admin", { uid: user.id });
     if (rpcRes.error) {
       // If that fails, try without parameter (uses auth.uid() internally)
       rpcRes = await supabase.rpc("is_admin");
     }
     isAdmin = Boolean(!rpcRes.error && rpcRes.data);
-    
+
     // Fallback: Try direct table query if RPC fails (may fail due to RLS)
     if (!isAdmin) {
       try {
@@ -39,7 +39,7 @@ export default async function AdminLayout({
           .eq("user_id", user.id)
           .maybeSingle();
         isAdmin = Boolean(!adminError && adminRow);
-        
+
         // Log for debugging in development
         if (process.env.NODE_ENV !== "production") {
           console.log("Admin check - RPC failed, table query result:", {
@@ -83,7 +83,7 @@ export default async function AdminLayout({
         reviewed_by: null,
         reviewed_at: null,
       });
-    } catch {}
+    } catch { }
 
     redirect("/admin-request");
   }
@@ -110,7 +110,7 @@ export default async function AdminLayout({
         });
       }
     }
-  } catch {}
+  } catch { }
 
   return <AdminShell>{children}</AdminShell>;
 }
