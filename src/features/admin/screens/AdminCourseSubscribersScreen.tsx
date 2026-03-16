@@ -734,75 +734,72 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
                               شهور مفتوحة: {userMonths.join("، ")}
                             </span>
                           ) : null}
-                          {s.ages.length ? (
-                            <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-700 border border-slate-200">
-                              كروت ({s.ages.length})
-                            </span>
-                          ) : null}
                         </div>
-                      </div>
-
-                      <div className="flex flex-col items-end gap-2">
-                        <div className="text-[11px] text-slate-500">
-                          آخر تحديث: {fmtDate(s.enrollments[0]?.created_at ?? s.months[0]?.created_at ?? s.ages[0]?.created_at)}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (isGrantOpen) { setGrantOpenUserId(null); }
-                            else { setGrantOpenUserId(s.userId); setGrantError(null); setGrantSuccess(null); }
-                          }}
-                          className="inline-flex h-8 items-center gap-1.5 rounded-2xl bg-slate-900 px-3 text-[11px] font-semibold text-white transition hover:bg-slate-700"
-                        >
-                          {isGrantOpen ? "إغلاق" : "🔓 فتح شهر"}
-                        </button>
                       </div>
                     </div>
 
-                    {isGrantOpen ? (
-                      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="text-xs font-semibold text-slate-700 mb-3">فتح شهر يدوياً لـ {title}</div>
-                        <div className="grid gap-3 sm:grid-cols-3">
-                          <div>
-                            <div className="mb-1 text-[11px] text-slate-600">رقم الشهر</div>
-                            <input
-                              type="number"
-                              min="1"
-                              value={grantMonth}
-                              onChange={(e) => setGrantMonth(e.target.value)}
-                              className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400"
-                              placeholder="مثال: 2"
-                            />
-                          </div>
-                          <div>
-                            <div className="mb-1 text-[11px] text-slate-600">مدة الصلاحية (يوم)</div>
-                            <input
-                              type="number"
-                              min="1"
-                              value={grantDays}
-                              onChange={(e) => setGrantDays(e.target.value)}
-                              className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400"
-                              placeholder="مثال: 30"
-                            />
-                          </div>
-                          <div className="flex items-end">
-                            <button
-                              type="button"
-                              onClick={() => void grantMonthAccess(s.userId)}
-                              disabled={granting}
-                              className="h-10 w-full rounded-2xl bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
-                            >
-                              {granting ? "جاري..." : "تفعيل"}
-                            </button>
-                          </div>
-                        </div>
-                        {grantError ? <div className="mt-2 text-xs text-rose-700">{grantError}</div> : null}
-                        {grantSuccess ? <div className="mt-2 text-xs text-emerald-700">{grantSuccess}</div> : null}
-                        {userMonths.length > 0 ? (
-                          <div className="mt-3 text-[11px] text-slate-600">الشهور المفتوحة حالياً: <span className="font-semibold text-slate-900">{userMonths.join("، ")}</span></div>
-                        ) : (
-                          <div className="mt-3 text-[11px] text-slate-500">لا توجد شهور مفتوحة حالياً (الشهر 1 مفتوح دائماً للمشتركين).</div>
+                    {/* Always-visible compact open-month row */}
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isGrantOpen) { setGrantOpenUserId(null); }
+                          else { setGrantOpenUserId(s.userId); setGrantError(null); setGrantSuccess(null); }
+                        }}
+                        className={cn(
+                          "inline-flex h-9 items-center gap-1.5 rounded-2xl px-4 text-sm font-semibold transition",
+                          isGrantOpen ? "bg-slate-200 text-slate-800" : "bg-slate-900 text-white hover:bg-slate-700",
                         )}
+                      >
+                        {isGrantOpen ? "إغلاق" : "🔓 فتح شهر"}
+                      </button>
+                      {userMonths.length > 0 && (
+                        <span className="text-[11px] text-emerald-700 font-semibold">شهور مفتوحة: {userMonths.join('، ')}</span>
+                      )}
+                    </div>
+
+                    {isGrantOpen ? (
+                      <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                        <div className="text-sm font-bold text-emerald-900 mb-3">فتح شهر لـ {title}</div>
+
+                        {/* Quick month picker */}
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {[2, 3, 4, 5, 6].map((n) => (
+                            <button
+                              key={n}
+                              type="button"
+                              onClick={() => setGrantMonth(String(n))}
+                              className={cn(
+                                "h-10 w-12 rounded-2xl text-sm font-bold transition border",
+                                grantMonth === String(n)
+                                  ? "bg-emerald-600 text-white border-emerald-600"
+                                  : "bg-white text-slate-800 border-slate-300 hover:border-emerald-400",
+                              )}
+                            >
+                              {n}
+                            </button>
+                          ))}
+                          <input
+                            type="number"
+                            min="2"
+                            value={grantMonth}
+                            onChange={(e) => setGrantMonth(e.target.value)}
+                            className="h-10 w-16 rounded-2xl border border-slate-300 bg-white px-2 text-center text-sm font-bold text-slate-900 outline-none focus:border-emerald-500"
+                            placeholder="..."
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => void grantMonthAccess(s.userId)}
+                          disabled={granting}
+                          className="w-full h-11 rounded-2xl bg-emerald-600 text-base font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50 shadow-sm"
+                        >
+                          {granting ? "جاري الفتح..." : `فتح الشهر ${grantMonth}`}
+                        </button>
+
+                        {grantError ? <div className="mt-2 text-xs text-rose-700 font-semibold">{grantError}</div> : null}
+                        {grantSuccess ? <div className="mt-2 text-xs text-emerald-700 font-semibold">{grantSuccess}</div> : null}
                       </div>
                     ) : null}
 
