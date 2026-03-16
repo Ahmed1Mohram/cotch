@@ -169,6 +169,63 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
   const [subQuery, setSubQuery] = useState("");
   const [nonQuery, setNonQuery] = useState("");
 
+  // Grant month access state
+  const [grantOpenUserId, setGrantOpenUserId] = useState<string | null>(null);
+  const [grantMonth, setGrantMonth] = useState("2");
+  const [grantDays, setGrantDays] = useState("30");
+  const [granting, setGranting] = useState(false);
+  const [grantError, setGrantError] = useState<string | null>(null);
+  const [grantSuccess, setGrantSuccess] = useState<string | null>(null);
+
+  const grantMonthAccess = async (userId: string) => {
+    const monthNum = parseInt(grantMonth, 10);
+    const days = parseInt(grantDays, 10);
+    if (!course?.id) return;
+    if (!userId) return;
+    if (!Number.isFinite(monthNum) || monthNum < 1) { setGrantError("رقم الشهر غير صحيح."); return; }
+    if (!Number.isFinite(days) || days < 1) { setGrantError("عدد الأيام غير صحيح."); return; }
+
+    setGranting(true);
+    setGrantError(null);
+    setGrantSuccess(null);
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const endAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+      const res = await supabase
+        .from("course_month_access")
+        .upsert(
+          { user_id: userId, course_id: course.id, month_number: monthNum, status: "active", start_at: new Date().toISOString(), end_at: endAt, source: "manual" },
+          { onConflict: "user_id,course_id,month_number" },
+        );
+      if (res.error) throw new Error(res.error.message);
+
+      // Refresh local month access
+      const monRes = await supabase
+        .from("course_month_access")
+        .select("id,user_id,course_id,month_number,status,start_at,end_at,created_at")
+        .eq("course_id", course.id)
+        .order("created_at", { ascending: false });
+      if (!monRes.error) {
+        setMonthAccess(
+          ((monRes.data ?? []) as any[]).map((r) => ({
+            id: String(r.id), user_id: String(r.user_id), course_id: String(r.course_id),
+            month_number: Number(r.month_number ?? 0), status: String(r.status ?? ""),
+            start_at: String(r.start_at ?? ""), end_at: r.end_at ? String(r.end_at) : null,
+            created_at: String(r.created_at ?? ""),
+          }))
+        );
+      }
+
+      setGrantSuccess(`✅ تم فتح الشهر ${monthNum} لمدة ${days} يوم.`);
+      setTimeout(() => { setGrantSuccess(null); setGrantOpenUserId(null); }, 2500);
+    } catch (err) {
+      setGrantError(err instanceof Error ? err.message : "حدث خطأ");
+    } finally {
+      setGranting(false);
+    }
+  };
+
   useEffect(() => {
     if (!normalizedSlug) {
       setError("لم يتم إرسال معرّف الكورس (slug).");
@@ -646,6 +703,9 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
                 const pkgInfo = userPackageId.get(s.userId) ?? null;
                 const pkgLabel = pkgInfo?.packageId ? packageById.get(pkgInfo.packageId)?.title ?? pkgInfo.packageTitle : pkgInfo?.packageTitle;
 
+                const isGrantOpen = grantOpenUserId === s.userId;
+                const userMonths = s.months.filter((m) => isActive(m.status, m.end_at)).map((m) => m.month_number).sort((a, b) => a - b);
+
                 return (
                   <div
                     key={s.userId}
@@ -669,9 +729,9 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
                               اشتراك كورس ({s.enrollments.length})
                             </span>
                           ) : null}
-                          {s.months.length ? (
-                            <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-700 border border-slate-200">
-                              شهور ({s.months.length})
+                          {userMonths.length > 0 ? (
+                            <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+                              شهور مفتوحة: {userMonths.join("، ")}
                             </span>
                           ) : null}
                           {s.ages.length ? (
@@ -682,10 +742,69 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
                         </div>
                       </div>
 
-                      <div className="text-[11px] text-slate-500">
-                        آخر تحديث: {fmtDate(s.enrollments[0]?.created_at ?? s.months[0]?.created_at ?? s.ages[0]?.created_at)}
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="text-[11px] text-slate-500">
+                          آخر تحديث: {fmtDate(s.enrollments[0]?.created_at ?? s.months[0]?.created_at ?? s.ages[0]?.created_at)}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isGrantOpen) { setGrantOpenUserId(null); }
+                            else { setGrantOpenUserId(s.userId); setGrantError(null); setGrantSuccess(null); }
+                          }}
+                          className="inline-flex h-8 items-center gap-1.5 rounded-2xl bg-slate-900 px-3 text-[11px] font-semibold text-white transition hover:bg-slate-700"
+                        >
+                          {isGrantOpen ? "إغلاق" : "🔓 فتح شهر"}
+                        </button>
                       </div>
                     </div>
+
+                    {isGrantOpen ? (
+                      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="text-xs font-semibold text-slate-700 mb-3">فتح شهر يدوياً لـ {title}</div>
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <div>
+                            <div className="mb-1 text-[11px] text-slate-600">رقم الشهر</div>
+                            <input
+                              type="number"
+                              min="1"
+                              value={grantMonth}
+                              onChange={(e) => setGrantMonth(e.target.value)}
+                              className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                              placeholder="مثال: 2"
+                            />
+                          </div>
+                          <div>
+                            <div className="mb-1 text-[11px] text-slate-600">مدة الصلاحية (يوم)</div>
+                            <input
+                              type="number"
+                              min="1"
+                              value={grantDays}
+                              onChange={(e) => setGrantDays(e.target.value)}
+                              className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                              placeholder="مثال: 30"
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <button
+                              type="button"
+                              onClick={() => void grantMonthAccess(s.userId)}
+                              disabled={granting}
+                              className="h-10 w-full rounded-2xl bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                            >
+                              {granting ? "جاري..." : "تفعيل"}
+                            </button>
+                          </div>
+                        </div>
+                        {grantError ? <div className="mt-2 text-xs text-rose-700">{grantError}</div> : null}
+                        {grantSuccess ? <div className="mt-2 text-xs text-emerald-700">{grantSuccess}</div> : null}
+                        {userMonths.length > 0 ? (
+                          <div className="mt-3 text-[11px] text-slate-600">الشهور المفتوحة حالياً: <span className="font-semibold text-slate-900">{userMonths.join("، ")}</span></div>
+                        ) : (
+                          <div className="mt-3 text-[11px] text-slate-500">لا توجد شهور مفتوحة حالياً (الشهر 1 مفتوح دائماً للمشتركين).</div>
+                        )}
+                      </div>
+                    ) : null}
 
                     <div className="mt-3 grid gap-2 text-[11px] text-slate-600 sm:grid-cols-2">
                       <div className="rounded-2xl bg-slate-50 px-3 py-3 border border-slate-200">
