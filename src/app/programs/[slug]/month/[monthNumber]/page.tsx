@@ -188,7 +188,9 @@ export default async function ProgramMonthPage({
       (!Number.isFinite(endAtMs) || endAtMs > now) &&
       (enrollSource === "code" || enrollSource === "manual" || enrollSource === "admin"));
 
-  const monthAccessRes = user && !isAdmin && !hasCourseAccess
+  const isCourseAccessValidForThisMonth = hasCourseAccess && monthNumber === 1;
+
+  const monthAccessRes = user && !isAdmin && !isCourseAccessValidForThisMonth
     ? await supabase
         .from("course_month_access")
         .select("end_at,status")
@@ -205,12 +207,12 @@ export default async function ProgramMonthPage({
     isAdmin ||
     (Boolean(user) &&
       !isAdmin &&
-      !hasCourseAccess &&
+      !isCourseAccessValidForThisMonth &&
       !monthAccessRes.error &&
       Boolean((monthAccessRes as any).data) &&
       (!Number.isFinite(monthEndAtMs) || monthEndAtMs > Date.parse(nowIso)));
 
-  const lockedView = !user || (!isAdmin && !hasCourseAccess && !hasMonthAccess);
+  const lockedView = !user || (!isAdmin && !isCourseAccessValidForThisMonth && !hasMonthAccess);
 
   if (lockedView) {
     const agPreviewRes = await supabase.rpc("preview_age_groups", { p_course_id: course.id });

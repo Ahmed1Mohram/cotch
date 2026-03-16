@@ -187,6 +187,22 @@ export default async function ProgramCardPage({
 
   const hasContentAccess = isAdmin || hasCourseAccess || hasCardAccess;
 
+  const courseMonthAccessRes = user && !isAdmin
+    ? await supabase
+        .from("course_month_access")
+        .select("month_number,end_at")
+        .eq("course_id", course.id)
+        .eq("user_id", user.id)
+        .eq("status", "active")
+    : { data: null, error: null };
+
+  const unlockedMonthNumbers = (((courseMonthAccessRes as any)?.data ?? []) as any[])
+    .filter((r) => {
+      const eat = r.end_at ? new Date(String(r.end_at)).getTime() : NaN;
+      return !Number.isFinite(eat) || eat > now;
+    })
+    .map((r) => Number(r.month_number));
+
   if (!hasContentAccess) {
     const previewRes = await supabase.rpc("preview_player_card", { p_card_id: cardId });
     const previewRow = (((previewRes as any)?.data ?? []) as any[])[0] as any;
@@ -341,6 +357,8 @@ export default async function ProgramCardPage({
               courseTitle={courseTitle}
               pkgSlug={pkg ? pkg.slug : pkgSlug}
               hasCourseAccess={false}
+              isAdmin={isAdmin}
+              unlockedMonthNumbers={unlockedMonthNumbers}
               initialMonths={initialMonths}
             />
           </div>
@@ -560,6 +578,8 @@ export default async function ProgramCardPage({
             courseTitle={courseTitle}
             pkgSlug={pkg ? pkg.slug : pkgSlug}
             hasCourseAccess={hasContentAccess}
+            isAdmin={isAdmin}
+            unlockedMonthNumbers={unlockedMonthNumbers}
             initialMonths={filteredMonths}
           />
         </div>

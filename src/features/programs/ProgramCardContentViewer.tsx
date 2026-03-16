@@ -142,6 +142,8 @@ export function ProgramCardContentViewer({
   pkgSlug,
   hasCourseAccess,
   initialMonths,
+  isAdmin = false,
+  unlockedMonthNumbers = [],
 }: {
   courseId: string;
   courseSlug: string;
@@ -149,6 +151,8 @@ export function ProgramCardContentViewer({
   pkgSlug?: string;
   hasCourseAccess: boolean;
   initialMonths: Month[];
+  isAdmin?: boolean;
+  unlockedMonthNumbers?: number[];
 }) {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
@@ -245,7 +249,11 @@ export function ProgramCardContentViewer({
   }, [supabase]);
 
   const isAuthLoading = isAuthed === null;
-  const isLocked = !hasCourseAccess;
+  const isAnyAccess = isAdmin || hasCourseAccess || unlockedMonthNumbers.length > 0;
+
+  const activeMonthObj = useMemo(() => months.find(m => m.id === activeMonthId), [months, activeMonthId]);
+  const activeMonthNum = activeMonthObj?.month_number ?? 1;
+  const isMonthAccessible = isAdmin || unlockedMonthNumbers.includes(activeMonthNum) || (hasCourseAccess && activeMonthNum === 1);
 
   useEffect(() => {
     setMonths(initialMonths);
@@ -267,14 +275,18 @@ export function ProgramCardContentViewer({
     }
   }, [months]);
 
-  const loadMonthDaysAndVideos = useCallback(async (monthId: string) => {
+  const loadMonthDaysAndVideos = useCallback(async (monthId: string, currentMonths: Month[]) => {
     setDays([]);
     setDaysLoading(true);
     setDaysError(null);
     setActiveDayId(null);
     setActiveVideoId(null);
 
-    if (!hasCourseAccess) {
+    const targetMonth = currentMonths.find((m) => m.id === monthId);
+    const mNum = targetMonth?.month_number ?? 1;
+    const monthAccessible = isAdmin || unlockedMonthNumbers.includes(mNum) || (hasCourseAccess && mNum === 1);
+
+    if (!monthAccessible) {
       const scheduleRes = await supabase.rpc("preview_month_schedule", { p_month_id: monthId });
 
       if ((scheduleRes as any).error) {
@@ -404,14 +416,14 @@ export function ProgramCardContentViewer({
         null,
     );
     setDaysLoading(false);
-  }, [hasCourseAccess, supabase]);
+  }, [hasCourseAccess, supabase, isAdmin, unlockedMonthNumbers]);
 
   useEffect(() => {
     if (!activeMonthId) return;
     if (daysLoading) return;
     if (days.length) return;
-    void loadMonthDaysAndVideos(activeMonthId);
-  }, [activeMonthId, days.length, daysLoading, loadMonthDaysAndVideos]);
+    void loadMonthDaysAndVideos(activeMonthId, months);
+  }, [activeMonthId, days.length, daysLoading, loadMonthDaysAndVideos, months]);
 
   useEffect(() => {
     if (!activeMonthId) return;
@@ -431,7 +443,7 @@ export function ProgramCardContentViewer({
             <div className="rounded-3xl bg-black/45 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_60px_190px_-140px_rgba(0,0,0,0.95)]">
               <div className="text-right text-sm text-white/70">تحميل...</div>
             </div>
-          ) : !hasCourseAccess ? (
+          ) : !isAnyAccess ? (
             <div className="rounded-3xl bg-black/45 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_60px_190px_-140px_rgba(0,0,0,0.95)]">
               <div className="flex flex-wrap items-center justify-between gap-3" dir="rtl">
                 <div>
@@ -472,7 +484,7 @@ export function ProgramCardContentViewer({
                     type="button"
                     onClick={() => {
                       setActiveMonthId(m.id);
-                      void loadMonthDaysAndVideos(m.id);
+                      void loadMonthDaysAndVideos(m.id, months);
                     }}
                     disabled={isAuthLoading}
                     className={
@@ -587,7 +599,7 @@ export function ProgramCardContentViewer({
 
                                 <div className="min-w-0 text-right">
                                   <div className="text-sm">{v.title ?? "فيديو"}</div>
-                                {isLocked ? (
+                                {!isMonthAccessible ? (
                                   <div className="mt-1 text-xs text-[#FFB35A]">مقفول</div>
                                 ) : details ? (
                                   <div className="mt-1 max-h-10 overflow-hidden text-xs leading-5 text-white/65">
@@ -608,14 +620,14 @@ export function ProgramCardContentViewer({
                     <div className="relative mt-4 overflow-hidden rounded-3xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
                       {(() => {
                         const canPlayPreview = Boolean(
-                          isLocked &&
+                          !isMonthAccessible &&
                             activeDay &&
                             activeVideo?.is_free_preview &&
                             activeVideo?.video_url &&
                             canPlay,
                         );
 
-                        if (isLocked && !canPlayPreview) {
+                        if (!isMonthAccessible && !canPlayPreview) {
                           return (
                             <div className="grid h-[420px] place-items-center bg-black px-6">
                               <div className="w-full max-w-md" dir="rtl">
@@ -646,7 +658,7 @@ export function ProgramCardContentViewer({
                           );
                         }
 
-                        if (!isLocked && activeDay && activeDay.videos.length) {
+                        if (isMonthAccessible && activeDay && activeDay.videos.length) {
                           const dayHasPlayableVideo = activeDay.videos.some((v) => {
                             const raw = v.video_url?.trim() ?? "";
                             if (!raw) return false;
@@ -713,7 +725,7 @@ export function ProgramCardContentViewer({
                         );
                       })()}
 
-                      {activeDay && activeVideo?.video_url && canPlay && (!isLocked || activeVideo?.is_free_preview) ? (
+                      {activeDay && activeVideo?.video_url && canPlay && (isMonthAccessible || activeVideo?.is_free_preview) ? (
                         <div className="pointer-events-none absolute right-2 top-2" dir="rtl">
                           <div className="rounded-2xl bg-black/55 px-3 py-2 backdrop-blur-sm shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
                             <img src="/s.png" alt="logo" className="h-9 w-auto opacity-90" />
@@ -721,7 +733,7 @@ export function ProgramCardContentViewer({
                         </div>
                       ) : null}
 
-                      {activeDay && activeVideo?.video_url && canPlay && watermark && (!isLocked || activeVideo?.is_free_preview) ? (
+                      {activeDay && activeVideo?.video_url && canPlay && watermark && (isMonthAccessible || activeVideo?.is_free_preview) ? (
                         <WatermarkOverlay name={watermark.name} phone={watermark.phone} />
                       ) : null}
                     </div>
