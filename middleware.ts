@@ -51,6 +51,25 @@ export async function middleware(request: NextRequest) {
 
   const isAdminApi = pathname === "/api/admin" || pathname.startsWith("/api/admin/");
 
+  // السماح لصفحة Login والـ API الخاصة بها دون أي checks
+  if (
+    pathname === "/admin-pin-login" ||
+    pathname.startsWith("/admin-pin-login/") ||
+    pathname === "/api/admin-pin" ||
+    pathname.startsWith("/api/admin-pin/")
+  ) {
+    return NextResponse.next();
+  }
+
+  // ✅ إذا كان فيه كوكي أدمن صحيح، دخّله الأدمن مباشرة بدون Supabase
+  const ADMIN_PIN_TOKEN = Buffer.from("01005209608:01005209608").toString("base64");
+  const adminPinCookie = request.cookies.get("fitcoach_admin_pin")?.value ?? "";
+  if (adminPinCookie === ADMIN_PIN_TOKEN) {
+    if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+      return NextResponse.next();
+    }
+  }
+
   if (pathname === "/Admin" || pathname.startsWith("/Admin/")) {
     const rest = pathname.slice("/Admin".length);
     const destination = `/admin${rest}`;
@@ -126,7 +145,7 @@ export async function middleware(request: NextRequest) {
           rpcRes = await supabase.rpc("is_admin");
         }
         isAdmin = Boolean(!rpcRes.error && rpcRes.data);
-        
+
         // Fallback: Try direct table query if RPC fails (may fail due to RLS)
         if (!isAdmin) {
           try {
