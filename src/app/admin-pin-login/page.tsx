@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 export default function AdminPinLoginPage() {
   const [username, setUsername] = useState("");
@@ -14,18 +15,25 @@ export default function AdminPinLoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    
     try {
-      const res = await fetch("/api/admin-pin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim(), password: password.trim() }),
+      const supabase = createSupabaseBrowserClient();
+      // Use the internal admin email based on the username
+      let emailToUse = username.trim();
+      if (!emailToUse.includes("@")) {
+        emailToUse = `${emailToUse}@admin.fitcoach.local`;
+      }
+
+      const { data, error: signInErr } = await supabase.auth.signInWithPassword({
+        email: emailToUse,
+        password: password.trim(),
       });
-      const data = await res.json();
-      if (data.ok) {
+
+      if (signInErr) {
+        setError("بيانات خاطئة، يرجى المحاولة مرة أخرى.");
+      } else if (data.session) {
         router.replace("/admin");
         router.refresh();
-      } else {
-        setError(data.error ?? "بيانات خاطئة");
       }
     } catch {
       setError("حدث خطأ، حاول مرة ثانية");

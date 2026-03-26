@@ -5,10 +5,6 @@ import { cookies } from "next/headers";
 import { AdminShell } from "@/features/admin/ui/AdminShell";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
-// القيمة المتوقعة لكوكي الدخول المباشر
-const ADMIN_PIN_TOKEN = Buffer.from("01005209608:01005209608").toString("base64");
-const ADMIN_PIN_COOKIE = "fitcoach_admin_pin";
-
 export default async function AdminLayout({
   children,
 }: {
@@ -16,13 +12,7 @@ export default async function AdminLayout({
 }) {
   const cookieStore = await cookies();
 
-  // ✅ دخول مباشر بالكوكي بدون Supabase
-  const pinCookie = cookieStore.get(ADMIN_PIN_COOKIE)?.value ?? "";
-  if (pinCookie === ADMIN_PIN_TOKEN) {
-    return <AdminShell>{children}</AdminShell>;
-  }
-
-  // Supabase auth fallback
+  // Supabase auth
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
