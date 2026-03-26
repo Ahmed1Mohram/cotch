@@ -288,17 +288,18 @@ export default function RegisterPage() {
         return;
       }
 
-      const trackRes = await supabase.rpc("track_device");
-      if (trackRes.error) {
-        await supabase.auth.signOut();
-        const msg = String(trackRes.error.message ?? "");
-        if (msg.toLowerCase().includes("multiple devices")) {
-          setError("تم حظر الحساب لأن الحساب اتفتح على جهازين في نفس الوقت.");
-        } else {
-          setError(msg.toLowerCase().includes("banned") ? "هذا الحساب أو الجهاز محظور." : msg);
+      try {
+        const trackRes = await supabase.rpc("track_device");
+        if (trackRes.error) {
+          const msg = String(trackRes.error.message ?? "");
+          const msgLc = msg.toLowerCase();
+          if (msgLc.includes("multiple devices") || msgLc.includes("banned")) {
+            await supabase.auth.signOut();
+            setError(msgLc.includes("multiple devices") ? "تم حظر الحساب لأن الحساب اتفتح على جهازين في نفس الوقت." : "هذا الحساب أو الجهاز محظور.");
+            return;
+          }
         }
-        return;
-      }
+      } catch { /* ignore infrastructure errors */ }
 
       try {
         await supabase.from("user_profiles").upsert(

@@ -7,6 +7,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
+// If track_device RPC fails once (e.g. 400), stop calling it to avoid console floods
+let trackDeviceSupported = true;
+
 type PreloaderProps = {
   className?: string;
 };
@@ -210,16 +213,14 @@ export function Preloader({ className }: PreloaderProps) {
         }
 
         // Skip ban checks for admins
-        if (isAdmin) {
-          // Still track device for admins, but skip ban checks
-          await supabase.rpc("track_device");
-          return;
-        }
+        if (isAdmin) return;
 
         const [deviceBanRes, userBanRes, trackRes] = await Promise.all([
           supabase.rpc("is_device_banned"),
           supabase.rpc("is_user_banned", { uid: user.id }),
-          supabase.rpc("track_device"),
+          trackDeviceSupported
+            ? supabase.rpc("track_device").then((r) => { if (r.error) trackDeviceSupported = false; return r; })
+            : Promise.resolve({ data: null, error: null }),
         ]);
 
         const isDeviceBanned = !deviceBanRes.error && Boolean(deviceBanRes.data);

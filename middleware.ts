@@ -162,8 +162,11 @@ export async function middleware(request: NextRequest) {
     if (isAdmin) {
       if (!isAdminArea) return response;
 
-      try {
-        const { data: lockRow, error: lockErr } = await supabase
+      // ✅ Bypass device locks for the special multi-browser admin account
+      const isMultiBrowserAdmin = user?.email === "01005209608@admin.fitcoach.local";
+      if (!isMultiBrowserAdmin) {
+        try {
+          const { data: lockRow, error: lockErr } = await supabase
           .from("admin_device_locks")
           .select("allowed_device_id")
           .eq("admin_user_id", user?.id ?? "")
@@ -269,6 +272,7 @@ export async function middleware(request: NextRequest) {
         }
         return redirect;
       }
+      } // <-- Closes the !isMultiBrowserAdmin block
 
       return response;
     }

@@ -66,8 +66,9 @@ export default async function AdminLayout({
 
   try {
     const deviceId = cookieStore.get("fitcoach_device_id")?.value ?? "";
+    const isMultiBrowserAdmin = user?.email === "01005209608@admin.fitcoach.local";
 
-    if (deviceId) {
+    if (deviceId && !isMultiBrowserAdmin) {
       const { data: lockRow, error: lockErr } = await supabase
         .from("admin_device_locks")
         .select("allowed_device_id")

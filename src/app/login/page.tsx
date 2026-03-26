@@ -394,37 +394,32 @@ function LoginPageInner() {
       }
     } catch {}
 
-    const trackRes = await supabase.rpc("track_device");
-    if (trackRes.error) {
-      const msg = String(trackRes.error.message ?? "");
-      const msgLc = msg.toLowerCase();
-      const isMultipleDevices = msgLc.includes("multiple devices");
+    try {
+      const trackRes = await supabase.rpc("track_device");
+      if (trackRes.error) {
+        const msg = String(trackRes.error.message ?? "");
+        const msgLc = msg.toLowerCase();
+        const isMultipleDevices = msgLc.includes("multiple devices");
+        const isBanned = msgLc.includes("banned");
 
-      if (wantsAdmin) {
-        try {
-          await insertAdminAccessRequest();
-        } catch {}
-
-        setSuccess("تم إرسال طلب دخول الأدمن للإدارة.");
-        router.replace("/admin-request");
-        router.refresh();
-        return;
+        if (isMultipleDevices || isBanned) {
+          if (wantsAdmin) {
+            try { await insertAdminAccessRequest(); } catch {}
+            setSuccess("تم إرسال طلب دخول الأدمن للإدارة.");
+            router.replace("/admin-request");
+            router.refresh();
+            return;
+          }
+          if (isMultipleDevices) {
+            setError("الحساب مفتوح على جهاز تاني. اقفل الجهاز التاني أو استنى شوية وجرب تاني.");
+            return;
+          }
+          router.replace("/blocked");
+          router.refresh();
+          return;
+        }
       }
-
-      if (isMultipleDevices) {
-        setError("الحساب مفتوح على جهاز تاني. اقفل الجهاز التاني أو استنى شوية وجرب تاني.");
-        return;
-      }
-
-      if (msgLc.includes("banned")) {
-        router.replace("/blocked");
-        router.refresh();
-        return;
-      }
-
-      setError(msg);
-      return;
-    }
+    } catch { /* ignore infrastructure errors */ }
 
     if (wantsAdmin && !isAdmin) {
       try {
