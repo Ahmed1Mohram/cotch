@@ -12,9 +12,8 @@ export function Hero() {
   const candidates = useMemo(() => ["/kalya.png"], []);
   const [src, setSrc] = useState<string | null>(candidates[0]);
   const [mounted, setMounted] = useState(false);
-  const subscribersStart = 945;
   const subscribersTarget = 954;
-  const [subscribers, setSubscribers] = useState(subscribersStart);
+  const [subscribers, setSubscribers] = useState(subscribersTarget);
 
   useEffect(() => {
     setMounted(true);
@@ -22,37 +21,8 @@ export function Hero() {
 
   useEffect(() => {
     if (!mounted) return;
-    if (reduce) {
-      setSubscribers(subscribersTarget);
-      return;
-    }
-
-    setSubscribers(subscribersStart);
-
-    const step = subscribersTarget >= subscribersStart ? 1 : -1;
-    let interval: number | null = null;
-
-    interval = window.setInterval(() => {
-      setSubscribers((prev) => {
-        if (prev === subscribersTarget) {
-          if (interval) window.clearInterval(interval);
-          return prev;
-        }
-
-        const next = prev + step;
-        if ((step > 0 && next >= subscribersTarget) || (step < 0 && next <= subscribersTarget)) {
-          if (interval) window.clearInterval(interval);
-          return subscribersTarget;
-        }
-
-        return next;
-      });
-    }, 80);
-
-    return () => {
-      if (interval) window.clearInterval(interval);
-    };
-  }, [mounted, reduce, subscribersStart, subscribersTarget]);
+    setSubscribers(subscribersTarget);
+  }, [mounted, subscribersTarget]);
 
   const animate = mounted && !reduce;
 
@@ -224,10 +194,6 @@ export function Hero() {
                 <div className="mt-1 text-sm text-white/55">Support</div>
               </div>
               <div className="rounded-2xl bg-[#0E0F12]/55 px-5 py-4 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_18px_70px_-60px_rgba(0,0,0,0.92)] backdrop-blur-md">
-                <div className="text-base leading-none text-white">🧿✋</div>
-                <div className="mt-1 text-xs text-white/70" dir="rtl">
-                  بسم الله مشاء الله
-                </div>
                 <div className="mt-2 font-heading text-2xl tracking-[0.12em] text-white">{subscribers}</div>
                 <div className="mt-1 text-sm text-white/55" dir="rtl">
                   مشتركين
