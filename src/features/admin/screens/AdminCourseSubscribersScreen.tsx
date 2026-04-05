@@ -177,6 +177,16 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
   const [grantError, setGrantError] = useState<string | null>(null);
   const [grantSuccess, setGrantSuccess] = useState<string | null>(null);
 
+  // ✅ Reset grant state whenever the panel opens for a different user
+  useEffect(() => {
+    if (grantOpenUserId) {
+      setGrantMonth("2");
+      setGrantDays("30");
+      setGrantError(null);
+      setGrantSuccess(null);
+    }
+  }, [grantOpenUserId]);
+
   const grantMonthAccess = async (userId: string) => {
     const monthNum = parseInt(grantMonth, 10);
     const days = parseInt(grantDays, 10);
@@ -704,7 +714,10 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
                 const pkgLabel = pkgInfo?.packageId ? packageById.get(pkgInfo.packageId)?.title ?? pkgInfo.packageTitle : pkgInfo?.packageTitle;
 
                 const isGrantOpen = grantOpenUserId === s.userId;
-                const userMonths = s.months.filter((m) => isActive(m.status, m.end_at)).map((m) => m.month_number).sort((a, b) => a - b);
+                // All months (active + inactive) sorted by number
+                const allUserMonths = s.months.slice().sort((a, b) => a.month_number - b.month_number);
+                const activeMonthNums = allUserMonths.filter((m) => isActive(m.status, m.end_at)).map((m) => m.month_number);
+                const userMonths = activeMonthNums; // keep existing variable for compatibility
 
                 return (
                   <div
@@ -729,9 +742,9 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
                               اشتراك كورس ({s.enrollments.length})
                             </span>
                           ) : null}
-                          {userMonths.length > 0 ? (
+                          {allUserMonths.length > 0 ? (
                             <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
-                              شهور مفتوحة: {userMonths.join("، ")}
+                              شهور: {allUserMonths.map((m) => `${m.month_number}${isActive(m.status, m.end_at) ? "✓" : "✗"}`).join("، ")}
                             </span>
                           ) : null}
                         </div>
@@ -753,8 +766,8 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
                       >
                         {isGrantOpen ? "إغلاق" : "🔓 فتح شهر"}
                       </button>
-                      {userMonths.length > 0 && (
-                        <span className="text-[11px] text-emerald-700 font-semibold">شهور مفتوحة: {userMonths.join('، ')}</span>
+                      {activeMonthNums.length > 0 && (
+                        <span className="text-[11px] text-emerald-700 font-semibold">مفتوحة: {activeMonthNums.join('، ')}</span>
                       )}
                     </div>
 
@@ -763,6 +776,7 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
                         <div className="text-sm font-bold text-emerald-900 mb-3">فتح شهر لـ {title}</div>
 
                         {/* Quick month picker */}
+                        <div className="mb-2 text-xs text-slate-600 font-semibold">اختر رقم الشهر:</div>
                         <div className="flex flex-wrap gap-2 mb-3">
                           {[2, 3, 4, 5, 6].map((n) => (
                             <button
@@ -773,19 +787,50 @@ export function AdminCourseSubscribersScreen({ slug }: { slug: string }) {
                                 "h-10 w-12 rounded-2xl text-sm font-bold transition border",
                                 grantMonth === String(n)
                                   ? "bg-emerald-600 text-white border-emerald-600"
-                                  : "bg-white text-slate-800 border-slate-300 hover:border-emerald-400",
+                                  : allUserMonths.some((m) => m.month_number === n && isActive(m.status, m.end_at))
+                                    ? "bg-emerald-100 text-emerald-700 border-emerald-300"
+                                    : "bg-white text-slate-800 border-slate-300 hover:border-emerald-400",
                               )}
                             >
                               {n}
+                              {allUserMonths.some((m) => m.month_number === n && isActive(m.status, m.end_at)) ? " ✓" : ""}
                             </button>
                           ))}
                           <input
                             type="number"
-                            min="2"
+                            min="1"
                             value={grantMonth}
                             onChange={(e) => setGrantMonth(e.target.value)}
                             className="h-10 w-16 rounded-2xl border border-slate-300 bg-white px-2 text-center text-sm font-bold text-slate-900 outline-none focus:border-emerald-500"
-                            placeholder="..."
+                            placeholder="رقم"
+                          />
+                        </div>
+
+                        {/* Days picker */}
+                        <div className="mb-2 text-xs text-slate-600 font-semibold">مدة الوصول (أيام):</div>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {[30, 60, 90].map((d) => (
+                            <button
+                              key={d}
+                              type="button"
+                              onClick={() => setGrantDays(String(d))}
+                              className={cn(
+                                "h-10 px-3 rounded-2xl text-sm font-bold transition border",
+                                grantDays === String(d)
+                                  ? "bg-emerald-600 text-white border-emerald-600"
+                                  : "bg-white text-slate-800 border-slate-300 hover:border-emerald-400",
+                              )}
+                            >
+                              {d} يوم
+                            </button>
+                          ))}
+                          <input
+                            type="number"
+                            min="1"
+                            value={grantDays}
+                            onChange={(e) => setGrantDays(e.target.value)}
+                            className="h-10 w-20 rounded-2xl border border-slate-300 bg-white px-2 text-center text-sm font-bold text-slate-900 outline-none focus:border-emerald-500"
+                            placeholder="أيام"
                           />
                         </div>
 

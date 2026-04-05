@@ -570,6 +570,28 @@ async function ProgramPageInner({
     }
   }
 
+  // For admin: fetch all distinct month numbers in this course (across all age groups)
+  let adminMonthNumbers: number[] = [];
+  if (isAdmin && course) {
+    try {
+      const agRes2 = await supabase.from("age_groups").select("id").eq("course_id", course.id);
+      const agIds2 = ((agRes2.data ?? []) as any[]).map((r) => String(r.id)).filter(Boolean);
+      if (agIds2.length) {
+        const mRes = await supabase
+          .from("months")
+          .select("month_number,age_group_id")
+          .in("age_group_id", agIds2)
+          .order("month_number", { ascending: true });
+        const nums = ((mRes.data ?? []) as any[])
+          .map((r) => Number(r.month_number))
+          .filter((n) => Number.isFinite(n) && n > 0);
+        adminMonthNumbers = Array.from(new Set(nums)).sort((a, b) => a - b);
+      }
+    } catch (e) {
+      console.error("Error fetching admin month numbers:", e);
+    }
+  }
+
   let enrollRes: { data: any; error: any } = { data: null, error: null };
   if (user && course && !isAdmin) {
     try {
@@ -1176,35 +1198,60 @@ async function ProgramPageInner({
                       <div className="text-sm font-heading tracking-[0.12em] text-white/90 mb-2">
                         الكورس ده بيشتغل بنظام الشهور
                       </div>
-                      <div className="text-xs text-white/65 leading-6">
-                        مفيش كروت متاحة للكورس ده حالياً.
-                        <br />
-                        {canOpenMonth1 ? (
-                          <>افتح الشهر الأول علشان تبدأ (هتظهر المعاينة لو مش مشترك).</>
-                        ) : (
-                          <>
-                            الكورس لسه مش متجهّز (مفيش مجموعات). لازم الأدمن يضيف مجموعة وبعدها الشهور.
-                          </>
-                        )}
-                      </div>
-                      <div className="mt-5 flex flex-wrap justify-end gap-3">
-                        {canOpenMonth1 ? (
-                          <Link
-                            href={month1Href}
-                            className="inline-flex h-11 items-center justify-center rounded-2xl bg-white/10 px-6 text-xs font-extrabold tracking-[0.12em] text-white shadow-[0_0_0_1px_rgba(255,255,255,0.14)] transition hover:bg-white/15"
-                          >
-                            افتح الشهر الأول
-                          </Link>
-                        ) : null}
-                        {pkg ? (
-                          <Link
-                            href={`/?chat=1&pkg=${encodeURIComponent(pkg.slug)}&course=${encodeURIComponent(course.slug)}#contact`}
-                            className="inline-flex h-11 items-center justify-center rounded-2xl bg-white/5 px-6 text-xs font-semibold tracking-[0.12em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10"
-                          >
-                            اشترك في الباقة
-                          </Link>
-                        ) : null}
-                      </div>
+
+                      {/* ✅ Admin: show all available months as a grid */}
+                      {isAdmin && adminMonthNumbers.length > 0 ? (
+                        <>
+                          <div className="text-xs text-white/60 mb-4">الشهور المتاحة في الكورس:</div>
+                          <div className="flex flex-wrap gap-3">
+                            {adminMonthNumbers.map((n) => {
+                              const href = fallbackAgeGroupId
+                                ? `/programs/${course.slug}/month/${n}?ag=${encodeURIComponent(fallbackAgeGroupId)}${effectivePkgSlugForLinks ? `&pkg=${encodeURIComponent(effectivePkgSlugForLinks)}` : ""}`
+                                : `/programs/${course.slug}`;
+                              return (
+                                <Link
+                                  key={n}
+                                  href={href}
+                                  className="inline-flex h-14 w-14 flex-col items-center justify-center rounded-2xl bg-white/10 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.14)] transition hover:bg-white/20 hover:scale-105"
+                                >
+                                  <span className="text-[10px] text-white/60 font-semibold tracking-widest">شهر</span>
+                                  <span className="text-xl font-extrabold leading-tight">{n}</span>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-xs text-white/65 leading-6">
+                            مفيش كروت متاحة للكورس ده حالياً.
+                            <br />
+                            {canOpenMonth1 ? (
+                              <>افتح الشهر الأول علشان تبدأ (هتظهر المعاينة لو مش مشترك).</>
+                            ) : (
+                              <>الكورس لسه مش متجهّز (مفيش مجموعات). لازم الأدمن يضيف مجموعة وبعدها الشهور.</>
+                            )}
+                          </div>
+                          <div className="mt-5 flex flex-wrap justify-end gap-3">
+                            {canOpenMonth1 ? (
+                              <Link
+                                href={month1Href}
+                                className="inline-flex h-11 items-center justify-center rounded-2xl bg-white/10 px-6 text-xs font-extrabold tracking-[0.12em] text-white shadow-[0_0_0_1px_rgba(255,255,255,0.14)] transition hover:bg-white/15"
+                              >
+                                افتح الشهر الأول
+                              </Link>
+                            ) : null}
+                            {pkg ? (
+                              <Link
+                                href={`/?chat=1&pkg=${encodeURIComponent(pkg.slug)}&course=${encodeURIComponent(course.slug)}#contact`}
+                                className="inline-flex h-11 items-center justify-center rounded-2xl bg-white/5 px-6 text-xs font-semibold tracking-[0.12em] text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] transition hover:bg-white/10"
+                              >
+                                اشترك في الباقة
+                              </Link>
+                            ) : null}
+                          </div>
+                        </>
+                      )}
                     </div>
                   ) : cardsLocked ? (
                     profiles.length ? (
