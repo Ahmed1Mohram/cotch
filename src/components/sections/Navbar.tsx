@@ -10,8 +10,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { bustSessionCache, getCachedUser, getCachedIsAdmin } from "@/lib/sessionCache";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
-import { getClientLang, setClientLang } from "@/lib/lang";
-import { translations } from "@/lib/translations";
+
 
 export function Navbar() {
   const router = useRouter();
@@ -47,19 +46,11 @@ export function Navbar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userLabel, setUserLabel] = useState("حسابي");
   const [signingOut, setSigningOut] = useState(false);
-  const [lang, setLang] = useState<"ar" | "en">("ar");
-
-  useEffect(() => {
-    setLang(getClientLang());
-  }, []);
-
-  const t = translations[lang];
-
   const links = useMemo(() => [
-    { label: t.navbar.home, href: "/", hash: "" },
-    { label: t.navbar.programs, href: "/", hash: "#programs" },
-    { label: t.navbar.contact, href: "/", hash: "#contact" },
-  ], [t]);
+    { label: "الرئيسية", href: "/", hash: "" },
+    { label: "البرامج", href: "/", hash: "#programs" },
+    { label: "تواصل معنا", href: "/", hash: "#contact" },
+  ], []);
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, link: typeof links[0]) => {
     e.preventDefault();
@@ -462,7 +453,7 @@ export function Navbar() {
                               }
                             }}
                           >
-                            {t.navbar.admin}
+                            الإدارة
                           </Button>
                         </div>
                       ) : null}
@@ -474,10 +465,10 @@ export function Navbar() {
                           }}
                           disabled={signingOut}
                           className="h-9 max-w-[200px] rounded-full px-4 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white bg-black/28 shadow-none hover:bg-black/40 hover:shadow-[inset_0_0_0_1px_rgba(255,106,0,0.22)] disabled:opacity-60"
-                          title={t.navbar.logout}
+                          title="تسجيل خروج"
                         >
                           <span className="block min-w-0 truncate">
-                            {userLabel === "حسابي" ? t.navbar.myAccount : userLabel}
+                            {userLabel}
                           </span>
                         </button>
                       </div>
@@ -508,20 +499,7 @@ export function Navbar() {
                     </>
                   )}
 
-                  {/* Language Switcher Desktop */}
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const nextLang = lang === "ar" ? "en" : "ar";
-                      await setClientLang(nextLang);
-                      setLang(nextLang);
-                      router.refresh();
-                    }}
-                    className="h-9 w-9 rounded-full bg-white/5 border border-white/10 text-xs font-bold text-white transition hover:bg-white/10 flex items-center justify-center shadow-md select-none shrink-0"
-                    title={lang === "ar" ? "Switch to English" : "تغيير للعربية"}
-                  >
-                    {lang === "ar" ? "EN" : "عربي"}
-                  </button>
+
                 </div>
               </div>
 
@@ -542,9 +520,9 @@ export function Navbar() {
                                 }
                               }}
                               className="h-9 rounded-full px-3 text-[10px] font-extrabold normal-case tracking-[0.10em] text-white/90 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white"
-                              title={t.navbar.admin}
+                              title="الإدارة"
                             >
-                              {t.navbar.admin}
+                              الإدارة
                             </button>
                           ) : null}
                           <button
@@ -554,10 +532,10 @@ export function Navbar() {
                             }}
                             disabled={signingOut}
                             className="h-9 max-w-[120px] rounded-full px-3.5 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white/85 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white disabled:opacity-60"
-                            title={t.navbar.logout}
+                            title="تسجيل خروج"
                           >
                             <span className="block min-w-0 truncate">
-                              {userLabel === "حسابي" ? t.navbar.myAccount : userLabel}
+                              {userLabel}
                             </span>
                           </button>
                         </>
@@ -569,7 +547,7 @@ export function Navbar() {
                             variant="ghost"
                             className="h-8 rounded-full px-3 text-[10px] font-extrabold normal-case tracking-[0.10em] text-center justify-center text-white/85 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white"
                           >
-                            {t.navbar.login}
+                            دخول
                           </Button>
                           <Button
                             href="/register"
@@ -577,7 +555,7 @@ export function Navbar() {
                             variant="primary"
                             className="h-8 rounded-full px-3.5 text-[10px] font-extrabold normal-case tracking-[0.10em] text-center justify-center text-white bg-gradient-to-r from-[#FF2424] via-[#FF6A00] to-[#FFB35A] shadow-[0_0_0_1px_rgba(255,179,90,0.36),0_26px_100px_-54px_rgba(255,36,36,0.98)]"
                           >
-                            {t.navbar.register}
+                            تسجيل
                           </Button>
                         </>
                       )}
@@ -585,20 +563,7 @@ export function Navbar() {
                   </div>
                 </div>
 
-                {/* Language Switcher Mobile */}
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const nextLang = lang === "ar" ? "en" : "ar";
-                    await setClientLang(nextLang);
-                    setLang(nextLang);
-                    router.refresh();
-                  }}
-                  className="h-8 w-8 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-white transition hover:bg-white/10 flex items-center justify-center shadow-md select-none shrink-0"
-                  title={lang === "ar" ? "Switch to English" : "تغيير للعربية"}
-                >
-                  {lang === "ar" ? "EN" : "عربي"}
-                </button>
+
 
                 <div className="hidden md:flex items-center gap-2.5">
                   {authReady && isAuthed ? (
