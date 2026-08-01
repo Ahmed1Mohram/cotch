@@ -92,16 +92,22 @@ export async function POST(req: Request) {
       });
     }
 
-    // ── ACTION: CLEAR SINGLE ADMIN DEVICE LOCK ──────────────────────
+    // ── ACTION: CLEAR/TRANSFER SINGLE ADMIN DEVICE LOCK ──────────────
     if (action === "clear_lock") {
-      let query = supabase.from("admin_device_locks").delete();
-      if (adminUserId) {
-        query = query.eq("admin_user_id", adminUserId);
+      if (adminUserId && deviceId) {
+        const { error } = await supabase.from("admin_device_locks").upsert(
+          { admin_user_id: adminUserId, allowed_device_id: deviceId },
+          { onConflict: "admin_user_id" }
+        );
+        if (error) {
+          // Fallback: delete lock if upsert fails
+          await supabase.from("admin_device_locks").delete().eq("admin_user_id", adminUserId);
+        }
+      } else if (adminUserId) {
+        await supabase.from("admin_device_locks").delete().eq("admin_user_id", adminUserId);
       } else {
-        query = query.neq("admin_user_id", "00000000-0000-0000-0000-000000000000");
+        await supabase.from("admin_device_locks").delete().neq("admin_user_id", "00000000-0000-0000-0000-000000000000");
       }
-      const { error } = await query;
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       return NextResponse.json({ ok: true });
     }
 

@@ -47,29 +47,37 @@ export default function AdminDeviceBlockedPage() {
     setUnlockError("");
     try {
       const supabase = createSupabaseBrowserClient();
+      const currentDeviceId = getOrCreateDeviceId();
       let userId: string | null = null;
       try {
         const { user } = await getCachedUser(supabase);
         userId = user?.id ?? null;
       } catch {}
 
-      if (userId) {
-        await supabase
-          .from("admin_device_locks")
-          .delete()
-          .eq("admin_user_id", userId);
-      } else {
-        // Fallback: clear all admin locks if user session was not found
-        await supabase
-          .from("admin_device_locks")
-          .delete()
-          .neq("admin_user_id", "00000000-0000-0000-0000-000000000000");
+      // Transfer lock to current device via server API
+      const apiRes = await fetch("/api/unlock-device", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: "11111111111",
+          action: "clear_lock",
+          adminUserId: userId,
+          deviceId: currentDeviceId,
+        }),
+      });
+
+      if (!apiRes.ok) {
+        if (userId) {
+          await supabase.from("admin_device_locks").delete().eq("admin_user_id", userId);
+        } else {
+          await supabase.from("admin_device_locks").delete().neq("admin_user_id", "00000000-0000-0000-0000-000000000000");
+        }
       }
 
       setUnlocked(true);
       setTimeout(() => {
-        router.replace(userId ? "/admin" : "/login");
-      }, 1200);
+        window.location.href = "/admin";
+      }, 1000);
     } catch {
       setUnlockError("حصل خطأ، جرب تاني.");
       setUnlocking(false);
@@ -119,34 +127,38 @@ export default function AdminDeviceBlockedPage() {
           .maybeSingle();
 
         if (lockRow?.allowed_device_id) {
-          const { data: logs } = await supabase
-            .from("device_access_logs")
-            .select("user_id")
-            .eq("device_id", lockRow.allowed_device_id)
-            .neq("user_id", user.id)
-            .order("created_at", { ascending: false })
-            .limit(5);
+          try {
+            const { data: logs, error: logsErr } = await supabase
+              .from("device_access_logs")
+              .select("user_id")
+              .eq("device_id", lockRow.allowed_device_id)
+              .neq("user_id", user.id)
+              .order("created_at", { ascending: false })
+              .limit(5);
 
-          const otherUserIds = Array.from(
-            new Set(
-              (logs ?? []).map((l: any) => l.user_id).filter(Boolean)
-            )
-          );
-
-          if (otherUserIds.length > 0) {
-            const { data: profiles } = await supabase
-              .from("user_profiles")
-              .select("full_name, phone")
-              .in("user_id", otherUserIds);
-
-            if (profiles && profiles.length > 0 && !cancelled) {
-              setLockHolders(
-                profiles.map((p: any) => ({
-                  full_name: p.full_name ?? null,
-                  phone: p.phone ?? null,
-                }))
+            if (!logsErr && logs && logs.length > 0) {
+              const otherUserIds = Array.from(
+                new Set((logs ?? []).map((l: any) => l.user_id).filter(Boolean))
               );
+
+              if (otherUserIds.length > 0) {
+                const { data: profiles } = await supabase
+                  .from("user_profiles")
+                  .select("full_name, phone")
+                  .in("user_id", otherUserIds);
+
+                if (profiles && profiles.length > 0 && !cancelled) {
+                  setLockHolders(
+                    profiles.map((p: any) => ({
+                      full_name: p.full_name ?? null,
+                      phone: p.phone ?? null,
+                    }))
+                  );
+                }
+              }
             }
+          } catch {
+            // Silently ignore if device_access_logs table does not exist
           }
         }
       } catch {
