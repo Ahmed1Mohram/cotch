@@ -221,14 +221,18 @@ export default function AdminDeviceBlockedPage() {
           لو محتاج تبدّل الجهاز، لازم تمسح القفل من قاعدة البيانات.
         </div>
 
-        {/* ── Hidden unlock trigger ── tap 3× quickly to reveal password prompt */}
+        {/* ── Visible unlock button ── */}
         <button
           type="button"
-          aria-hidden="true"
-          onClick={handleSecretTap}
-          className="mt-12 h-2.5 w-2.5 rounded-full bg-white/8 hover:bg-white/14 transition focus:outline-none select-none"
-          tabIndex={-1}
-        />
+          onClick={() => {
+            setShowUnlock(true);
+            setUnlockInput("");
+            setUnlockError("");
+          }}
+          className="mt-6 inline-flex h-9 items-center justify-center rounded-xl bg-[#FF6A00]/15 px-4 text-xs font-bold text-[#FFB35A] border border-[#FF6A00]/30 hover:bg-[#FF6A00]/25 transition"
+        >
+          🔐 فك القفل بكلمة السر
+        </button>
 
       </div>
 
