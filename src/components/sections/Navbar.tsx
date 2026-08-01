@@ -7,14 +7,11 @@ import { useRouter, usePathname } from "next/navigation";
 
 import { cn } from "@/lib/cn";
 import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import { bustSessionCache, getCachedUser, getCachedIsAdmin } from "@/lib/sessionCache";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
-
-const links = [
-  { label: "الرئيسية", href: "/", hash: "" },
-  { label: "الكورسات", href: "/", hash: "#programs" },
-  { label: "التواصل", href: "/", hash: "#contact" },
-];
+import { getClientLang, setClientLang } from "@/lib/lang";
+import { translations } from "@/lib/translations";
 
 export function Navbar() {
   const router = useRouter();
@@ -50,6 +47,19 @@ export function Navbar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userLabel, setUserLabel] = useState("حسابي");
   const [signingOut, setSigningOut] = useState(false);
+  const [lang, setLang] = useState<"ar" | "en">("ar");
+
+  useEffect(() => {
+    setLang(getClientLang());
+  }, []);
+
+  const t = translations[lang];
+
+  const links = useMemo(() => [
+    { label: t.navbar.home, href: "/", hash: "" },
+    { label: t.navbar.programs, href: "/", hash: "#programs" },
+    { label: t.navbar.contact, href: "/", hash: "#contact" },
+  ], [t]);
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, link: typeof links[0]) => {
     e.preventDefault();
@@ -82,9 +92,7 @@ export function Navbar() {
     if (!supabase) return;
     let mounted = true;
 
-    const load = async () => {
-      const res = await supabase.auth.getUser();
-      const user = res.data.user;
+    const checkUser = async (user: any) => {
       if (!mounted) return;
 
       if (!user) {
@@ -102,65 +110,39 @@ export function Navbar() {
       setIsAuthed(true);
 
       try {
-        // Use RPC function first (uses security definer, bypasses RLS)
-        let isAdminValue = false;
-        let rpcRes = await supabase.rpc("is_admin", { uid: user.id });
-        if (rpcRes.error) {
-          // If that fails, try without parameter (uses auth.uid() internally)
-          rpcRes = await supabase.rpc("is_admin");
-        }
-        isAdminValue = Boolean(!rpcRes.error && rpcRes.data);
-        
-        // Fallback: Try direct table query if RPC fails (may fail due to RLS)
-        if (!isAdminValue) {
-          try {
-            const adminRes = await supabase
-              .from("admin_users")
-              .select("user_id")
-              .eq("user_id", user.id)
-              .maybeSingle();
-            isAdminValue = Boolean(!adminRes.error && adminRes.data);
-            
-            // Log for debugging in development
-            if (process.env.NODE_ENV !== "production") {
-              console.log("Navbar admin check - RPC failed, table query result:", {
-                hasRow: Boolean(adminRes.data),
-                error: adminRes.error?.message,
-                userId: user.id,
-              });
-            }
-          } catch (err) {
-            // Table query failed
-            if (process.env.NODE_ENV !== "production") {
-              console.error("Navbar admin check - table query error:", err);
-            }
-          }
-        } else {
-          // Log for debugging in development
-          if (process.env.NODE_ENV !== "production") {
-            console.log("Navbar admin check - RPC success:", {
-              isAdmin: isAdminValue,
-              userId: user.id,
-            });
-          }
-        }
-        
+        const isAdminValue = await getCachedIsAdmin(supabase!, user.id);
         if (!mounted) return;
         setIsAdmin(isAdminValue);
-      } catch (err) {
+      } catch {
         if (!mounted) return;
         setIsAdmin(false);
-        if (process.env.NODE_ENV !== "production") {
-          console.error("Navbar admin check - general error:", err);
-        }
       }
 
       setAuthReady(true);
     };
 
-    void load();
-    const sub = supabase.auth.onAuthStateChange(() => {
-      void load();
+    void getCachedUser(supabase).then((res: any) => {
+      if (mounted) void checkUser(res.user);
+    });
+
+    const sub = supabase.auth.onAuthStateChange((event: string, session: any) => {
+      switch (event) {
+        case "SIGNED_IN":
+          if (mounted) void checkUser(session?.user ?? null);
+          break;
+
+        case "SIGNED_OUT":
+          if (mounted) {
+            setIsAuthed(false);
+            setIsAdmin(false);
+            setUserLabel("حسابي");
+          }
+          break;
+
+        default:
+          // Ignore TOKEN_REFRESHED, USER_UPDATED, INITIAL_SESSION
+          break;
+      }
     });
 
     return () => {
@@ -168,6 +150,7 @@ export function Navbar() {
       sub.data.subscription.unsubscribe();
     };
   }, [supabase]);
+
 
   useEffect(() => {
     if (supabase) return;
@@ -180,6 +163,7 @@ export function Navbar() {
   const logout = async () => {
     if (signingOut) return;
     setSigningOut(true);
+    bustSessionCache();
     try {
       await supabase?.auth.signOut();
     } catch {
@@ -359,10 +343,10 @@ export function Navbar() {
         const href = l.hash ? (isHomePage ? l.hash : l.href + l.hash) : l.href;
         return (
           <a
-            key={l.href}
+            key={l.hash || l.href}
             href={href}
             onClick={(e) => handleLinkClick(e, l)}
-            className="relative inline-flex items-center whitespace-nowrap font-heading text-[15px] font-extrabold leading-none tracking-[0.10em] text-white transition hover:text-white [text-shadow:0_2px_0_rgba(0,0,0,0.85),0_0_18px_rgba(0,0,0,0.55)] after:absolute after:left-0 after:-bottom-2 after:h-px after:w-0 after:bg-gradient-to-r after:from-[#FF6A00] after:to-[#FFB35A] after:transition-all after:duration-200 hover:after:w-full lg:text-[16px]"
+            className="relative inline-flex items-center whitespace-nowrap font-heading text-[15px] font-extrabold leading-none tracking-[0.10em] text-[#050506] dark:text-white transition hover:text-[#050506] dark:hover:text-white [text-shadow:0_2px_0_rgba(255,255,255,0.85)] dark:[text-shadow:0_2px_0_rgba(0,0,0,0.85),0_0_18px_rgba(0,0,0,0.55)] after:absolute after:left-0 after:-bottom-2 after:h-px after:w-0 after:bg-gradient-to-r after:from-[#FF6A00] after:to-[#FFB35A] after:transition-all after:duration-200 hover:after:w-full lg:text-[16px]"
           >
             {l.label}
           </a>
@@ -445,7 +429,7 @@ export function Navbar() {
                   const href = l.hash ? (isHomePage ? l.hash : l.href + l.hash) : l.href;
                   return (
                     <a
-                      key={l.href}
+                      key={l.hash || l.href}
                       href={href}
                       onClick={(e) => handleLinkClick(e, l)}
                       className="min-w-0 truncate font-heading text-[11px] sm:text-[12px] font-extrabold tracking-[0.06em] text-white/90 transition hover:text-white [text-shadow:0_2px_0_rgba(0,0,0,0.85)]"
@@ -478,7 +462,7 @@ export function Navbar() {
                               }
                             }}
                           >
-                            الإدارة
+                            {t.navbar.admin}
                           </Button>
                         </div>
                       ) : null}
@@ -490,9 +474,11 @@ export function Navbar() {
                           }}
                           disabled={signingOut}
                           className="h-9 max-w-[200px] rounded-full px-4 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white bg-black/28 shadow-none hover:bg-black/40 hover:shadow-[inset_0_0_0_1px_rgba(255,106,0,0.22)] disabled:opacity-60"
-                          title="تسجيل خروج"
+                          title={t.navbar.logout}
                         >
-                          <span className="block min-w-0 truncate">{userLabel}</span>
+                          <span className="block min-w-0 truncate">
+                            {userLabel === "حسابي" ? t.navbar.myAccount : userLabel}
+                          </span>
                         </button>
                       </div>
                     </>
@@ -505,7 +491,7 @@ export function Navbar() {
                           variant="ghost"
                           className="h-8 rounded-full px-4 text-[10px] font-extrabold normal-case tracking-[0.10em] text-center justify-center text-white bg-black/28 shadow-none hover:bg-black/40 hover:shadow-[inset_0_0_0_1px_rgba(255,106,0,0.22)]"
                         >
-                          دخول
+                          {t.navbar.login}
                         </Button>
                       </div>
                       <div className="relative group overflow-hidden rounded-full">
@@ -515,12 +501,27 @@ export function Navbar() {
                           variant="primary"
                           className="relative z-10 h-8 overflow-hidden rounded-full px-4 text-[10px] font-extrabold normal-case tracking-[0.10em] text-center justify-center"
                         >
-                          تسجيل
+                          {t.navbar.register}
                         </Button>
                         <span className="pointer-events-none absolute -inset-y-10 -left-16 w-16 rotate-12 bg-white/20 blur-md opacity-0 transition-all duration-500 group-hover:opacity-100 group-hover:translate-x-[360px]" />
                       </div>
                     </>
                   )}
+
+                  {/* Language Switcher Desktop */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const nextLang = lang === "ar" ? "en" : "ar";
+                      await setClientLang(nextLang);
+                      setLang(nextLang);
+                      router.refresh();
+                    }}
+                    className="h-9 w-9 rounded-full bg-white/5 border border-white/10 text-xs font-bold text-white transition hover:bg-white/10 flex items-center justify-center shadow-md select-none shrink-0"
+                    title={lang === "ar" ? "Switch to English" : "تغيير للعربية"}
+                  >
+                    {lang === "ar" ? "EN" : "عربي"}
+                  </button>
                 </div>
               </div>
 
@@ -541,9 +542,9 @@ export function Navbar() {
                                 }
                               }}
                               className="h-9 rounded-full px-3 text-[10px] font-extrabold normal-case tracking-[0.10em] text-white/90 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white"
-                              title="الإدارة"
+                              title={t.navbar.admin}
                             >
-                              الإدارة
+                              {t.navbar.admin}
                             </button>
                           ) : null}
                           <button
@@ -553,9 +554,11 @@ export function Navbar() {
                             }}
                             disabled={signingOut}
                             className="h-9 max-w-[120px] rounded-full px-3.5 text-[11px] font-extrabold normal-case tracking-[0.10em] text-white/85 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white disabled:opacity-60"
-                            title="تسجيل خروج"
+                            title={t.navbar.logout}
                           >
-                            <span className="block min-w-0 truncate">{userLabel}</span>
+                            <span className="block min-w-0 truncate">
+                              {userLabel === "حسابي" ? t.navbar.myAccount : userLabel}
+                            </span>
                           </button>
                         </>
                       ) : (
@@ -566,7 +569,7 @@ export function Navbar() {
                             variant="ghost"
                             className="h-8 rounded-full px-3 text-[10px] font-extrabold normal-case tracking-[0.10em] text-center justify-center text-white/85 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:bg-white/5 hover:text-white"
                           >
-                            دخول
+                            {t.navbar.login}
                           </Button>
                           <Button
                             href="/register"
@@ -574,13 +577,29 @@ export function Navbar() {
                             variant="primary"
                             className="h-8 rounded-full px-3.5 text-[10px] font-extrabold normal-case tracking-[0.10em] text-center justify-center text-white bg-gradient-to-r from-[#FF2424] via-[#FF6A00] to-[#FFB35A] shadow-[0_0_0_1px_rgba(255,179,90,0.36),0_26px_100px_-54px_rgba(255,36,36,0.98)]"
                           >
-                            تسجيل
+                            {t.navbar.register}
                           </Button>
                         </>
                       )}
                     </div>
                   </div>
                 </div>
+
+                {/* Language Switcher Mobile */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const nextLang = lang === "ar" ? "en" : "ar";
+                    await setClientLang(nextLang);
+                    setLang(nextLang);
+                    router.refresh();
+                  }}
+                  className="h-8 w-8 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-white transition hover:bg-white/10 flex items-center justify-center shadow-md select-none shrink-0"
+                  title={lang === "ar" ? "Switch to English" : "تغيير للعربية"}
+                >
+                  {lang === "ar" ? "EN" : "عربي"}
+                </button>
+
                 <div className="hidden md:flex items-center gap-2.5">
                   {authReady && isAuthed ? (
                     <>

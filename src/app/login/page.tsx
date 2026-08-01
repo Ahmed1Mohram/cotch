@@ -9,6 +9,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { phoneToEmail } from "@/lib/phoneAuth";
+import { bustSessionCache, seedSessionCache } from "@/lib/sessionCache";
+
+
 
 function EyeToggle({ open, onClick }: { open: boolean; onClick: () => void }) {
   const [blinkKey, setBlinkKey] = useState(0);
@@ -76,6 +79,7 @@ function LoginPageInner() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const phoneDigits = useMemo(() => phone.replace(/\D/g, ""), [phone]);
 
@@ -221,8 +225,19 @@ function LoginPageInner() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isLoading) return;           // منع الضغط المزدوج على الزر
     setError(null);
     setSuccess(null);
+    setIsLoading(true);
+
+    try {
+      await onSubmitInner();
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function onSubmitInner() {
 
     if (phoneDigits.length !== 11) {
       setError("اكتب رقم موبايل صحيح.");
@@ -261,8 +276,12 @@ function LoginPageInner() {
         setError("الحساب محتاج تفعيل. لو دي منصة رقم موبايل، اقفل Confirm email من إعدادات Supabase Auth.");
         return;
       }
-      if (msg.includes("invalid login credentials") || msg.includes("invalid") && msg.includes("credentials")) {
+      if (msg.includes("invalid login credentials") || (msg.includes("invalid") && msg.includes("credentials"))) {
         setError("الرقم أو كلمة السر غلط.");
+        return;
+      }
+      if (msg.includes("rate limit") || msg.includes("too many") || msg.includes("over_request_rate_limit") || (error as any)?.code === "over_request_rate_limit") {
+        setError("السيرفر محتاج استراحة قصيرة. استنى دقيقة وجرب تاني.");
         return;
       }
       setError(raw);
@@ -283,24 +302,14 @@ function LoginPageInner() {
       nextFromQuery !== "/admin-device-blocked" &&
       !nextFromQuery.startsWith("/admin-device-blocked/");
 
-    let isAdmin = false;
-    try {
-      let rpcRes = await supabase.rpc("is_admin", { uid: userId });
-      if (rpcRes.error) {
-        rpcRes = await supabase.rpc("is_admin");
-      }
-      isAdmin = Boolean(!rpcRes.error && rpcRes.data);
-    } catch {
-      isAdmin = false;
-    }
+    // Run all post-login checks in parallel — one round-trip instead of 4+
+    const [isAdminRes, deviceBanRes, userBanRes] = await Promise.all([
+      Promise.resolve(supabase.rpc("is_admin", { uid: userId })).catch(() => ({ data: false, error: null })),
+      Promise.resolve(supabase.rpc("is_device_banned")).catch(() => ({ data: false, error: null })),
+      Promise.resolve(supabase.rpc("is_user_banned", { uid: userId })).catch(() => ({ data: false, error: null })),
+    ]);
 
-    if (isAdmin) {
-      setSuccess("تم تسجيل الدخول بنجاح.");
-      const targetNext = nextFromQuery ?? "/admin";
-      router.replace(`/welcome?next=${encodeURIComponent(targetNext)}`);
-      router.refresh();
-      return;
-    }
+    const isAdmin = Boolean(!isAdminRes.error && isAdminRes.data);
 
     const insertAdminAccessRequest = async () => {
       const ins = await supabase.from("admin_access_requests").insert({
@@ -309,133 +318,94 @@ function LoginPageInner() {
         reviewed_by: null,
         reviewed_at: null,
       });
-
       if (ins.error) {
         const code = String((ins.error as any)?.code ?? "");
         const msg = String(ins.error.message ?? "");
         const msgLc = msg.toLowerCase();
         const isDup = code === "23505" || msgLc.includes("duplicate") || msgLc.includes("already exists");
         if (isDup) return;
-
-        if (process.env.NODE_ENV !== "production") {
-          console.error("admin_access_requests insert failed", ins.error);
-        }
-        try {
-          sessionStorage.setItem("fitcoach_admin_request_error", msg || "Insert failed");
-        } catch {}
+        if (process.env.NODE_ENV !== "production") console.error("admin_access_requests insert failed", ins.error);
+        try { sessionStorage.setItem("fitcoach_admin_request_error", msg || "Insert failed"); } catch {}
       }
     };
 
-    const deviceBanRes = await supabase.rpc("is_device_banned");
+    if (isAdmin) {
+      setSuccess("تم تسجيل الدخول بنجاح.");
+      const targetNext = nextFromQuery ?? "/admin";
+      window.location.href = `/welcome?next=${encodeURIComponent(targetNext)}`;
+      return;
+    }
+
     if (!deviceBanRes.error && Boolean(deviceBanRes.data)) {
       if (wantsAdmin) {
-        try {
-          await insertAdminAccessRequest();
-        } catch {}
-
-        router.replace("/admin-request");
-        router.refresh();
+        try { await insertAdminAccessRequest(); } catch {}
+        window.location.href = "/admin-request";
         return;
       }
-
-      router.replace("/blocked");
-      router.refresh();
+      window.location.href = "/blocked";
       return;
     }
 
-    const userBanRes = await supabase.rpc("is_user_banned", { uid: userId });
     if (!userBanRes.error && Boolean(userBanRes.data)) {
       if (wantsAdmin) {
-        try {
-          await insertAdminAccessRequest();
-        } catch {}
+        try { await insertAdminAccessRequest(); } catch {}
       }
-      router.replace("/blocked");
-      router.refresh();
+      window.location.href = "/blocked";
       return;
     }
 
-    try {
-      const user = data.user;
-      const meta = (user as any)?.user_metadata ?? {};
+    // All checks passed — seed the cache with the fresh session so all components
+    // (Navbar, Preloader tick, etc.) get it instantly without any extra network call.
+    seedSessionCache(data.session as any);
 
-      const age =
-        typeof meta.age_years === "number"
-          ? meta.age_years
-          : typeof meta.age_years === "string"
-            ? Number.parseInt(meta.age_years, 10)
-            : null;
+    // Run profile upsert + device tracking in parallel (non-blocking for UX)
+    const user = data.user!;
+    const meta = (user as any)?.user_metadata ?? {};
+    const age = typeof meta.age_years === "number" ? meta.age_years : typeof meta.age_years === "string" ? Number.parseInt(meta.age_years, 10) : null;
+    const height = typeof meta.height_cm === "number" ? meta.height_cm : typeof meta.height_cm === "string" ? Number.parseInt(meta.height_cm, 10) : null;
+    const weight = typeof meta.weight_kg === "number" ? meta.weight_kg : typeof meta.weight_kg === "string" ? Number.parseFloat(meta.weight_kg) : null;
+    const profilePayload: any = {
+      user_id: user.id,
+      full_name: typeof meta.full_name === "string" && meta.full_name.trim() ? meta.full_name.trim() : null,
+      phone: phoneDigits || null,
+    };
+    if (typeof age === "number" && Number.isFinite(age)) profilePayload.age_years = age;
+    if (typeof height === "number" && Number.isFinite(height)) profilePayload.height_cm = height;
+    if (typeof weight === "number" && Number.isFinite(weight)) profilePayload.weight_kg = weight;
 
-      const height =
-        typeof meta.height_cm === "number"
-          ? meta.height_cm
-          : typeof meta.height_cm === "string"
-            ? Number.parseInt(meta.height_cm, 10)
-            : null;
+    const [, trackRes] = await Promise.all([
+      Promise.resolve(supabase.from("user_profiles").upsert(profilePayload, { onConflict: "user_id" })).catch(() => null),
+      Promise.resolve(supabase.rpc("track_device")).catch(() => null),
+    ]);
 
-      const weight =
-        typeof meta.weight_kg === "number"
-          ? meta.weight_kg
-          : typeof meta.weight_kg === "string"
-            ? Number.parseFloat(meta.weight_kg)
-            : null;
-
-      if (user) {
-        const payload: any = {
-          user_id: user.id,
-          full_name: typeof meta.full_name === "string" && meta.full_name.trim() ? meta.full_name.trim() : null,
-          phone: phoneDigits || null,
-        };
-        if (typeof age === "number" && Number.isFinite(age)) payload.age_years = age;
-        if (typeof height === "number" && Number.isFinite(height)) payload.height_cm = height;
-        if (typeof weight === "number" && Number.isFinite(weight)) payload.weight_kg = weight;
-
-        await supabase.from("user_profiles").upsert(payload, { onConflict: "user_id" });
-      }
-    } catch {}
-
-    try {
-      const trackRes = await supabase.rpc("track_device");
-      if (trackRes.error) {
-        const msg = String(trackRes.error.message ?? "");
-        const msgLc = msg.toLowerCase();
-        const isMultipleDevices = msgLc.includes("multiple devices");
-        const isBanned = msgLc.includes("banned");
-
-        if (isMultipleDevices || isBanned) {
-          if (wantsAdmin) {
-            try { await insertAdminAccessRequest(); } catch {}
-            setSuccess("تم إرسال طلب دخول الأدمن للإدارة.");
-            router.replace("/admin-request");
-            router.refresh();
-            return;
-          }
-          if (isMultipleDevices) {
-            setError("الحساب مفتوح على جهاز تاني. اقفل الجهاز التاني أو استنى شوية وجرب تاني.");
-            return;
-          }
-          router.replace("/blocked");
-          router.refresh();
+    if (trackRes && (trackRes as any).error) {
+      const tMsg = String((trackRes as any).error?.message ?? "").toLowerCase();
+      if (tMsg.includes("multiple devices") || tMsg.includes("banned")) {
+        if (wantsAdmin) {
+          try { await insertAdminAccessRequest(); } catch {}
+          setSuccess("تم إرسال طلب دخول الأدمن للإدارة.");
+          window.location.href = "/admin-request";
           return;
         }
+        if (tMsg.includes("multiple devices")) {
+          setError("الحساب مفتوح على جهاز تاني. اقفل الجهاز التاني أو استنى شوية وجرب تاني.");
+          return;
+        }
+        window.location.href = "/blocked";
+        return;
       }
-    } catch { /* ignore infrastructure errors */ }
+    }
 
-    if (wantsAdmin && !isAdmin) {
-      try {
-        await insertAdminAccessRequest();
-      } catch {}
-
+    if (wantsAdmin) {
+      try { await insertAdminAccessRequest(); } catch {}
       setSuccess("تم إرسال طلب دخول الأدمن للإدارة.");
-      router.replace("/admin-request");
-      router.refresh();
+      window.location.href = "/admin-request";
       return;
     }
 
     setSuccess("تم تسجيل الدخول بنجاح.");
     const targetNext = nextFromQuery ?? (isAdmin ? "/admin" : "/");
-    router.replace(`/welcome?next=${encodeURIComponent(targetNext)}`);
-    router.refresh();
+    window.location.href = `/welcome?next=${encodeURIComponent(targetNext)}`;
   }
 
   const inputCls =

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import { getCachedSession, getCachedIsAdmin } from "@/lib/sessionCache";
 
 // If track_device RPC fails once (e.g. 400), stop calling it to avoid console floods
 let trackDeviceSupported = true;
@@ -94,77 +95,9 @@ export function Preloader({ className }: PreloaderProps) {
     setVisible(true);
   }, [pathname, searchParams]);
 
-  useEffect(() => {
-    if (!pathname) return;
-
-    if (pathname.startsWith("/blocked")) return;
-
-    let cancelled = false;
-    const run = async () => {
-      try {
-        const supabase = createSupabaseBrowserClient();
-
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user?.id) return;
-
-        // Check if user is admin first - admins should bypass ban checks
-        // Use RPC function directly as it uses security definer and bypasses RLS
-        let isAdmin = false;
-        try {
-          // Try RPC function first (uses security definer, bypasses RLS)
-          let rpcRes = await supabase.rpc("is_admin", { uid: user.id });
-          if (rpcRes.error) {
-            // If that fails, try without parameter (uses auth.uid() internally)
-            rpcRes = await supabase.rpc("is_admin");
-          }
-          isAdmin = Boolean(!rpcRes.error && rpcRes.data);
-          
-          // Fallback: Try direct table query if RPC fails (may fail due to RLS)
-          if (!isAdmin) {
-            try {
-              const adminRes = await supabase
-                .from("admin_users")
-                .select("user_id")
-                .eq("user_id", user.id)
-                .maybeSingle();
-              isAdmin = Boolean(!adminRes.error && adminRes.data);
-            } catch {
-              // Table query failed, keep isAdmin as false
-            }
-          }
-        } catch (err) {
-          // If admin check fails, assume not admin
-          isAdmin = false;
-        }
-
-        // Skip ban checks for admins
-        if (isAdmin) return;
-
-        const [deviceBanRes, userBanRes] = await Promise.all([
-          supabase.rpc("is_device_banned"),
-          supabase.rpc("is_user_banned", { uid: user.id }),
-        ]);
-
-        const isDeviceBanned = !deviceBanRes.error && Boolean(deviceBanRes.data);
-        const isUserBanned = !userBanRes.error && Boolean(userBanRes.data);
-
-        if (!isDeviceBanned && !isUserBanned) return;
-
-        if (cancelled) return;
-        router.replace("/blocked");
-        router.refresh();
-      } catch {}
-    };
-
-    void run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [pathname, router]);
+  // Ban checks run in the 5-minute periodic tick below.
+  // We deliberately do NOT run a ban check on every pathname change to avoid
+  // flooding Supabase Auth with parallel RPCs immediately after login/register.
 
   useEffect(() => {
     let cancelled = false;
@@ -176,50 +109,25 @@ export function Preloader({ className }: PreloaderProps) {
         const currentPath = String(window.location?.pathname ?? "");
         if (currentPath.startsWith("/blocked")) return;
 
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        // Use shared cache — avoids multiple simultaneous token refresh calls
+        const { session } = await getCachedSession(supabase);
+        const user = session?.user;
 
-        if (!user?.id) return;
+        if (!session?.access_token || !user?.id) return;
 
-        // Check if user is admin first - admins should bypass ban checks
+        // Admins skip periodic ban checks
         let isAdmin = false;
         try {
-          const adminRes = await supabase
-            .from("admin_users")
-            .select("user_id")
-            .eq("user_id", user.id)
-            .maybeSingle();
-          
-          isAdmin = Boolean(!adminRes.error && adminRes.data);
-          
-          // If not found in admin_users, try RPC function as fallback
-          if (!isAdmin) {
-            try {
-              // Try with parameter first
-              let rpcRes = await supabase.rpc("is_admin", { uid: user.id });
-              if (rpcRes.error) {
-                // If that fails, try without parameter (uses auth.uid() internally)
-                rpcRes = await supabase.rpc("is_admin");
-              }
-              isAdmin = Boolean(!rpcRes.error && rpcRes.data);
-            } catch {
-              // RPC failed, keep isAdmin as false
-            }
-          }
-        } catch (err) {
-          // If admin check fails, assume not admin
-          isAdmin = false;
-        }
+          isAdmin = await getCachedIsAdmin(supabase, user.id);
+        } catch { isAdmin = false; }
 
-        // Skip ban checks for admins
         if (isAdmin) return;
 
         const [deviceBanRes, userBanRes, trackRes] = await Promise.all([
-          supabase.rpc("is_device_banned"),
-          supabase.rpc("is_user_banned", { uid: user.id }),
+          Promise.resolve(supabase.rpc("is_device_banned")),
+          Promise.resolve(supabase.rpc("is_user_banned", { uid: user.id })),
           trackDeviceSupported
-            ? supabase.rpc("track_device").then((r) => { if (r.error) trackDeviceSupported = false; return r; })
+            ? Promise.resolve(supabase.rpc("track_device")).then((r: any) => { if (r.error) trackDeviceSupported = false; return r; })
             : Promise.resolve({ data: null, error: null }),
         ]);
 
@@ -247,15 +155,19 @@ export function Preloader({ className }: PreloaderProps) {
       } catch {}
     };
 
+    // 5 minutes — sufficient for ban enforcement; keeps DB load low.
+    // The first-mount useEffect above handles the immediate check on page load.
     const interval = setInterval(() => {
       void tick();
-    }, 45000);
+    }, 300_000);
 
-    void tick();
+    // Delay first periodic tick by 10 s so login/register RPCs settle first
+    const firstTickTimer = setTimeout(() => void tick(), 10_000);
 
     return () => {
       cancelled = true;
       clearInterval(interval);
+      clearTimeout(firstTickTimer);
     };
   }, [router]);
 

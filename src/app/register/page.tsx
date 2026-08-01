@@ -9,6 +9,9 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { phoneToEmail } from "@/lib/phoneAuth";
+import { seedSessionCache } from "@/lib/sessionCache";
+
+
 
 function EyeToggle({ open, onClick }: { open: boolean; onClick: () => void }) {
   const [blinkKey, setBlinkKey] = useState(0);
@@ -73,6 +76,7 @@ export default function RegisterPage() {
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     fetch("/register-teaser.mp4", { method: "HEAD" })
@@ -189,10 +193,20 @@ export default function RegisterPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isLoading) return;           // منع الضغط المزدوج على الزر
     setSubmitAttempted(true);
     setError(null);
     setSuccess(null);
+    setIsLoading(true);
 
+    try {
+      await onSubmitInner();
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function onSubmitInner() {
     if (!isFullNameValid) {
       return;
     }
@@ -256,8 +270,8 @@ export default function RegisterPage() {
         setError("التسجيل محتاج Captcha (hCaptcha) ومش متفعّل عندنا في الواجهة. اقفل Captcha من Supabase Auth Settings أو ضيف Captcha token.");
         return;
       }
-      if (msg.includes("rate limit") || msg.includes("too many")) {
-        setError("في محاولات كتير بسرعة. استنى شوية وجرب تاني.");
+      if (msg.includes("rate limit") || msg.includes("too many") || msg.includes("over_request_rate_limit")) {
+        setError("السيرفر محتاج استراحة قصيرة. استنى دقيقة وجرب تاني.");
         return;
       }
       if (msg.includes("password") && (msg.includes("weak") || msg.includes("strength") || msg.includes("should") || msg.includes("least"))) {
@@ -279,52 +293,53 @@ export default function RegisterPage() {
     }
 
     if (data.session && data.user) {
+      // Seed session cache with fresh session — prevents extra getSession() calls on the next page
+      seedSessionCache(data.session as any);
+
       const userId = String(data.user.id);
 
-      const userBanRes = await supabase.rpc("is_user_banned", { uid: userId });
+      // Run all post-signup checks in parallel
+      const [userBanRes, trackRes] = await Promise.all([
+        Promise.resolve(supabase.rpc("is_user_banned", { uid: userId })).catch(() => ({ data: false, error: null })),
+        Promise.resolve(supabase.rpc("track_device")).catch(() => ({ data: null, error: null })),
+      ]);
+
       if (!userBanRes.error && Boolean(userBanRes.data)) {
         await supabase.auth.signOut();
         setError("هذا الحساب محظور.");
         return;
       }
 
-      try {
-        const trackRes = await supabase.rpc("track_device");
-        if (trackRes.error) {
-          const msg = String(trackRes.error.message ?? "");
-          const msgLc = msg.toLowerCase();
-          if (msgLc.includes("multiple devices") || msgLc.includes("banned")) {
-            await supabase.auth.signOut();
-            setError(msgLc.includes("multiple devices") ? "تم حظر الحساب لأن الحساب اتفتح على جهازين في نفس الوقت." : "هذا الحساب أو الجهاز محظور.");
-            return;
-          }
+      if (trackRes.error) {
+        const tMsg = String(trackRes.error.message ?? "").toLowerCase();
+        if (tMsg.includes("multiple devices") || tMsg.includes("banned")) {
+          await supabase.auth.signOut();
+          setError(tMsg.includes("multiple devices") ? "تم حظر الحساب لأن الحساب اتفتح على جهازين في نفس الوقت." : "هذا الحساب أو الجهاز محظور.");
+          return;
         }
-      } catch { /* ignore infrastructure errors */ }
-
-      try {
-        await supabase.from("user_profiles").upsert(
-          {
-            user_id: data.user.id,
-            full_name: fullName.trim() || null,
-            phone: phoneDigits || null,
-          },
-          { onConflict: "user_id" },
-        );
-      } catch {
-        // ignore
       }
+
+      // Profile upsert (fire-and-forget, don't block navigation)
+      supabase.from("user_profiles").upsert(
+        { user_id: data.user.id, full_name: fullName.trim() || null, phone: phoneDigits || null },
+        { onConflict: "user_id" },
+      ).catch(() => {});
+
+      setSuccess("تم إنشاء الحساب بنجاح! جاري تحويلك...");
+      setTimeout(() => {
+        router.replace("/welcome");
+        router.refresh();
+      }, 800);
+      return;
     }
 
+    // If signUp did not return a session (e.g. email confirmation required)
     try {
       sessionStorage.setItem(
         "fitcoach_post_register_login",
         JSON.stringify({ phone: phoneDigits, password: password }),
       );
     } catch {}
-
-    if (data.session) {
-      await supabase.auth.signOut();
-    }
 
     setSuccess("تم إنشاء الحساب بنجاح. جاري تحويلك لتسجيل الدخول...");
     setTimeout(() => {
