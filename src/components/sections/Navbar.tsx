@@ -482,7 +482,7 @@ export function Navbar() {
                           variant="ghost"
                           className="h-8 rounded-full px-4 text-[10px] font-extrabold normal-case tracking-[0.10em] text-center justify-center text-white bg-black/28 shadow-none hover:bg-black/40 hover:shadow-[inset_0_0_0_1px_rgba(255,106,0,0.22)]"
                         >
-                          {t.navbar.login}
+                          دخول
                         </Button>
                       </div>
                       <div className="relative group overflow-hidden rounded-full">
@@ -492,7 +492,7 @@ export function Navbar() {
                           variant="primary"
                           className="relative z-10 h-8 overflow-hidden rounded-full px-4 text-[10px] font-extrabold normal-case tracking-[0.10em] text-center justify-center"
                         >
-                          {t.navbar.register}
+                          تسجيل
                         </Button>
                         <span className="pointer-events-none absolute -inset-y-10 -left-16 w-16 rotate-12 bg-white/20 blur-md opacity-0 transition-all duration-500 group-hover:opacity-100 group-hover:translate-x-[360px]" />
                       </div>
