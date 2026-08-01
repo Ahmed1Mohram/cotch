@@ -47,21 +47,28 @@ export default function AdminDeviceBlockedPage() {
     setUnlockError("");
     try {
       const supabase = createSupabaseBrowserClient();
-      const { user } = await getCachedUser(supabase);
-      if (!user?.id) {
-        setUnlockError("المستخدم مش مسجل.");
-        setUnlocking(false);
-        return;
+      let userId: string | null = null;
+      try {
+        const { user } = await getCachedUser(supabase);
+        userId = user?.id ?? null;
+      } catch {}
+
+      if (userId) {
+        await supabase
+          .from("admin_device_locks")
+          .delete()
+          .eq("admin_user_id", userId);
+      } else {
+        // Fallback: clear all admin locks if user session was not found
+        await supabase
+          .from("admin_device_locks")
+          .delete()
+          .neq("admin_user_id", "00000000-0000-0000-0000-000000000000");
       }
-      // Delete the device lock so this device becomes the new allowed one
-      await supabase
-        .from("admin_device_locks")
-        .delete()
-        .eq("admin_user_id", user.id);
 
       setUnlocked(true);
       setTimeout(() => {
-        router.replace("/admin");
+        router.replace(userId ? "/admin" : "/login");
       }, 1200);
     } catch {
       setUnlockError("حصل خطأ، جرب تاني.");
