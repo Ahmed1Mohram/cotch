@@ -320,10 +320,10 @@ export default function RegisterPage() {
       }
 
       // Profile upsert (fire-and-forget, don't block navigation)
-      supabase.from("user_profiles").upsert(
+      Promise.resolve(supabase.from("user_profiles").upsert(
         { user_id: data.user.id, full_name: fullName.trim() || null, phone: phoneDigits || null },
         { onConflict: "user_id" },
-      ).catch(() => {});
+      )).catch(() => {});
 
       setSuccess("تم إنشاء الحساب بنجاح! جاري تحويلك...");
       setTimeout(() => {
