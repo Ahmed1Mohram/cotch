@@ -24,19 +24,18 @@ export default function AdminDeviceBlockedPage() {
   const tapCountRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Tap the hidden dot 3 times quickly to show the password prompt
+  // Tap the button EXACTLY 3 times within 1.2s to show the password prompt
   const handleSecretTap = () => {
     tapCountRef.current += 1;
     if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
     tapTimerRef.current = setTimeout(() => {
+      if (tapCountRef.current === 3) {
+        setShowUnlock(true);
+        setUnlockInput("");
+        setUnlockError("");
+      }
       tapCountRef.current = 0;
-    }, 2000);
-    if (tapCountRef.current >= 3) {
-      tapCountRef.current = 0;
-      setShowUnlock(true);
-      setUnlockInput("");
-      setUnlockError("");
-    }
+    }, 1200);
   };
 
   const handleUnlock = async () => {
@@ -221,17 +220,13 @@ export default function AdminDeviceBlockedPage() {
           لو محتاج تبدّل الجهاز، لازم تمسح القفل من قاعدة البيانات.
         </div>
 
-        {/* ── Visible unlock button ── */}
+        {/* ── Subtle 3-click unlock button ── */}
         <button
           type="button"
-          onClick={() => {
-            setShowUnlock(true);
-            setUnlockInput("");
-            setUnlockError("");
-          }}
-          className="mt-6 inline-flex h-9 items-center justify-center rounded-xl bg-[#FF6A00]/15 px-4 text-xs font-bold text-[#FFB35A] border border-[#FF6A00]/30 hover:bg-[#FF6A00]/25 transition"
+          onClick={handleSecretTap}
+          className="mt-8 inline-flex items-center justify-center rounded-lg bg-white/[0.03] px-3.5 py-1 text-[11px] font-medium text-white/20 border border-white/[0.05] hover:text-white/40 transition select-none"
         >
-          🔐 فك القفل بكلمة السر
+          فك
         </button>
 
       </div>
