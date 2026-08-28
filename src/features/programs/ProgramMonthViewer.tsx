@@ -241,7 +241,7 @@ export function ProgramMonthViewer({
               <div className="text-right font-heading text-xs tracking-[0.22em] text-white/70">المشغل</div>
               <div className="mt-4">
                 {isLocked && !canPlayPreview ? (
-                  <div className="grid aspect-video min-h-[240px] sm:h-[420px] place-items-center rounded-3xl bg-black px-6 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]" dir="rtl">
+                  <div className="grid h-[340px] sm:h-[440px] min-h-[340px] place-items-center rounded-3xl bg-black px-6 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]" dir="rtl">
                     <div className="w-full max-w-md text-right">
                       <div className="text-right font-heading text-lg tracking-[0.10em] text-white">الفيديو مقفول</div>
                       <div className="mt-2 text-right text-sm text-white/70">
@@ -260,7 +260,7 @@ export function ProgramMonthViewer({
                   </div>
                 ) : activeVideo?.video_url ? (
                   !canPlay ? (
-                    <div className="grid aspect-video min-h-[240px] sm:h-[420px] place-items-center rounded-3xl bg-black text-white/60 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
+                    <div className="grid h-[340px] sm:h-[440px] min-h-[340px] place-items-center rounded-3xl bg-black text-white/60 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
                       رابط الفيديو غير صحيح
                     </div>
                   ) : (
@@ -268,11 +268,11 @@ export function ProgramMonthViewer({
                       videoUrl={activeVideo.video_url}
                       title={activeVideo.title}
                       watermark={watermark && (!isLocked || canPlayPreview) ? watermark : null}
-                      className="aspect-video min-h-[240px] sm:h-[420px] w-full"
+                      className="h-[340px] sm:h-[440px] min-h-[340px] w-full"
                     />
                   )
                 ) : (
-                  <div className="relative aspect-video min-h-[240px] sm:h-[420px] w-full overflow-hidden rounded-3xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
+                  <div className="relative h-[340px] sm:h-[440px] min-h-[340px] w-full overflow-hidden rounded-3xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
                     <img
                       src="/خلفيه%20ملعب.jpeg"
                       alt="background"

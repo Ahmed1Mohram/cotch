@@ -102,7 +102,7 @@ export function UniversalVideoPlayer({
   videoUrl,
   title,
   watermark,
-  className = "aspect-video min-h-[260px] sm:h-[420px] w-full",
+  className = "h-[340px] sm:h-[440px] w-full min-h-[340px]",
   showLogo = true,
 }: {
   videoUrl: string | null | undefined;
@@ -112,8 +112,7 @@ export function UniversalVideoPlayer({
   showLogo?: boolean;
 }) {
   const parsed = useMemo(() => parseVideoUrl(videoUrl), [videoUrl]);
-  // Default to true so mobile browsers use native HTML5 video player instead of Drive iframe broken controls overlay
-  const [useDirectStream, setUseDirectStream] = useState(true);
+  const [useDirectStream, setUseDirectStream] = useState(false);
 
   if (parsed.type === "invalid" || !videoUrl) {
     return (
@@ -155,10 +154,8 @@ export function UniversalVideoPlayer({
               className="h-full w-full border-0"
               src={parsed.embedUrl}
               title={currentTitle}
-              allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-              referrerPolicy="strict-origin-when-cross-origin"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
-              sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
             />
             {/* Transparent overlay prevents right-click inspect on the iframe */}
             <div
@@ -193,7 +190,7 @@ export function UniversalVideoPlayer({
             onClick={() => setUseDirectStream(!useDirectStream)}
             className="rounded-xl bg-white/10 px-3 py-1.5 font-medium text-white transition hover:bg-white/20 border border-white/15"
           >
-            {useDirectStream ? "التغشيل عبر مشغل درايف البديل 🔄" : "تشغيل بمشغل مباشر ⚡"}
+            {useDirectStream ? "التشغيل عبر مشغل درايف البديل 🔄" : "تجربة مشغل مباشر ⚡"}
           </button>
         </div>
       ) : null}

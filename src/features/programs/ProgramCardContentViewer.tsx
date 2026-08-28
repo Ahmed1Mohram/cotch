@@ -634,7 +634,7 @@ export function ProgramCardContentViewer({
 
                         if (!isMonthAccessible && !canPlayPreview) {
                           return (
-                            <div className="grid aspect-video min-h-[240px] sm:h-[420px] place-items-center bg-black px-6">
+                            <div className="grid h-[340px] sm:h-[440px] min-h-[340px] place-items-center bg-black px-6">
                               <div className="w-full max-w-md" dir="rtl">
                                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-[#FFB35A] shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
                                   <LockIcon className="h-7 w-7" />
@@ -673,7 +673,7 @@ export function ProgramCardContentViewer({
 
                           if (!dayHasPlayableVideo) {
                             return (
-                              <div className="relative aspect-video min-h-[240px] sm:h-[420px] w-full" dir="rtl">
+                              <div className="relative h-[340px] sm:h-[440px] min-h-[340px] w-full" dir="rtl">
                                 <img
                                   src="/خلفيه%20ملعب.jpeg"
                                   alt="background"
@@ -690,7 +690,7 @@ export function ProgramCardContentViewer({
 
                         if (activeDay && activeVideo?.video_url) {
                           if (!canPlay) {
-                            return <div className="grid aspect-video min-h-[240px] sm:h-[420px] place-items-center text-white/60">رابط الفيديو غير صحيح</div>;
+                            return <div className="grid h-[340px] sm:h-[440px] min-h-[340px] place-items-center text-white/60">رابط الفيديو غير صحيح</div>;
                           }
 
                           return (
@@ -698,13 +698,13 @@ export function ProgramCardContentViewer({
                               videoUrl={activeVideo.video_url}
                               title={activeVideo.title}
                               watermark={watermark && (isMonthAccessible || activeVideo?.is_free_preview) ? watermark : null}
-                              className="aspect-video min-h-[240px] sm:h-[420px] w-full"
+                              className="h-[340px] sm:h-[440px] min-h-[340px] w-full"
                             />
                           );
                         }
 
                         return (
-                          <div className="relative aspect-video min-h-[240px] sm:h-[420px] w-full" dir="rtl">
+                          <div className="relative h-[340px] sm:h-[440px] min-h-[340px] w-full" dir="rtl">
                             <img
                               src="/خلفيه%20ملعب.jpeg"
                               alt="background"
