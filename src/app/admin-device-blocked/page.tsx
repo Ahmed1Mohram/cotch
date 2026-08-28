@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { getCachedUser } from "@/lib/sessionCache";
+import { getOrCreateDeviceId } from "@/lib/deviceId";
 
 const SECRET_PASSWORD = "010052";
 

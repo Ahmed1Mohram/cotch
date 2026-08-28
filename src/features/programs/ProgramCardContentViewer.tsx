@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ChatWidget } from "@/features/chat/ChatWidget";
-import { WatermarkOverlay } from "@/features/video/WatermarkOverlay";
 import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import { getCachedSession, getCachedUser } from "@/lib/sessionCache";
+
+import { UniversalVideoPlayer, parseVideoUrl } from "@/features/video/UniversalVideoPlayer";
 
 type Month = {
   id: string;
@@ -198,15 +200,17 @@ export function ProgramCardContentViewer({
     let mounted = true;
 
     const run = async () => {
-      const sessionRes = await supabase.auth.getSession();
+      const { session } = await getCachedSession(supabase);
       if (!mounted) return;
-      setIsAuthed(Boolean(sessionRes.data.session));
+      setIsAuthed(Boolean(session));
     };
 
     void run();
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthed(Boolean(session));
+    const { data } = supabase.auth.onAuthStateChange((event: string, session: any) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
+        if (mounted) setIsAuthed(Boolean(session));
+      }
     });
 
     return () => {
@@ -215,17 +219,18 @@ export function ProgramCardContentViewer({
     };
   }, [supabase]);
 
+
   useEffect(() => {
     let mounted = true;
 
     const run = async () => {
       try {
-        const { data: userRes } = await supabase.auth.getUser();
-        const user = userRes.user;
+        const { user } = await getCachedUser(supabase);
         if (!user) {
           if (mounted) setWatermark(null);
           return;
         }
+
 
         const profRes = await supabase
           .from("user_profiles")
@@ -629,7 +634,7 @@ export function ProgramCardContentViewer({
 
                         if (!isMonthAccessible && !canPlayPreview) {
                           return (
-                            <div className="grid h-[420px] place-items-center bg-black px-6">
+                            <div className="grid aspect-video min-h-[240px] sm:h-[420px] place-items-center bg-black px-6">
                               <div className="w-full max-w-md" dir="rtl">
                                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-[#FFB35A] shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
                                   <LockIcon className="h-7 w-7" />
@@ -668,7 +673,7 @@ export function ProgramCardContentViewer({
 
                           if (!dayHasPlayableVideo) {
                             return (
-                              <div className="relative h-[420px] w-full" dir="rtl">
+                              <div className="relative aspect-video min-h-[240px] sm:h-[420px] w-full" dir="rtl">
                                 <img
                                   src="/خلفيه%20ملعب.jpeg"
                                   alt="background"
@@ -685,33 +690,21 @@ export function ProgramCardContentViewer({
 
                         if (activeDay && activeVideo?.video_url) {
                           if (!canPlay) {
-                            return <div className="grid h-[420px] place-items-center text-white/60">رابط الفيديو غير صحيح</div>;
-                          }
-
-                          if (isProbablyMp4(activeVideoUrl)) {
-                            return (
-                              <video
-                                controls
-                                playsInline
-                                className="h-[420px] w-full bg-black object-contain"
-                                src={activeVideoUrl}
-                              />
-                            );
+                            return <div className="grid aspect-video min-h-[240px] sm:h-[420px] place-items-center text-white/60">رابط الفيديو غير صحيح</div>;
                           }
 
                           return (
-                            <iframe
-                              className="h-[420px] w-full"
-                              src={activeVideoUrl}
-                              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                              allowFullScreen
-                              title={activeVideo.title ?? "video"}
+                            <UniversalVideoPlayer
+                              videoUrl={activeVideo.video_url}
+                              title={activeVideo.title}
+                              watermark={watermark && (isMonthAccessible || activeVideo?.is_free_preview) ? watermark : null}
+                              className="aspect-video min-h-[240px] sm:h-[420px] w-full"
                             />
                           );
                         }
 
                         return (
-                          <div className="relative h-[420px] w-full" dir="rtl">
+                          <div className="relative aspect-video min-h-[240px] sm:h-[420px] w-full" dir="rtl">
                             <img
                               src="/خلفيه%20ملعب.jpeg"
                               alt="background"
@@ -724,18 +717,6 @@ export function ProgramCardContentViewer({
                           </div>
                         );
                       })()}
-
-                      {activeDay && activeVideo?.video_url && canPlay && (isMonthAccessible || activeVideo?.is_free_preview) ? (
-                        <div className="pointer-events-none absolute right-2 top-2" dir="rtl">
-                          <div className="rounded-2xl bg-black/55 px-3 py-2 backdrop-blur-sm shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
-                            <img src="/s.png" alt="logo" className="h-9 w-auto opacity-90" />
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {activeDay && activeVideo?.video_url && canPlay && watermark && (isMonthAccessible || activeVideo?.is_free_preview) ? (
-                        <WatermarkOverlay name={watermark.name} phone={watermark.phone} />
-                      ) : null}
                     </div>
 
                     {activeVideo?.details?.trim() ? (

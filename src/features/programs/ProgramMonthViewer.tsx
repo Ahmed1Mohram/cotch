@@ -6,6 +6,9 @@ import { useEffect, useMemo, useState } from "react";
 import { RedeemMonthCodeInline } from "@/features/activation/RedeemMonthCodeInline";
 import { WatermarkOverlay } from "@/features/video/WatermarkOverlay";
 import { createSupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import { getCachedUser } from "@/lib/sessionCache";
+
+import { UniversalVideoPlayer, parseVideoUrl } from "@/features/video/UniversalVideoPlayer";
 
 type Video = {
   id: string;
@@ -23,50 +26,6 @@ type Day = {
   day_number: number | null;
   videos: Video[];
 };
-
-function isProbablyMp4(url: string) {
-  const u = url.toLowerCase();
-  return u.includes(".mp4");
-}
-
-function isHttpUrl(url: string) {
-  return /^https?:\/\//i.test(url.trim());
-}
-
-function normalizeVideoUrl(rawUrl: string) {
-  let url = rawUrl.trim();
-  if (!url) return url;
-
-  const looksLikeUrl = /^https?:\/\//i.test(url);
-
-  if (/^drive\.google\.com/i.test(url) || /^www\./i.test(url)) {
-    url = `https://${url}`;
-  }
-
-  if (/drive\.google\.com/i.test(url)) {
-    const m = url.match(/\/file\/d\/([^/]+)/i);
-    if (m?.[1]) {
-      return `https://drive.google.com/file/d/${m[1]}/preview`;
-    }
-    return url.replace(/\/view(?:\?.*)?$/i, "/preview");
-  }
-
-  const youtubeMatch = url.match(
-    /(?:youtube\.com\/watch\?v=|youtube\.com\/shorts\/|youtu\.be\/)([A-Za-z0-9_-]{6,})/i,
-  );
-  if (youtubeMatch?.[1]) {
-    return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
-  }
-
-  if (!looksLikeUrl) {
-    const idOnly = url.match(/^([A-Za-z0-9_-]{15,})(?:[/?].*)?$/);
-    if (idOnly?.[1]) {
-      return `https://drive.google.com/file/d/${idOnly[1]}/preview`;
-    }
-  }
-
-  return url;
-}
 
 export function ProgramMonthViewer({
   courseTitle,
@@ -119,8 +78,8 @@ export function ProgramMonthViewer({
     return activeDay.videos.find((v) => v.id === activeVideoId) ?? activeDay.videos[0] ?? null;
   }, [activeDay, activeVideoId]);
 
-  const activeVideoUrl = activeVideo?.video_url ? normalizeVideoUrl(activeVideo.video_url) : "";
-  const canPlay = Boolean(activeVideoUrl && isHttpUrl(activeVideoUrl));
+  const parsedActiveVideo = useMemo(() => parseVideoUrl(activeVideo?.video_url), [activeVideo?.video_url]);
+  const canPlay = parsedActiveVideo.type !== "invalid";
   const canPlayPreview = Boolean(isLocked && monthNumber !== 1 && activeVideo?.video_url && activeVideo.is_free_preview);
 
   useEffect(() => {
@@ -128,12 +87,12 @@ export function ProgramMonthViewer({
 
     const run = async () => {
       try {
-        const { data: userRes } = await supabase.auth.getUser();
-        const user = userRes.user;
+        const { user } = await getCachedUser(supabase);
         if (!user) {
           if (mounted) setWatermark(null);
           return;
         }
+
 
         const profRes = await supabase
           .from("user_profiles")
@@ -280,9 +239,9 @@ export function ProgramMonthViewer({
 
             <div>
               <div className="text-right font-heading text-xs tracking-[0.22em] text-white/70">المشغل</div>
-              <div className="relative mt-4 overflow-hidden rounded-3xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
+              <div className="mt-4">
                 {isLocked && !canPlayPreview ? (
-                  <div className="grid h-[420px] place-items-center bg-black px-6" dir="rtl">
+                  <div className="grid aspect-video min-h-[240px] sm:h-[420px] place-items-center rounded-3xl bg-black px-6 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]" dir="rtl">
                     <div className="w-full max-w-md text-right">
                       <div className="text-right font-heading text-lg tracking-[0.10em] text-white">الفيديو مقفول</div>
                       <div className="mt-2 text-right text-sm text-white/70">
@@ -301,25 +260,19 @@ export function ProgramMonthViewer({
                   </div>
                 ) : activeVideo?.video_url ? (
                   !canPlay ? (
-                    <div className="grid h-[420px] place-items-center text-white/60">رابط الفيديو غير صحيح</div>
-                  ) : isProbablyMp4(activeVideoUrl) ? (
-                    <video
-                      controls
-                      playsInline
-                      className="h-[420px] w-full bg-black object-contain"
-                      src={activeVideoUrl}
-                    />
+                    <div className="grid aspect-video min-h-[240px] sm:h-[420px] place-items-center rounded-3xl bg-black text-white/60 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
+                      رابط الفيديو غير صحيح
+                    </div>
                   ) : (
-                    <iframe
-                      className="h-[420px] w-full"
-                      src={activeVideoUrl}
-                      allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                      allowFullScreen
-                      title={activeVideo.title ?? "video"}
+                    <UniversalVideoPlayer
+                      videoUrl={activeVideo.video_url}
+                      title={activeVideo.title}
+                      watermark={watermark && (!isLocked || canPlayPreview) ? watermark : null}
+                      className="aspect-video min-h-[240px] sm:h-[420px] w-full"
                     />
                   )
                 ) : (
-                  <div className="relative h-[420px] w-full">
+                  <div className="relative aspect-video min-h-[240px] sm:h-[420px] w-full overflow-hidden rounded-3xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
                     <img
                       src="/خلفيه%20ملعب.jpeg"
                       alt="background"
@@ -331,18 +284,6 @@ export function ProgramMonthViewer({
                     </div>
                   </div>
                 )}
-
-                {activeVideo?.video_url && canPlay && watermark && (!isLocked || canPlayPreview) ? (
-                  <WatermarkOverlay name={watermark.name} phone={watermark.phone} />
-                ) : null}
-
-                {activeVideo?.video_url && canPlay ? (
-                  <div className="pointer-events-none absolute right-2 top-2" dir="rtl">
-                    <div className="rounded-2xl bg-black/55 px-3 py-2 backdrop-blur-sm shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
-                      <img src="/s.png" alt="logo" className="h-9 w-auto opacity-90" />
-                    </div>
-                  </div>
-                ) : null}
               </div>
 
               {activeVideo?.details?.trim() ? (

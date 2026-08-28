@@ -102,7 +102,7 @@ export function UniversalVideoPlayer({
   videoUrl,
   title,
   watermark,
-  className = "h-[420px] w-full",
+  className = "aspect-video min-h-[260px] sm:h-[420px] w-full",
   showLogo = true,
 }: {
   videoUrl: string | null | undefined;
@@ -112,7 +112,8 @@ export function UniversalVideoPlayer({
   showLogo?: boolean;
 }) {
   const parsed = useMemo(() => parseVideoUrl(videoUrl), [videoUrl]);
-  const [useDirectStream, setUseDirectStream] = useState(false);
+  // Default to true so mobile browsers use native HTML5 video player instead of Drive iframe broken controls overlay
+  const [useDirectStream, setUseDirectStream] = useState(true);
 
   if (parsed.type === "invalid" || !videoUrl) {
     return (
@@ -134,6 +135,7 @@ export function UniversalVideoPlayer({
           <video
             controls
             playsInline
+            preload="metadata"
             controlsList="nodownload"
             disablePictureInPicture
             key={useDirectStream ? "direct" : "normal"}
@@ -183,7 +185,7 @@ export function UniversalVideoPlayer({
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 bg-[#121212] px-4 py-2.5 text-xs text-white/70" dir="rtl">
           <div className="flex items-center gap-2">
             <span className="inline-block h-2 w-2 rounded-full bg-[#FF8A00]" />
-            <span>في حالة عدم تشغيل الفيديو:</span>
+            <span>مشكلة في التشغيل؟</span>
           </div>
 
           <button
@@ -191,7 +193,7 @@ export function UniversalVideoPlayer({
             onClick={() => setUseDirectStream(!useDirectStream)}
             className="rounded-xl bg-white/10 px-3 py-1.5 font-medium text-white transition hover:bg-white/20 border border-white/15"
           >
-            {useDirectStream ? "العودة لمشغل درايف" : "تشغيل بمشغل مباشر ⚡"}
+            {useDirectStream ? "التغشيل عبر مشغل درايف البديل 🔄" : "تشغيل بمشغل مباشر ⚡"}
           </button>
         </div>
       ) : null}
