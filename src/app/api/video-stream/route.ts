@@ -8,9 +8,9 @@ export async function GET(req: NextRequest) {
     return new NextResponse("Invalid file ID", { status: 400 });
   }
 
-  // 1. Try to get direct stream URL from Google Drive
+  // 1. Direct stream endpoints for Google Drive videos (lh3 excluded as it serves JPEG thumbnails)
   const urlsToTry = [
-    `https://lh3.googleusercontent.com/d/${fileId}`,
+    `https://drive.usercontent.google.com/download?id=${fileId}&export=download`,
     `https://drive.google.com/uc?export=download&confirm=t&id=${fileId}`,
     `https://docs.google.com/uc?export=download&id=${fileId}`,
   ];
@@ -34,30 +34,28 @@ export async function GET(req: NextRequest) {
 
       const contentType = res.headers.get("content-type") || "";
 
-      // Ensure it's actually media content and not an HTML error/login page
-      if (res.ok || res.status === 206) {
-        if (!contentType.includes("html") && !contentType.includes("text/plain")) {
-          const resHeaders = new Headers();
-          resHeaders.set("Content-Type", contentType || "video/mp4");
-          
-          const contentLength = res.headers.get("content-length");
-          if (contentLength) resHeaders.set("Content-Length", contentLength);
+      // Ensure it's valid media content (not an HTML error page or JPEG thumbnail)
+      if ((res.ok || res.status === 206) && !contentType.includes("html") && !contentType.includes("image")) {
+        const resHeaders = new Headers();
+        resHeaders.set("Content-Type", contentType.includes("video") ? contentType : "video/mp4");
 
-          const contentRange = res.headers.get("content-range");
-          if (contentRange) resHeaders.set("Content-Range", contentRange);
+        const contentLength = res.headers.get("content-length");
+        if (contentLength) resHeaders.set("Content-Length", contentLength);
 
-          const acceptRanges = res.headers.get("accept-ranges") || "bytes";
-          resHeaders.set("Accept-Ranges", acceptRanges);
-          resHeaders.set("Cache-Control", "public, max-age=7200, s-maxage=7200");
+        const contentRange = res.headers.get("content-range");
+        if (contentRange) resHeaders.set("Content-Range", contentRange);
 
-          return new NextResponse(res.body as any, {
-            status: res.status,
-            headers: resHeaders,
-          });
-        }
+        const acceptRanges = res.headers.get("accept-ranges") || "bytes";
+        resHeaders.set("Accept-Ranges", acceptRanges);
+        resHeaders.set("Cache-Control", "public, max-age=7200, s-maxage=7200");
+
+        return new NextResponse(res.body as any, {
+          status: res.status,
+          headers: resHeaders,
+        });
       }
     } catch {
-      // Continue to next URL fallback
+      // Continue to next fallback URL
     }
   }
 
