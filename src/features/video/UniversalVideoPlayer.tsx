@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { WatermarkOverlay } from "@/features/video/WatermarkOverlay";
 
 export type ParsedVideoInfo = {
@@ -112,7 +112,6 @@ export function UniversalVideoPlayer({
   showLogo?: boolean;
 }) {
   const parsed = useMemo(() => parseVideoUrl(videoUrl), [videoUrl]);
-  const [useDirectStream, setUseDirectStream] = useState(true);
 
   if (parsed.type === "invalid" || !videoUrl) {
     return (
@@ -130,22 +129,25 @@ export function UniversalVideoPlayer({
       onContextMenu={(e) => e.preventDefault()}
     >
       <div className={`relative ${className}`}>
-        {parsed.type === "html5" || (parsed.type === "gdrive" && useDirectStream) ? (
+        {parsed.type === "html5" || parsed.type === "gdrive" ? (
           <video
             controls
             playsInline
             preload="metadata"
             controlsList="nodownload"
             disablePictureInPicture
-            key={useDirectStream ? "direct" : "normal"}
             className="h-full w-full bg-black object-contain"
             src={parsed.directStreamUrl || parsed.embedUrl}
             onContextMenu={(e) => e.preventDefault()}
-            onError={() => {
-              if (parsed.type === "gdrive" && useDirectStream) {
-                setUseDirectStream(false);
-              }
-            }}
+          />
+        ) : parsed.type === "youtube" ? (
+          <iframe
+            key={parsed.embedUrl}
+            className="h-full w-full border-0"
+            src={parsed.embedUrl}
+            title={currentTitle}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
           />
         ) : (
           <>
@@ -157,7 +159,6 @@ export function UniversalVideoPlayer({
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
             />
-            {/* Transparent overlay prevents right-click inspect on the iframe */}
             <div
               className="absolute inset-0 z-[1]"
               style={{ pointerEvents: "none" }}
@@ -176,24 +177,7 @@ export function UniversalVideoPlayer({
           </div>
         ) : null}
       </div>
-
-      {/* Fallback switcher only — NO external Drive link */}
-      {parsed.type === "gdrive" ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 bg-[#121212] px-4 py-2.5 text-xs text-white/70" dir="rtl">
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-2 w-2 rounded-full bg-[#FF8A00]" />
-            <span>مشكلة في التشغيل؟</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setUseDirectStream(!useDirectStream)}
-            className="rounded-xl bg-white/10 px-3 py-1.5 font-medium text-white transition hover:bg-white/20 border border-white/15"
-          >
-            {useDirectStream ? "التشغيل عبر مشغل درايف البديل 🔄" : "تجربة مشغل مباشر ⚡"}
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }
+
