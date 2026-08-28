@@ -38,7 +38,7 @@ export function parseVideoUrl(inputUrl: string | null | undefined): ParsedVideoI
       rawUrl: url,
       driveFileId: fileId,
       embedUrl: `https://drive.google.com/file/d/${fileId}/preview`,
-      directStreamUrl: `https://lh3.googleusercontent.com/d/${fileId}`,
+      directStreamUrl: `/api/video-stream?id=${fileId}`,
     };
   }
 
@@ -52,7 +52,7 @@ export function parseVideoUrl(inputUrl: string | null | undefined): ParsedVideoI
         rawUrl: url,
         driveFileId: fileId,
         embedUrl: `https://drive.google.com/file/d/${fileId}/preview`,
-        directStreamUrl: `https://lh3.googleusercontent.com/d/${fileId}`,
+        directStreamUrl: `/api/video-stream?id=${fileId}`,
       };
     }
   }
@@ -112,7 +112,7 @@ export function UniversalVideoPlayer({
   showLogo?: boolean;
 }) {
   const parsed = useMemo(() => parseVideoUrl(videoUrl), [videoUrl]);
-  const [useDirectStream, setUseDirectStream] = useState(false);
+  const [useDirectStream, setUseDirectStream] = useState(true);
 
   if (parsed.type === "invalid" || !videoUrl) {
     return (
